@@ -1,0 +1,5 @@
+allowBuilds:
+  '@embedded-postgres/darwin-arm64': true
+  # The platform binary comes from an optional dependency, the install script is not needed.
+  '@swc/core': false
+  esbuild: false

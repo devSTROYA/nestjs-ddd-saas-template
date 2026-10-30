@@ -1,0 +1,83 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793342400099,
+      "tag": "0000_create_users",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793343141452,
+      "tag": "0001_create_tenants",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793343294041,
+      "tag": "0002_add_users_tenant_fk",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793343476727,
+      "tag": "0003_create_admins",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793343778268,
+      "tag": "0004_create_invitations",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793346421776,
+      "tag": "0005_use_prefixed_constraint_names",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793346972013,
+      "tag": "0006_create_auth_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793347908665,
+      "tag": "0007_create_rate_limits",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793351276124,
+      "tag": "0008_add_tenant_slug_and_login_tenant",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793351812152,
+      "tag": "0009_drop_tenant_slug_unique_user_email",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793352194973,
+      "tag": "0010_create_workspaces",
+      "breakpoints": true
+    }
+  ]
+}

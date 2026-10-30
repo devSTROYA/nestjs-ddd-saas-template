@@ -1,0 +1,6 @@
+export * from './domain/errors/domain.error.js';
+export * from './domain/value-objects/principal.js';
+export * from './presentation/auth-error-status.js';
+export * from './presentation/auth.decorators.js';
+export * from './presentation/auth.guard.js';
+export * from './presentation/auth.openapi.js';

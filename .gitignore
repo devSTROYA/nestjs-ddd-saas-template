@@ -1,0 +1,90 @@
+# Dependencies
+node_modules
+.pnpm-store
+.pnp.*
+
+# Build output
+dist
+build
+out
+*.tsbuildinfo
+.swc
+
+# Environment and secrets: only the example is tracked
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.crt
+service-account*.json
+credentials*.json
+
+# Tests and coverage
+coverage
+.nyc_output
+junit.xml
+test-results
+playwright-report
+
+# Logs and diagnostics
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+.pnpm-debug.log
+
+# Caches
+.cache
+.eslintcache
+.oxlintcache
+.prettiercache
+.turbo
+.temp
+.tmp
+tmp
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*~
+
+# Editors and IDEs (shared settings can be re-added explicitly)
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.iml
+*.swp
+*.swo
+.project
+.classpath
+.settings
+
+# Local tooling
+.claude/settings.local.json
+.claude/launch.json
+*.local.md
+.terraform
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+
+# Local database dumps and uploads
+*.sqlite
+*.sqlite3
+*.dump
+*.sql.gz
+uploads
