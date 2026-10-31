@@ -377,8 +377,10 @@ Starting points, to be tuned with Cloud Run metrics (CPU, memory, latency, insta
 - **Min instances 0** for development and staging, **1** for production to avoid cold starts on the
   login endpoints. **Max instances** such that `max x DATABASE_POOL_MAX` is at most about 70% of the
   database's `max_connections` (for example 10 x 5 = 50).
-- **CPU allocation: only during requests** (the default) works because nothing runs after the
-  response is sent; enable startup CPU boost. Request timeout 30-60 s.
+- **CPU allocation: only during requests** (the default) works only if the web process starts no
+  background work: set `OUTBOX_RELAY_ENABLED=false` and drain the outbox elsewhere (see "Domain
+  events and outbox"; `deploy/cloud-run.sh` does not set this up yet). Enable startup CPU boost.
+  Request timeout 30-60 s.
 - **Probes:** startup probe on `/v1/health/ready`, liveness probe on `/v1/health/live`.
 - **Network:** ingress "internal and cloud load balancing" behind a global external Application Load
   Balancer with Cloud Armor, and unauthenticated invocations allowed (the app does its own
@@ -457,6 +459,59 @@ Starting points, to be tuned with Cloud Run metrics (CPU, memory, latency, insta
   Gotcha: values inside `sql` in an index
   predicate become bind parameters, which DDL rejects; use `sql.raw` for literals.
 - **Column lengths match value object limits** (email 320, names 255).
+
+## Domain events and outbox
+
+- **Every mutation of an aggregate raises a domain event**, even when the only reaction is a log
+  line. Aggregates extend `AggregateRoot` (`src/common/ddd`): `create` and every behaviour method
+  call `addEvent`, `restore` never does. Events are named `<Aggregate><PastTense>Event`, carry only
+  primitives and never secrets (no OTP or token hashes), and live in
+  `modules/<m>/domain/events/<aggregate>.events.ts` with their names in an `as const` object.
+  A call that changes nothing (wrong state, expired, reused token) raises nothing.
+- **Events are published after commit, through a transactional outbox.** `save` of every Drizzle
+  repository runs inside `saveAggregate` (`src/common/outbox`), which writes the aggregate and its
+  pulled events in one transaction (it joins the use case's unit of work, or opens its own).
+  `OutboxRelay` polls the `outbox` table (`FOR UPDATE SKIP LOCKED`, safe with several instances) and
+  calls the consumers; a crash between commit and publish loses nothing.
+- **Delivery is at-least-once.** A consumer must tolerate the same event id twice (check state,
+  upsert, or keep a processed-events table). A failing consumer never reaches the request: the relay
+  records `attempts` and `last_error` and retries; after `MAX_OUTBOX_ATTEMPTS` the row stays
+  unprocessed as a dead letter to inspect.
+- **What must be atomic is not an event reaction.** Anything that has to succeed or fail together
+  with the original write is done in the use case inside `unitOfWork.run`. Reactions run after the
+  request's transaction has committed and must not depend on it, and no external call (mail, HTTP)
+  happens inside a business transaction.
+- **Today the only consumer is `LoggingOutboxConsumer`.** To add one, implement `OutboxConsumer` and
+  add it to the `OUTBOX_CONSUMERS` factory in `OutboxModule`.
+- **Where the relay runs depends on the platform, never in a web instance that can be frozen or
+  scaled to zero.** `OUTBOX_RELAY_ENABLED` (default `true`) decides whether an instance polls:
+  - Polling inside the web process only fits a process that always has CPU: local development, a
+    Fargate service, or a Cloud Run service with CPU always allocated and min instances of at least 1.
+  - **Cloud Run** (CPU only during requests, may scale to zero): deploy the web service with
+    `OUTBOX_RELAY_ENABLED=false` and drain with Cloud Scheduler triggering a Cloud Run Job that runs
+    `node dist/outbox-worker.js --once` (same image and Cloud SQL connection, no public endpoint, no
+    extra vendor). Why not poll in the service: with throttled CPU the timer freezes between requests,
+    a frozen instance keeps its transaction and row locks open until it wakes or is killed, and with
+    zero instances nothing is published at all. A run delivers at most `MAX_OUTBOX_BATCHES_PER_RUN`
+    batches (1,000 events); the rest waits for the next run. The delay before publish is at most the
+    schedule interval. `deploy/cloud-run.sh` does not create the job and schedule yet.
+  - **AWS Fargate:** web service with `OUTBOX_RELAY_ENABLED=false` plus a separate service running
+    `node dist/outbox-worker.js` (desired count 1; more is safe because of `SKIP LOCKED`), or an ECS
+    scheduled task running it with `--once`. Raise the task `stopTimeout` to at least 30 s.
+  - `dist/outbox-worker.js` polls until SIGTERM; `--once` drains and exits. A one-shot tries each
+    failing event once per run, so the schedule is the retry pace.
+- **Shutdown is safe but bounded.** SIGTERM stops polling, lets the batch in flight finish, then closes
+  the pool. Cloud Run gives 10 s and Fargate 30 s by default; a batch cut short rolls back and is
+  delivered again, which at-least-once delivery already allows. Keep consumers fast.
+- **Connections:** the relay holds one pooled connection per batch. Count it in the
+  `max instances x DATABASE_POOL_MAX` budget (a worker or job has its own pool).
+- **Idle cost:** a polling worker runs one query per `OUTBOX_POLL_INTERVAL_MS` even when idle, which
+  keeps an auto-pausing database (Aurora Serverless, Cloud SQL with scheduled stops) awake. A
+  scheduled one-shot still wakes it once per run; lengthen the schedule there.
+- **Not run yet:** `outbox-worker.js` was not run against a real Cloud Run Job or Fargate task.
+- **Known limits (`shortcut:` in the relay):** row locks are held while consumers run and there is no
+  retry backoff; ordering is by event id and only best-effort across relays; processed rows are never
+  deleted (add a retention job); `occurredAt` uses the wall clock in methods that receive no `now`.
 
 ## Ports and DI
 

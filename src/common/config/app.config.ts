@@ -11,6 +11,7 @@ const MAX_PORT = 65_535;
 const DEFAULT_PORT = 3000;
 const MIN_SECRET_LENGTH = 32;
 const DEFAULT_POOL_MAX = 5;
+const DEFAULT_OUTBOX_POLL_INTERVAL_MS = 1000;
 
 const emptyToUndefined = (value: unknown): unknown => (value === '' ? undefined : value);
 
@@ -21,6 +22,12 @@ const envSchema = z
     DATABASE_URL: z.url(),
     DATABASE_POOL_MAX: z.coerce.number().int().min(1).default(DEFAULT_POOL_MAX),
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
+    OUTBOX_POLL_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(DEFAULT_OUTBOX_POLL_INTERVAL_MS),
+    OUTBOX_RELAY_ENABLED: z.stringbool().default(true),
     OTP_SECRET: z.string().min(MIN_SECRET_LENGTH),
     JWT_SECRET: z.string().min(MIN_SECRET_LENGTH),
     RESEND_API_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),

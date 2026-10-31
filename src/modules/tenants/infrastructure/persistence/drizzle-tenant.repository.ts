@@ -1,6 +1,8 @@
 import { eq } from 'drizzle-orm';
 
 import type { DatabaseContext } from '@common/database';
+import { saveAggregate } from '@common/outbox';
+import type { Nullable } from '@common/types';
 
 import type { TenantRepository } from '../../application/ports/tenant.repository.js';
 import { Tenant } from '../../domain/entities/tenant.js';
@@ -19,16 +21,18 @@ function toTenant(row: TenantRow): Tenant {
 export class DrizzleTenantRepository implements TenantRepository {
   constructor(private readonly context: DatabaseContext) {}
 
-  async findById(id: TenantId): Promise<Tenant | null> {
+  async findById(id: TenantId): Promise<Nullable<Tenant>> {
     const [row] = await this.context.client.select().from(tenants).where(eq(tenants.id, id));
     return row ? toTenant(row) : null;
   }
 
   async save(tenant: Tenant): Promise<void> {
-    const name = tenant.name.value;
-    await this.context.client
-      .insert(tenants)
-      .values({ id: tenant.id, name, createdAt: tenant.createdAt })
-      .onConflictDoUpdate({ target: tenants.id, set: { name, updatedAt: new Date() } });
+    return saveAggregate(this.context, tenant, async () => {
+      const name = tenant.name.value;
+      await this.context.client
+        .insert(tenants)
+        .values({ id: tenant.id, name, createdAt: tenant.createdAt })
+        .onConflictDoUpdate({ target: tenants.id, set: { name, updatedAt: new Date() } });
+    });
   }
 }

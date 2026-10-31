@@ -1,6 +1,6 @@
 import type { CatppuccinColor } from './catppuccin.js';
 
-export interface ScalarRoles {
+export type ScalarRoles = {
   text1: CatppuccinColor;
   text2: CatppuccinColor;
   text3: CatppuccinColor;
@@ -17,7 +17,7 @@ export interface ScalarRoles {
   query: CatppuccinColor;
   button: CatppuccinColor;
   buttonText: CatppuccinColor;
-}
+};
 
 export const darkRoles: ScalarRoles = {
   text1: 'text',

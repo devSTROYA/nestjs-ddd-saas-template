@@ -8,17 +8,27 @@ import { Email } from '@common/primitives';
 import { SEED_ADMIN_ID, seedAdmin } from '../../application/seed-admin.js';
 import { Admin } from '../../domain/entities/admin.js';
 import { AdminEmailAlreadyTakenError } from '../../domain/errors/domain.error.js';
+import { AdminEventNames } from '../../domain/events/admin.events.js';
 import { newAdminId } from '../../domain/value-objects/admin-id.js';
 import { DrizzleAdminRepository } from './drizzle-admin.repository.js';
 
 const pool = new Pool({ connectionString: inject('databaseUrl') });
-const repository = new DrizzleAdminRepository(new DatabaseContext(drizzle(pool)));
+const context = new DatabaseContext(drizzle(pool));
+const repository = new DrizzleAdminRepository(context);
+
+const outboxNames = async (aggregateId: string): Promise<string[]> => {
+  const { rows } = await pool.query<{ name: string }>(
+    'SELECT name FROM outbox WHERE aggregate_id = $1',
+    [aggregateId],
+  );
+  return rows.map((row) => row.name);
+};
 
 const newAdmin = (email = 'root@b.co') =>
   Admin.create({ id: newAdminId(), email: Email.create(email) });
 
 beforeEach(async () => {
-  await pool.query('TRUNCATE TABLE admins CASCADE');
+  await pool.query('TRUNCATE TABLE admins, outbox CASCADE');
 });
 
 afterAll(async () => {
@@ -38,6 +48,27 @@ describe('DrizzleAdminRepository', () => {
       expect(found?.email.value).toBe('root@b.co');
       expect(found?.createdAt).toEqual(admin.createdAt);
     }
+  });
+
+  it('writes the admin events to the outbox when saving', async () => {
+    const admin = newAdmin();
+    await repository.save(admin);
+
+    expect(await outboxNames(admin.id)).toEqual([AdminEventNames.CREATED]);
+  });
+
+  it('leaves neither the admin nor its events when the surrounding transaction fails', async () => {
+    const admin = newAdmin();
+
+    await expect(
+      context.run(async () => {
+        await repository.save(admin);
+        throw new Error('boom');
+      }),
+    ).rejects.toThrow('boom');
+
+    expect(await repository.findById(admin.id)).toBeNull();
+    expect(await outboxNames(admin.id)).toEqual([]);
   });
 
   it('returns null when nothing matches', async () => {

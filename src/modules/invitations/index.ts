@@ -1,5 +1,6 @@
 export * from './domain/entities/invitation.js';
 export * from './domain/errors/domain.error.js';
+export * from './domain/events/invitation.events.js';
 export * from './domain/value-objects/invitation-id.js';
 export * from './domain/value-objects/invitation-status.js';
 export * from './application/ports/invitation.repository.js';

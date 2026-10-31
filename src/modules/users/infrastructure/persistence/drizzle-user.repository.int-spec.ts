@@ -8,6 +8,7 @@ import { User } from '../../domain/entities/user.js';
 import { EmailAlreadyTakenError, UserIdConflictError } from '../../domain/errors/domain.error.js';
 import { Email } from '@common/primitives';
 import { newTenantId } from '@modules/tenants';
+import { UserEventNames } from '../../domain/events/user.events.js';
 import { newUserId } from '../../domain/value-objects/user-id.js';
 import { UserName } from '../../domain/value-objects/user-name.js';
 import { DrizzleUserRepository } from './drizzle-user.repository.js';
@@ -28,7 +29,7 @@ const newUser = (overrides: { tenantId?: typeof TENANT_A; email?: string } = {})
   });
 
 beforeEach(async () => {
-  await pool.query('TRUNCATE TABLE users, tenants CASCADE');
+  await pool.query('TRUNCATE TABLE users, tenants, outbox CASCADE');
   await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'A'), ($2, 'B')", [
     TENANT_A,
     TENANT_B,
@@ -38,6 +39,14 @@ beforeEach(async () => {
 afterAll(async () => {
   await pool.end();
 });
+
+const outboxNames = async (aggregateId: string): Promise<string[]> => {
+  const { rows } = await pool.query<{ name: string }>(
+    'SELECT name FROM outbox WHERE aggregate_id = $1',
+    [aggregateId],
+  );
+  return rows.map((row) => row.name);
+};
 
 describe('DrizzleUserRepository', () => {
   it('saves and reads a user back by id and by email', async () => {
@@ -54,6 +63,27 @@ describe('DrizzleUserRepository', () => {
       expect(found?.name.value).toBe('Uz');
       expect(found?.createdAt).toEqual(user.createdAt);
     }
+  });
+
+  it('writes the user events to the outbox when saving', async () => {
+    const user = newUser();
+    await repository.save(user);
+
+    expect(await outboxNames(user.id)).toEqual([UserEventNames.CREATED]);
+  });
+
+  it('leaves neither the user nor its events when the surrounding transaction fails', async () => {
+    const user = newUser();
+
+    await expect(
+      context.run(async () => {
+        await repository.save(user);
+        throw new Error('boom');
+      }),
+    ).rejects.toThrow('boom');
+
+    expect(await repository.findById(TENANT_A, user.id)).toBeNull();
+    expect(await outboxNames(user.id)).toEqual([]);
   });
 
   it('returns null when nothing matches', async () => {

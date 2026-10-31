@@ -11,11 +11,11 @@ import {
 import { TOKEN_SERVICE, type TokenService } from './ports/token.service.js';
 import { REFRESH_TOKEN_TTL_MS } from './token-lifetimes.js';
 
-export interface Session {
+export type Session = {
   accessToken: string;
   refreshToken: string;
   expiresInSeconds: number;
-}
+};
 
 @Injectable()
 export class SessionService {

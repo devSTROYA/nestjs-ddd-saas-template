@@ -8,6 +8,7 @@ import { type UserId, newUserId } from '@modules/users';
 
 import { Workspace } from '../../domain/entities/workspace.js';
 import { WorkspaceIdConflictError } from '../../domain/errors/domain.error.js';
+import { WorkspaceEventNames } from '../../domain/events/workspace.events.js';
 import { newWorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspaceName } from '../../domain/value-objects/workspace-name.js';
 import { WorkspaceRole } from '../../domain/value-objects/workspace-role.js';
@@ -42,7 +43,7 @@ const newWorkspace = (tenantId: TenantId, ownerId: UserId) =>
   });
 
 beforeEach(async () => {
-  await pool.query('TRUNCATE TABLE workspace_members, workspaces, users, tenants CASCADE');
+  await pool.query('TRUNCATE TABLE outbox, workspace_members, workspaces, users, tenants CASCADE');
 });
 
 afterAll(async () => {
@@ -150,5 +151,26 @@ describe('DrizzleWorkspaceRepository', () => {
     ).rejects.toThrow('boom');
 
     expect(await repository.findByTenantId(tenantId)).toBeNull();
+    const { rows } = await pool.query('SELECT 1 FROM outbox');
+    expect(rows).toHaveLength(0);
+  });
+
+  it('writes the pending events to the outbox with the workspace', async () => {
+    const tenantId = await insertTenant();
+    const owner = await insertUser(tenantId, 'o@a.co');
+    const workspace = newWorkspace(tenantId, owner);
+    workspace.addMember(await insertUser(tenantId, 'a@a.co'), WorkspaceRole.ADMIN);
+    await repository.save(workspace);
+
+    const { rows } = await pool.query<{ name: string; aggregate_id: string; tenant_id: string }>(
+      'SELECT name, aggregate_id, tenant_id FROM outbox',
+    );
+    expect(rows).toHaveLength(2);
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        { name: WorkspaceEventNames.CREATED, aggregate_id: workspace.id, tenant_id: tenantId },
+        { name: WorkspaceEventNames.MEMBER_ADDED, aggregate_id: workspace.id, tenant_id: tenantId },
+      ]),
+    );
   });
 });

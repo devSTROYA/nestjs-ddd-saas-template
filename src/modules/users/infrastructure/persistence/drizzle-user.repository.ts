@@ -5,7 +5,9 @@ import { type DatabaseContext, isUniqueViolation } from '@common/database';
 import type { UserRepository } from '../../application/ports/user.repository.js';
 import { User } from '../../domain/entities/user.js';
 import { EmailAlreadyTakenError, UserIdConflictError } from '../../domain/errors/domain.error.js';
+import { saveAggregate } from '@common/outbox';
 import { Email } from '@common/primitives';
+import type { Nullable } from '@common/types';
 import { type TenantId, toTenantId } from '@modules/tenants';
 import { type UserId, toUserId } from '../../domain/value-objects/user-id.js';
 import { UserName } from '../../domain/value-objects/user-name.js';
@@ -24,7 +26,7 @@ function toUser(row: UserRow): User {
 export class DrizzleUserRepository implements UserRepository {
   constructor(private readonly context: DatabaseContext) {}
 
-  async findById(tenantId: TenantId, id: UserId): Promise<User | null> {
+  async findById(tenantId: TenantId, id: UserId): Promise<Nullable<User>> {
     const [row] = await this.context.client
       .select()
       .from(users)
@@ -32,7 +34,7 @@ export class DrizzleUserRepository implements UserRepository {
     return row ? toUser(row) : null;
   }
 
-  async findByEmail(email: Email): Promise<User | null> {
+  async findByEmail(email: Email): Promise<Nullable<User>> {
     const [row] = await this.context.client
       .select()
       .from(users)
@@ -47,31 +49,33 @@ export class DrizzleUserRepository implements UserRepository {
   }
 
   async save(user: User): Promise<void> {
-    const name = user.name.value;
-    try {
-      const written = await this.context.client
-        .insert(users)
-        .values({
-          id: user.id,
-          tenantId: user.tenantId,
-          email: user.email.value,
-          name,
-          createdAt: user.createdAt,
-        })
-        .onConflictDoUpdate({
-          target: users.id,
-          set: { name, updatedAt: new Date() },
-          setWhere: eq(users.tenantId, user.tenantId),
-        })
-        .returning({ id: users.id });
-      if (written.length === 0) {
-        throw new UserIdConflictError(user.id);
+    return saveAggregate(this.context, user, async () => {
+      const name = user.name.value;
+      try {
+        const written = await this.context.client
+          .insert(users)
+          .values({
+            id: user.id,
+            tenantId: user.tenantId,
+            email: user.email.value,
+            name,
+            createdAt: user.createdAt,
+          })
+          .onConflictDoUpdate({
+            target: users.id,
+            set: { name, updatedAt: new Date() },
+            setWhere: eq(users.tenantId, user.tenantId),
+          })
+          .returning({ id: users.id });
+        if (written.length === 0) {
+          throw new UserIdConflictError(user.id);
+        }
+      } catch (error) {
+        if (isUniqueViolation(error)) {
+          throw new EmailAlreadyTakenError(user.email.value);
+        }
+        throw error;
       }
-    } catch (error) {
-      if (isUniqueViolation(error)) {
-        throw new EmailAlreadyTakenError(user.email.value);
-      }
-      throw error;
-    }
+    });
   }
 }

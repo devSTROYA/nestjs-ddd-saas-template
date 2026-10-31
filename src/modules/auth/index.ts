@@ -1,4 +1,6 @@
 export * from './domain/errors/domain.error.js';
+export * from './domain/events/login-challenge.events.js';
+export * from './domain/events/refresh-token.events.js';
 export * from './domain/value-objects/principal.js';
 export * from './presentation/auth-error-status.js';
 export * from './presentation/auth.decorators.js';

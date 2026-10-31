@@ -5,6 +5,7 @@ import { CLOCK, type Clock } from '@common/clock';
 import { UNIT_OF_WORK, type UnitOfWork } from '@common/database';
 import { Email } from '@common/primitives';
 import { RATE_LIMITER, type RateLimiter } from '@common/rate-limit';
+import type { Nullable } from '@common/types';
 import { ADMIN_REPOSITORY, type AdminRepository } from '@modules/admins';
 
 import { InvalidCredentialsError } from '../../../domain/errors/domain.error.js';
@@ -38,7 +39,7 @@ export class VerifyAdminLoginHandler implements ICommandHandler<VerifyAdminLogin
     return session;
   }
 
-  private async verify(email: Email, otp: string): Promise<Session | null> {
+  private async verify(email: Email, otp: string): Promise<Nullable<Session>> {
     const now = this.clock.now();
     if (!(await this.loginCodes.consume(email, null, otp, now))) {
       return null;

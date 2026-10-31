@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose';
 
 import { newUuidV7 } from '@common/primitives';
+import type { Nullable } from '@common/types';
 
 import type { AccessToken, TokenService } from '../../application/ports/token.service.js';
 import { ACCESS_TOKEN_TTL_SECONDS } from '../../application/token-lifetimes.js';
@@ -38,7 +39,7 @@ export class JoseTokenService implements TokenService {
     return { token, expiresInSeconds: ACCESS_TOKEN_TTL_SECONDS };
   }
 
-  async verifyAccessToken(token: string, now: Date): Promise<Principal | null> {
+  async verifyAccessToken(token: string, now: Date): Promise<Nullable<Principal>> {
     try {
       const { payload } = await jwtVerify(token, this.key, {
         algorithms: [ALGORITHM],

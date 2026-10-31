@@ -8,10 +8,10 @@ export const ValidationErrorCodes = {
 
 export type ValidationErrorCode = (typeof ValidationErrorCodes)[keyof typeof ValidationErrorCodes];
 
-export interface InvalidField {
+export type InvalidField = {
   path: string;
   code: string;
-}
+};
 
 export class InputInvalidError extends DomainError {
   constructor(fields: readonly InvalidField[]) {

@@ -1,3 +1,4 @@
+import { AggregateRoot } from '@common/ddd';
 import type { Email } from '@common/primitives';
 import type { AdminId } from '@modules/admins';
 
@@ -6,23 +7,29 @@ import {
   InvitationLockedError,
   InvitationNotPendingError,
 } from '../errors/domain.error.js';
+import {
+  InvitationAcceptedEvent,
+  InvitationCreatedEvent,
+  InvitationOtpFailedEvent,
+  InvitationOtpRegeneratedEvent,
+  InvitationRevokedEvent,
+} from '../events/invitation.events.js';
 import type { InvitationId } from '../value-objects/invitation-id.js';
 import { InvitationStatus } from '../value-objects/invitation-status.js';
 
 export const MAX_OTP_ATTEMPTS = 5;
 
-export class Invitation {
-  private constructor(
-    public readonly id: InvitationId,
-    public readonly email: Email,
-    public readonly invitedBy: AdminId,
-    private _otpHash: string,
-    private _expiresAt: Date,
-    private _attempts: number,
-    private _status: InvitationStatus,
-    public readonly createdAt: Date,
-  ) {}
+type InvitationProps = {
+  email: Email;
+  invitedBy: AdminId;
+  otpHash: string;
+  expiresAt: Date;
+  attempts: number;
+  status: InvitationStatus;
+  createdAt: Date;
+};
 
+export class Invitation extends AggregateRoot<InvitationProps, InvitationId> {
   static create(
     props: {
       id: InvitationId;
@@ -33,16 +40,28 @@ export class Invitation {
     },
     now: Date,
   ): Invitation {
-    return new Invitation(
+    const invitation = new Invitation(
+      {
+        email: props.email,
+        invitedBy: props.invitedBy,
+        otpHash: props.otpHash,
+        expiresAt: props.expiresAt,
+        attempts: 0,
+        status: InvitationStatus.PENDING,
+        createdAt: now,
+      },
       props.id,
-      props.email,
-      props.invitedBy,
-      props.otpHash,
-      props.expiresAt,
-      0,
-      InvitationStatus.PENDING,
-      now,
     );
+    invitation.addEvent(
+      new InvitationCreatedEvent(
+        props.id,
+        now.toISOString(),
+        props.email.value,
+        props.invitedBy,
+        props.expiresAt.toISOString(),
+      ),
+    );
+    return invitation;
   }
 
   static restore(props: {
@@ -56,65 +75,87 @@ export class Invitation {
     createdAt: Date;
   }): Invitation {
     return new Invitation(
+      {
+        email: props.email,
+        invitedBy: props.invitedBy,
+        otpHash: props.otpHash,
+        expiresAt: props.expiresAt,
+        attempts: props.attempts,
+        status: props.status,
+        createdAt: props.createdAt,
+      },
       props.id,
-      props.email,
-      props.invitedBy,
-      props.otpHash,
-      props.expiresAt,
-      props.attempts,
-      props.status,
-      props.createdAt,
     );
   }
 
+  get email(): Email {
+    return this.props.email;
+  }
+
+  get invitedBy(): AdminId {
+    return this.props.invitedBy;
+  }
+
   get otpHash(): string {
-    return this._otpHash;
+    return this.props.otpHash;
   }
 
   get expiresAt(): Date {
-    return this._expiresAt;
+    return this.props.expiresAt;
   }
 
   get attempts(): number {
-    return this._attempts;
+    return this.props.attempts;
   }
 
   get status(): InvitationStatus {
-    return this._status;
+    return this.props.status;
+  }
+
+  get createdAt(): Date {
+    return this.props.createdAt;
   }
 
   // A wrong OTP does not throw: the caller must persist the attempt before raising InvalidOtpError.
   accept(otpMatches: boolean, now: Date): boolean {
     this.assertPending();
-    if (now >= this._expiresAt) {
+    if (now >= this.props.expiresAt) {
       throw new InvitationExpiredError();
     }
-    if (this._attempts >= MAX_OTP_ATTEMPTS) {
+    if (this.props.attempts >= MAX_OTP_ATTEMPTS) {
       throw new InvitationLockedError();
     }
     if (!otpMatches) {
-      this._attempts += 1;
+      this.props.attempts += 1;
+      this.addEvent(new InvitationOtpFailedEvent(this.id, now.toISOString(), this.props.attempts));
       return false;
     }
-    this._status = InvitationStatus.ACCEPTED;
+    this.props.status = InvitationStatus.ACCEPTED;
+    this.addEvent(new InvitationAcceptedEvent(this.id, now.toISOString(), this.props.email.value));
     return true;
   }
 
   revoke(): void {
     this.assertPending();
-    this._status = InvitationStatus.REVOKED;
+    this.props.status = InvitationStatus.REVOKED;
+    this.addEvent(
+      new InvitationRevokedEvent(this.id, new Date().toISOString(), this.props.email.value),
+    );
   }
 
   regenerate(otpHash: string, expiresAt: Date): void {
     this.assertPending();
-    this._otpHash = otpHash;
-    this._expiresAt = expiresAt;
-    this._attempts = 0;
+    this.props.otpHash = otpHash;
+    this.props.expiresAt = expiresAt;
+    this.props.attempts = 0;
+    this.addEvent(
+      new InvitationOtpRegeneratedEvent(this.id, new Date().toISOString(), expiresAt.toISOString()),
+    );
   }
 
   private assertPending(): void {
-    if (this._status !== InvitationStatus.PENDING) {
-      throw new InvitationNotPendingError(this._status);
+    if (this.props.status !== InvitationStatus.PENDING) {
+      throw new InvitationNotPendingError(this.props.status);
     }
   }
 }

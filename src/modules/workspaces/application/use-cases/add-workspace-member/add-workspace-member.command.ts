@@ -13,6 +13,6 @@ export class AddWorkspaceMemberCommand {
   ) {}
 }
 
-export interface AddWorkspaceMemberResult {
+export type AddWorkspaceMemberResult = {
   userId: UserId;
-}
+};

@@ -4,10 +4,12 @@ import { inject } from 'vitest';
 
 import { DatabaseContext } from '@common/database';
 import { Email } from '@common/primitives';
+import type { Nullable } from '@common/types';
 import { type TenantId, newTenantId } from '@modules/tenants';
 
 import { LoginChallenge } from '../../domain/entities/login-challenge.js';
 import { LoginChallengeAlreadyPendingError } from '../../domain/errors/domain.error.js';
+import { LoginChallengeEventNames } from '../../domain/events/login-challenge.events.js';
 import { newLoginChallengeId } from '../../domain/value-objects/ids.js';
 import { LoginChallengeStatus } from '../../domain/value-objects/login-challenge-status.js';
 import { DrizzleLoginChallengeRepository } from './drizzle-login-challenge.repository.js';
@@ -20,7 +22,7 @@ const pool = new Pool({ connectionString: inject('databaseUrl') });
 const context = new DatabaseContext(drizzle(pool));
 const repository = new DrizzleLoginChallengeRepository(context);
 
-const newChallenge = (tenantId: TenantId | null = null) =>
+const newChallenge = (tenantId: Nullable<TenantId> = null) =>
   LoginChallenge.create(
     { id: newLoginChallengeId(), tenantId, email: EMAIL, otpHash: 'hash', expiresAt: IN_15_MIN },
     NOW,
@@ -33,7 +35,7 @@ const insertTenant = async (name: string): Promise<TenantId> => {
 };
 
 beforeEach(async () => {
-  await pool.query('TRUNCATE TABLE login_challenges, tenants CASCADE');
+  await pool.query('TRUNCATE TABLE login_challenges, outbox, tenants CASCADE');
 });
 
 afterAll(async () => {
@@ -131,6 +133,36 @@ describe('DrizzleLoginChallengeRepository', () => {
     expect((await repository.findPendingByEmail(EMAIL, null))?.id).toBe(admin.id);
     expect((await repository.findPendingByEmail(EMAIL, acme))?.id).toBe(inAcme.id);
     expect((await repository.findPendingByEmail(EMAIL, acme))?.tenantId).toBe(acme);
+  });
+
+  it('writes the raised events to the outbox with the challenge', async () => {
+    const challenge = newChallenge();
+    await repository.save(challenge);
+
+    const { rows } = await pool.query(
+      'SELECT name, aggregate_id, payload FROM outbox ORDER BY name',
+    );
+    expect(rows).toEqual([
+      {
+        name: LoginChallengeEventNames.CREATED,
+        aggregate_id: challenge.id,
+        payload: { expiresAt: IN_15_MIN.toISOString() },
+      },
+    ]);
+  });
+
+  it('leaves neither the challenge nor its events when the surrounding transaction fails', async () => {
+    await expect(
+      context.run(async () => {
+        await repository.save(newChallenge());
+        throw new Error('rollback');
+      }),
+    ).rejects.toThrow('rollback');
+
+    const challenges = await pool.query('SELECT 1 FROM login_challenges');
+    const events = await pool.query('SELECT 1 FROM outbox');
+    expect(challenges.rowCount).toBe(0);
+    expect(events.rowCount).toBe(0);
   });
 
   it('allows only one pending challenge per email within a tenant', async () => {

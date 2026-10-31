@@ -5,6 +5,7 @@ import { CLOCK, type Clock } from '@common/clock';
 import { UNIT_OF_WORK, type UnitOfWork } from '@common/database';
 import { Email } from '@common/primitives';
 import { RATE_LIMITER, type RateLimiter } from '@common/rate-limit';
+import type { Nullable } from '@common/types';
 import { USER_REPOSITORY, type UserRepository } from '@modules/users';
 
 import { InvalidCredentialsError } from '../../../domain/errors/domain.error.js';
@@ -38,7 +39,7 @@ export class VerifyUserLoginHandler implements ICommandHandler<VerifyUserLoginCo
     return session;
   }
 
-  private async verify(email: Email, otp: string): Promise<Session | null> {
+  private async verify(email: Email, otp: string): Promise<Nullable<Session>> {
     const user = await this.users.findByEmail(email);
     if (!user) {
       return null;

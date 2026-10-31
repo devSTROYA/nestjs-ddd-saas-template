@@ -41,10 +41,10 @@ import {
   changeWorkspaceMemberRoleBodySchema,
 } from './workspace.schema.js';
 
-interface Actor {
+type Actor = {
   userId: UserId;
   tenantId: TenantId;
-}
+};
 
 // The tenant always comes from the access token, never from the request.
 function actorOf(principal: Principal): Actor {

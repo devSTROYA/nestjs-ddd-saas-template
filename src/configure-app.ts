@@ -6,10 +6,10 @@ import type { AccentColor } from '@common/docs-theme';
 import { mountApiDocs } from './api-docs.js';
 import { API_PREFIX } from './api-prefix.js';
 
-export interface ConfigureAppOptions {
+export type ConfigureAppOptions = {
   docs: boolean;
   docsAccent?: AccentColor;
-}
+};
 
 export async function configureApp(
   app: NestFastifyApplication,

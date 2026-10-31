@@ -4,12 +4,12 @@ export type JsonObject = Record<string, unknown>;
 
 export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
-export interface PathParamDoc {
+export type PathParamDoc = {
   description: string;
   schema: z.ZodType;
-}
+};
 
-export interface RouteDoc {
+export type RouteDoc = {
   method: HttpMethod;
   path: string;
   tag: string;
@@ -19,10 +19,10 @@ export interface RouteDoc {
   body?: z.ZodType;
   response: { status: number; description: string; schema?: z.ZodType };
   errors: readonly string[];
-}
+};
 
-export interface OpenApiInfo {
+export type OpenApiInfo = {
   title: string;
   version: string;
   serverUrl: string;
-}
+};

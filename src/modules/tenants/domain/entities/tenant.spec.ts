@@ -1,3 +1,4 @@
+import { TenantEventNames } from '../events/tenant.events.js';
 import { newTenantId } from '../value-objects/tenant-id.js';
 import { TenantName } from '../value-objects/tenant-name.js';
 import { Tenant } from './tenant.js';
@@ -17,6 +18,38 @@ describe('Tenant', () => {
     const tenant = newTenant();
     tenant.rename(TenantName.create('Beta'));
     expect(tenant.name.value).toBe('Beta');
+  });
+
+  it('raises created and renamed events, once', () => {
+    const tenant = newTenant();
+    tenant.rename(TenantName.create('Beta'));
+
+    const events = tenant.pullEvents();
+
+    expect(events).toMatchObject([
+      {
+        name: TenantEventNames.CREATED,
+        aggregateId: tenant.id,
+        tenantId: tenant.id,
+        tenantName: 'Acme',
+      },
+      {
+        name: TenantEventNames.RENAMED,
+        aggregateId: tenant.id,
+        tenantId: tenant.id,
+        tenantName: 'Beta',
+      },
+    ]);
+    expect(tenant.pullEvents()).toEqual([]);
+  });
+
+  it('raises no event on restore', () => {
+    const tenant = Tenant.restore({
+      id: newTenantId(),
+      name: TenantName.restore('Acme'),
+      createdAt: new Date(),
+    });
+    expect(tenant.pullEvents()).toEqual([]);
   });
 
   it('restores without re-validation', () => {

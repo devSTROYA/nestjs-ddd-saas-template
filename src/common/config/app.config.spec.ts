@@ -14,10 +14,22 @@ describe('validateEnv', () => {
       DATABASE_URL,
       DATABASE_POOL_MAX: 5,
       TRUST_PROXY_HOPS: 0,
+      OUTBOX_POLL_INTERVAL_MS: 1000,
+      OUTBOX_RELAY_ENABLED: true,
       OTP_SECRET,
       JWT_SECRET,
       DOCS_ACCENT: 'lavender',
     });
+  });
+
+  it('reads OUTBOX_RELAY_ENABLED as a real boolean, not as a non-empty string', () => {
+    expect(validateEnv({ ...BASE, OUTBOX_RELAY_ENABLED: 'false' }).OUTBOX_RELAY_ENABLED).toBe(
+      false,
+    );
+    expect(validateEnv({ ...BASE, OUTBOX_RELAY_ENABLED: 'true' }).OUTBOX_RELAY_ENABLED).toBe(true);
+    expect(() => validateEnv({ ...BASE, OUTBOX_RELAY_ENABLED: 'maybe' })).toThrow(
+      /OUTBOX_RELAY_ENABLED/,
+    );
   });
 
   it('accepts a Catppuccin accent for the docs, treats empty as the default and rejects others', () => {

@@ -1,7 +1,9 @@
 import { and, eq, isNull } from 'drizzle-orm';
 
 import { type DatabaseContext, isUniqueViolation } from '@common/database';
+import { saveAggregate } from '@common/outbox';
 import { Email } from '@common/primitives';
+import type { Nullable } from '@common/types';
 import { type TenantId, toTenantId } from '@modules/tenants';
 
 import type { LoginChallengeRepository } from '../../application/ports/login-challenge.repository.js';
@@ -38,8 +40,8 @@ export class DrizzleLoginChallengeRepository implements LoginChallengeRepository
 
   async findPendingByEmail(
     email: Email,
-    tenantId: TenantId | null,
-  ): Promise<LoginChallenge | null> {
+    tenantId: Nullable<TenantId>,
+  ): Promise<Nullable<LoginChallenge>> {
     const [row] = await this.context.client
       .select()
       .from(loginChallenges)
@@ -49,8 +51,8 @@ export class DrizzleLoginChallengeRepository implements LoginChallengeRepository
 
   async findPendingByEmailForUpdate(
     email: Email,
-    tenantId: TenantId | null,
-  ): Promise<LoginChallenge | null> {
+    tenantId: Nullable<TenantId>,
+  ): Promise<Nullable<LoginChallenge>> {
     const [row] = await this.context.client
       .select()
       .from(loginChallenges)
@@ -59,42 +61,44 @@ export class DrizzleLoginChallengeRepository implements LoginChallengeRepository
     return row ? toChallenge(row) : null;
   }
 
-  async save(challenge: LoginChallenge): Promise<void> {
-    const mutable = {
-      otpHash: challenge.otpHash,
-      expiresAt: challenge.expiresAt,
-      attempts: challenge.attempts,
-      status: challenge.status,
-    };
-    try {
-      // Only a pending row may change, so a resend cannot revive a challenge consumed meanwhile.
-      const written = await this.context.client
-        .insert(loginChallenges)
-        .values({
-          id: challenge.id,
-          tenantId: challenge.tenantId,
-          email: challenge.email.value,
-          createdAt: challenge.createdAt,
-          ...mutable,
-        })
-        .onConflictDoUpdate({
-          target: loginChallenges.id,
-          set: { ...mutable, updatedAt: new Date() },
-          setWhere: eq(loginChallenges.status, LoginChallengeStatus.PENDING),
-        })
-        .returning({ id: loginChallenges.id });
-      if (written.length === 0) {
-        throw new LoginChallengeAlreadyPendingError();
+  save(challenge: LoginChallenge): Promise<void> {
+    return saveAggregate(this.context, challenge, async () => {
+      const mutable = {
+        otpHash: challenge.otpHash,
+        expiresAt: challenge.expiresAt,
+        attempts: challenge.attempts,
+        status: challenge.status,
+      };
+      try {
+        // Only a pending row may change, so a resend cannot revive a challenge consumed meanwhile.
+        const written = await this.context.client
+          .insert(loginChallenges)
+          .values({
+            id: challenge.id,
+            tenantId: challenge.tenantId,
+            email: challenge.email.value,
+            createdAt: challenge.createdAt,
+            ...mutable,
+          })
+          .onConflictDoUpdate({
+            target: loginChallenges.id,
+            set: { ...mutable, updatedAt: new Date() },
+            setWhere: eq(loginChallenges.status, LoginChallengeStatus.PENDING),
+          })
+          .returning({ id: loginChallenges.id });
+        if (written.length === 0) {
+          throw new LoginChallengeAlreadyPendingError();
+        }
+      } catch (error) {
+        if (isUniqueViolation(error)) {
+          throw new LoginChallengeAlreadyPendingError();
+        }
+        throw error;
       }
-    } catch (error) {
-      if (isUniqueViolation(error)) {
-        throw new LoginChallengeAlreadyPendingError();
-      }
-      throw error;
-    }
+    });
   }
 
-  private pendingFor(email: Email, tenantId: TenantId | null) {
+  private pendingFor(email: Email, tenantId: Nullable<TenantId>) {
     return and(
       tenantId ? eq(loginChallenges.tenantId, tenantId) : isNull(loginChallenges.tenantId),
       eq(loginChallenges.email, email.value),

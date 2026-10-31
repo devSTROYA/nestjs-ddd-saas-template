@@ -1,7 +1,9 @@
 import { and, eq } from 'drizzle-orm';
 
 import { type DatabaseContext, isUniqueViolation } from '@common/database';
+import { saveAggregate } from '@common/outbox';
 import { Email } from '@common/primitives';
+import type { Nullable } from '@common/types';
 import { toAdminId } from '@modules/admins';
 
 import type { InvitationRepository } from '../../application/ports/invitation.repository.js';
@@ -37,7 +39,7 @@ function toInvitation(row: InvitationRow): Invitation {
 export class DrizzleInvitationRepository implements InvitationRepository {
   constructor(private readonly context: DatabaseContext) {}
 
-  async findById(id: InvitationId): Promise<Invitation | null> {
+  async findById(id: InvitationId): Promise<Nullable<Invitation>> {
     const [row] = await this.context.client
       .select()
       .from(invitations)
@@ -45,7 +47,7 @@ export class DrizzleInvitationRepository implements InvitationRepository {
     return row ? toInvitation(row) : null;
   }
 
-  async findByIdForUpdate(id: InvitationId): Promise<Invitation | null> {
+  async findByIdForUpdate(id: InvitationId): Promise<Nullable<Invitation>> {
     const [row] = await this.context.client
       .select()
       .from(invitations)
@@ -54,7 +56,7 @@ export class DrizzleInvitationRepository implements InvitationRepository {
     return row ? toInvitation(row) : null;
   }
 
-  async findPendingByEmail(email: Email): Promise<Invitation | null> {
+  async findPendingByEmail(email: Email): Promise<Nullable<Invitation>> {
     const [row] = await this.context.client
       .select()
       .from(invitations)
@@ -64,7 +66,11 @@ export class DrizzleInvitationRepository implements InvitationRepository {
     return row ? toInvitation(row) : null;
   }
 
-  async save(invitation: Invitation): Promise<void> {
+  save(invitation: Invitation): Promise<void> {
+    return saveAggregate(this.context, invitation, () => this.write(invitation));
+  }
+
+  private async write(invitation: Invitation): Promise<void> {
     const mutable = {
       otpHash: invitation.otpHash,
       expiresAt: invitation.expiresAt,

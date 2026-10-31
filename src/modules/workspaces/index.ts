@@ -1,5 +1,6 @@
 export * from './domain/entities/workspace.js';
 export * from './domain/errors/domain.error.js';
+export * from './domain/events/workspace.events.js';
 export * from './domain/value-objects/workspace-id.js';
 export * from './domain/value-objects/workspace-name.js';
 export * from './domain/value-objects/workspace-role.js';

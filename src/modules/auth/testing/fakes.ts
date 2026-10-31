@@ -3,6 +3,7 @@ import type { UnitOfWork } from '@common/database';
 import type { OtpService } from '@common/otp';
 import type { Email } from '@common/primitives';
 import { type RateLimitRule, type RateLimiter, RateLimitExceededError } from '@common/rate-limit';
+import type { Nullable } from '@common/types';
 import type { Admin, AdminId, AdminRepository } from '@modules/admins';
 import type { TenantId } from '@modules/tenants';
 import type { User, UserId, UserRepository } from '@modules/users';
@@ -43,11 +44,11 @@ export class MutableClock implements Clock {
 export class FakeAdmins implements AdminRepository {
   readonly saved = new Map<string, Admin>();
 
-  findById(id: AdminId): Promise<Admin | null> {
+  findById(id: AdminId): Promise<Nullable<Admin>> {
     return Promise.resolve(this.saved.get(id) ?? null);
   }
 
-  findByEmail(email: Email): Promise<Admin | null> {
+  findByEmail(email: Email): Promise<Nullable<Admin>> {
     const found = [...this.saved.values()].find((admin) => admin.email.equals(email));
     return Promise.resolve(found ?? null);
   }
@@ -61,12 +62,12 @@ export class FakeAdmins implements AdminRepository {
 export class FakeUsers implements UserRepository {
   readonly saved = new Map<string, User>();
 
-  findById(tenantId: TenantId, id: UserId): Promise<User | null> {
+  findById(tenantId: TenantId, id: UserId): Promise<Nullable<User>> {
     const found = this.saved.get(id);
     return Promise.resolve(found?.tenantId === tenantId ? found : null);
   }
 
-  findByEmail(email: Email): Promise<User | null> {
+  findByEmail(email: Email): Promise<Nullable<User>> {
     const found = [...this.saved.values()].find((user) => user.email.equals(email));
     return Promise.resolve(found ?? null);
   }
@@ -86,9 +87,12 @@ export class FakeUsers implements UserRepository {
 
 export class FakeLoginChallenges implements LoginChallengeRepository {
   readonly saved = new Map<string, LoginChallenge>();
-  saveError: Error | null = null;
+  saveError: Nullable<Error> = null;
 
-  findPendingByEmail(email: Email, tenantId: TenantId | null): Promise<LoginChallenge | null> {
+  findPendingByEmail(
+    email: Email,
+    tenantId: Nullable<TenantId>,
+  ): Promise<Nullable<LoginChallenge>> {
     const found = [...this.saved.values()].find(
       (challenge) =>
         challenge.email.equals(email) &&
@@ -100,8 +104,8 @@ export class FakeLoginChallenges implements LoginChallengeRepository {
 
   findPendingByEmailForUpdate(
     email: Email,
-    tenantId: TenantId | null,
-  ): Promise<LoginChallenge | null> {
+    tenantId: Nullable<TenantId>,
+  ): Promise<Nullable<LoginChallenge>> {
     return this.findPendingByEmail(email, tenantId);
   }
 
@@ -117,7 +121,7 @@ export class FakeLoginChallenges implements LoginChallengeRepository {
 export class FakeRefreshTokens implements RefreshTokenRepository {
   readonly saved = new Map<string, RefreshToken>();
 
-  findByHashForUpdate(tokenHash: string): Promise<RefreshToken | null> {
+  findByHashForUpdate(tokenHash: string): Promise<Nullable<RefreshToken>> {
     const found = [...this.saved.values()].find((token) => token.tokenHash === tokenHash);
     return Promise.resolve(found ?? null);
   }
@@ -155,7 +159,7 @@ export class FakeRefreshTokens implements RefreshTokenRepository {
 
 export class FakeLoginMailer implements LoginMailer {
   readonly sent: Parameters<LoginMailer['sendLoginOtp']>[0][] = [];
-  sendError: Error | null = null;
+  sendError: Nullable<Error> = null;
 
   sendLoginOtp(message: Parameters<LoginMailer['sendLoginOtp']>[0]): Promise<void> {
     if (this.sendError) {
@@ -190,7 +194,7 @@ export class FakeTokenService implements TokenService {
     });
   }
 
-  verifyAccessToken(token: string): Promise<Principal | null> {
+  verifyAccessToken(token: string): Promise<Nullable<Principal>> {
     const [prefix, type, id, tenantId] = token.split(':');
     return Promise.resolve(
       prefix === 'access' && type && id && isPrincipalType(type)

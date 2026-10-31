@@ -12,9 +12,9 @@ export class GetWorkspaceQuery {
   ) {}
 }
 
-export interface WorkspaceView {
+export type WorkspaceView = {
   id: WorkspaceId;
   name: string;
   role: WorkspaceRole;
   members: WorkspaceMember[];
-}
+};

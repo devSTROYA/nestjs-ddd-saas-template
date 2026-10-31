@@ -1,4 +1,4 @@
-export interface CatppuccinPalette {
+export type CatppuccinPalette = {
   rosewater: string;
   flamingo: string;
   pink: string;
@@ -25,7 +25,7 @@ export interface CatppuccinPalette {
   base: string;
   mantle: string;
   crust: string;
-}
+};
 
 export type CatppuccinColor = keyof CatppuccinPalette;
 

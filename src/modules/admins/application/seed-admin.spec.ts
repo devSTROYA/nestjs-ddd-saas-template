@@ -1,4 +1,5 @@
 import { Email, InvalidEmailError } from '@common/primitives';
+import type { Nullable } from '@common/types';
 
 import { Admin } from '../domain/entities/admin.js';
 import { AdminEmailAlreadyTakenError } from '../domain/errors/domain.error.js';
@@ -10,11 +11,11 @@ class FakeAdmins implements AdminRepository {
   readonly byId = new Map<string, Admin>();
   saves = 0;
 
-  findById(id: AdminId): Promise<Admin | null> {
+  findById(id: AdminId): Promise<Nullable<Admin>> {
     return Promise.resolve(this.byId.get(id) ?? null);
   }
 
-  findByEmail(email: Email): Promise<Admin | null> {
+  findByEmail(email: Email): Promise<Nullable<Admin>> {
     const found = [...this.byId.values()].find((admin) => admin.email.equals(email));
     return Promise.resolve(found ?? null);
   }

@@ -1,3 +1,5 @@
+import type { Nullable } from '@common/types';
+
 import { MailDeliveryError } from './mail.error.js';
 import type { MailMessage, MailTransport } from './mail-transport.js';
 
@@ -9,7 +11,7 @@ export interface ResendClient {
       subject: string;
       text: string;
       html: string;
-    }): Promise<{ error: { message: string } | null }>;
+    }): Promise<{ error: Nullable<{ message: string }> }>;
   };
 }
 

@@ -1,3 +1,5 @@
+import { AggregateRoot } from '@common/ddd';
+import type { Nullable } from '@common/types';
 import type { TenantId } from '@modules/tenants';
 import type { UserId } from '@modules/users';
 
@@ -7,37 +9,56 @@ import {
   WorkspaceMemberNotFoundError,
   WorkspaceOwnerRequiredError,
 } from '../errors/domain.error.js';
+import {
+  WorkspaceCreatedEvent,
+  WorkspaceMemberAddedEvent,
+  WorkspaceMemberRemovedEvent,
+  WorkspaceMemberRoleChangedEvent,
+  WorkspaceRenamedEvent,
+} from '../events/workspace.events.js';
 import type { WorkspaceId } from '../value-objects/workspace-id.js';
 import type { WorkspaceName } from '../value-objects/workspace-name.js';
 import { WorkspaceRole } from '../value-objects/workspace-role.js';
 
-export interface WorkspaceMember {
+export type WorkspaceMember = {
   userId: UserId;
   role: WorkspaceRole;
-}
+};
 
-export class Workspace {
-  private constructor(
-    public readonly id: WorkspaceId,
-    public readonly tenantId: TenantId,
-    private _name: WorkspaceName,
-    private readonly roles: Map<UserId, WorkspaceRole>,
-    public readonly createdAt: Date,
-  ) {}
+type WorkspaceProps = {
+  tenantId: TenantId;
+  name: WorkspaceName;
+  roles: Map<UserId, WorkspaceRole>;
+  createdAt: Date;
+};
 
+export class Workspace extends AggregateRoot<WorkspaceProps, WorkspaceId> {
   static create(props: {
     id: WorkspaceId;
     tenantId: TenantId;
     name: WorkspaceName;
     ownerId: UserId;
   }): Workspace {
-    return new Workspace(
+    const now = new Date();
+    const workspace = new Workspace(
+      {
+        tenantId: props.tenantId,
+        name: props.name,
+        roles: new Map([[props.ownerId, WorkspaceRole.OWNER]]),
+        createdAt: now,
+      },
       props.id,
-      props.tenantId,
-      props.name,
-      new Map([[props.ownerId, WorkspaceRole.OWNER]]),
-      new Date(),
     );
+    workspace.addEvent(
+      new WorkspaceCreatedEvent(
+        props.id,
+        props.tenantId,
+        now.toISOString(),
+        props.ownerId,
+        props.name.value,
+      ),
+    );
+    return workspace;
   }
 
   static restore(props: {
@@ -48,67 +69,107 @@ export class Workspace {
     createdAt: Date;
   }): Workspace {
     return new Workspace(
+      {
+        tenantId: props.tenantId,
+        name: props.name,
+        roles: new Map(props.members.map((member) => [member.userId, member.role])),
+        createdAt: props.createdAt,
+      },
       props.id,
-      props.tenantId,
-      props.name,
-      new Map(props.members.map((member) => [member.userId, member.role])),
-      props.createdAt,
     );
   }
 
+  get tenantId(): TenantId {
+    return this.props.tenantId;
+  }
+
   get name(): WorkspaceName {
-    return this._name;
+    return this.props.name;
+  }
+
+  get createdAt(): Date {
+    return this.props.createdAt;
   }
 
   get members(): WorkspaceMember[] {
-    return [...this.roles].map(([userId, role]) => ({ userId, role }));
+    return [...this.props.roles].map(([userId, role]) => ({ userId, role }));
   }
 
-  roleOf(userId: UserId): WorkspaceRole | null {
-    return this.roles.get(userId) ?? null;
+  roleOf(userId: UserId): Nullable<WorkspaceRole> {
+    return this.props.roles.get(userId) ?? null;
   }
 
   rename(name: WorkspaceName): void {
-    this._name = name;
+    this.props.name = name;
+    this.addEvent(
+      new WorkspaceRenamedEvent(this.id, this.props.tenantId, new Date().toISOString(), name.value),
+    );
   }
 
   assertOwner(userId: UserId): void {
-    if (this.roles.get(userId) !== WorkspaceRole.OWNER) {
+    if (this.props.roles.get(userId) !== WorkspaceRole.OWNER) {
       throw new WorkspaceOwnerRequiredError();
     }
   }
 
   addMember(userId: UserId, role: WorkspaceRole): void {
-    if (this.roles.has(userId)) {
+    if (this.props.roles.has(userId)) {
       throw new WorkspaceMemberAlreadyExistsError(userId);
     }
-    this.roles.set(userId, role);
+    this.props.roles.set(userId, role);
+    this.addEvent(
+      new WorkspaceMemberAddedEvent(
+        this.id,
+        this.props.tenantId,
+        new Date().toISOString(),
+        userId,
+        role,
+      ),
+    );
   }
 
   changeRole(userId: UserId, role: WorkspaceRole): void {
-    const current = this.roles.get(userId);
+    const current = this.props.roles.get(userId);
     if (current === undefined) {
       throw new WorkspaceMemberNotFoundError(userId);
     }
     if (current === WorkspaceRole.OWNER && role !== WorkspaceRole.OWNER) {
       this.assertAnotherOwnerExists(userId);
     }
-    this.roles.set(userId, role);
+    this.props.roles.set(userId, role);
+    this.addEvent(
+      new WorkspaceMemberRoleChangedEvent(
+        this.id,
+        this.props.tenantId,
+        new Date().toISOString(),
+        userId,
+        current,
+        role,
+      ),
+    );
   }
 
   removeMember(userId: UserId): void {
-    const current = this.roles.get(userId);
+    const current = this.props.roles.get(userId);
     if (current === undefined) {
       throw new WorkspaceMemberNotFoundError(userId);
     }
     if (current === WorkspaceRole.OWNER) {
       this.assertAnotherOwnerExists(userId);
     }
-    this.roles.delete(userId);
+    this.props.roles.delete(userId);
+    this.addEvent(
+      new WorkspaceMemberRemovedEvent(
+        this.id,
+        this.props.tenantId,
+        new Date().toISOString(),
+        userId,
+      ),
+    );
   }
 
   private assertAnotherOwnerExists(except: UserId): void {
-    const hasAnotherOwner = [...this.roles].some(
+    const hasAnotherOwner = [...this.props.roles].some(
       ([userId, role]) => userId !== except && role === WorkspaceRole.OWNER,
     );
     if (!hasAnotherOwner) {

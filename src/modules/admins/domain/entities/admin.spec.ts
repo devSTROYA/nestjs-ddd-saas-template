@@ -1,5 +1,6 @@
 import { Email } from '@common/primitives';
 
+import { AdminEventNames } from '../events/admin.events.js';
 import { newAdminId } from '../value-objects/admin-id.js';
 import { Admin } from './admin.js';
 
@@ -17,6 +18,33 @@ describe('Admin', () => {
     const admin = newAdmin();
     admin.changeEmail(Email.create('new@b.co'));
     expect(admin.email.value).toBe('new@b.co');
+  });
+
+  it('raises created and email_changed events, once', () => {
+    const admin = newAdmin();
+    admin.changeEmail(Email.create('new@b.co'));
+
+    const events = admin.pullEvents();
+
+    expect(events).toMatchObject([
+      { name: AdminEventNames.CREATED, aggregateId: admin.id, tenantId: null, email: 'root@b.co' },
+      {
+        name: AdminEventNames.EMAIL_CHANGED,
+        aggregateId: admin.id,
+        tenantId: null,
+        email: 'new@b.co',
+      },
+    ]);
+    expect(admin.pullEvents()).toEqual([]);
+  });
+
+  it('raises no event on restore', () => {
+    const admin = Admin.restore({
+      id: newAdminId(),
+      email: Email.restore('root@b.co'),
+      createdAt: new Date(),
+    });
+    expect(admin.pullEvents()).toEqual([]);
   });
 
   it('restores without re-validation', () => {

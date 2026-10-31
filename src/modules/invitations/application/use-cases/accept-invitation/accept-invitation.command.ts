@@ -13,8 +13,8 @@ export class AcceptInvitationCommand {
   ) {}
 }
 
-export interface AcceptInvitationResult {
+export type AcceptInvitationResult = {
   tenantId: TenantId;
   userId: UserId;
   workspaceId: WorkspaceId;
-}
+};

@@ -16,12 +16,12 @@ import { configureApp } from '../../../configure-app.js';
 const ADMIN_ID = newAdminId();
 const ADMIN_EMAIL = 'root@b.co';
 
-interface TokenBody {
+type TokenBody = {
   accessToken: string;
   refreshToken: string;
   tokenType: string;
   expiresIn: number;
-}
+};
 
 describe('AuthController', () => {
   const pool = new Pool({ connectionString: inject('databaseUrl') });

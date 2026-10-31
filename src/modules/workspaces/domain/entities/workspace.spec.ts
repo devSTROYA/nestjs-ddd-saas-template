@@ -7,6 +7,7 @@ import {
   WorkspaceMemberNotFoundError,
   WorkspaceOwnerRequiredError,
 } from '../errors/domain.error.js';
+import { WorkspaceEventNames } from '../events/workspace.events.js';
 import { newWorkspaceId } from '../value-objects/workspace-id.js';
 import { WorkspaceName } from '../value-objects/workspace-name.js';
 import { WorkspaceRole } from '../value-objects/workspace-role.js';
@@ -100,6 +101,55 @@ describe('Workspace', () => {
     workspace.removeMember(admin);
     expect(workspace.roleOf(admin)).toBeNull();
     expect(() => workspace.removeMember(admin)).toThrow(WorkspaceMemberNotFoundError);
+  });
+
+  it('raises an event for create and every mutation, once', () => {
+    const workspace = newWorkspace();
+    const user = newUserId();
+    expect(workspace.pullEvents()).toMatchObject([
+      {
+        name: WorkspaceEventNames.CREATED,
+        aggregateId: workspace.id,
+        tenantId: workspace.tenantId,
+        ownerId: OWNER,
+        workspaceName: 'Acme',
+      },
+    ]);
+
+    workspace.rename(WorkspaceName.create('Beta'));
+    workspace.addMember(user, WorkspaceRole.ADMIN);
+    workspace.changeRole(user, WorkspaceRole.OWNER);
+    workspace.removeMember(user);
+
+    expect(workspace.pullEvents()).toMatchObject([
+      { name: WorkspaceEventNames.RENAMED, workspaceName: 'Beta' },
+      { name: WorkspaceEventNames.MEMBER_ADDED, userId: user, role: WorkspaceRole.ADMIN },
+      {
+        name: WorkspaceEventNames.MEMBER_ROLE_CHANGED,
+        userId: user,
+        previousRole: WorkspaceRole.ADMIN,
+        role: WorkspaceRole.OWNER,
+      },
+      { name: WorkspaceEventNames.MEMBER_REMOVED, userId: user },
+    ]);
+    expect(workspace.pullEvents()).toEqual([]);
+  });
+
+  it('raises no event when a mutation is rejected or on restore', () => {
+    const workspace = newWorkspace();
+    workspace.pullEvents();
+
+    expect(() => workspace.removeMember(OWNER)).toThrow(LastWorkspaceOwnerRequiredError);
+    expect(workspace.pullEvents()).toEqual([]);
+
+    const restored = Workspace.restore({
+      id: newWorkspaceId(),
+      tenantId: newTenantId(),
+      name: WorkspaceName.restore('Acme'),
+      members: [],
+      createdAt: new Date(),
+    });
+    expect(restored.pullEvents()).toEqual([]);
   });
 
   it('lets an owner be removed once another owner exists', () => {

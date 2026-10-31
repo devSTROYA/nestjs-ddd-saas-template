@@ -1,6 +1,7 @@
 import { Email } from '@common/primitives';
 import { newTenantId } from '@modules/tenants';
 
+import { UserEventNames } from '../events/user.events.js';
 import { newUserId } from '../value-objects/user-id.js';
 import { UserName } from '../value-objects/user-name.js';
 import { User } from './user.js';
@@ -34,6 +35,36 @@ describe('User', () => {
     const user = newUser();
     user.rename(UserName.create('Xy'));
     expect(user.name.value).toBe('Xy');
+  });
+
+  it('raises created and renamed events, once', () => {
+    const user = newUser();
+    user.rename(UserName.create('Xy'));
+
+    const events = user.pullEvents();
+
+    expect(events).toMatchObject([
+      {
+        name: UserEventNames.CREATED,
+        aggregateId: user.id,
+        tenantId: TENANT_ID,
+        email: 'a@b.c',
+        userName: 'Uz',
+      },
+      { name: UserEventNames.RENAMED, aggregateId: user.id, tenantId: TENANT_ID, userName: 'Xy' },
+    ]);
+    expect(user.pullEvents()).toEqual([]);
+  });
+
+  it('raises no event on restore', () => {
+    const user = User.restore({
+      id: newUserId(),
+      tenantId: TENANT_ID,
+      email: Email.restore('a@b.c'),
+      name: UserName.restore('Uz'),
+      createdAt: new Date(),
+    });
+    expect(user.pullEvents()).toEqual([]);
   });
 
   it('restores without re-validation', () => {

@@ -1,6 +1,7 @@
 import type { Email } from '@common/primitives';
 import type { UnitOfWork } from '@common/database';
 import type { Clock } from '@common/clock';
+import type { Nullable } from '@common/types';
 import type { Tenant, TenantId, TenantRepository } from '@modules/tenants';
 import type { User, UserId, UserRepository } from '@modules/users';
 import type { Workspace, WorkspaceRepository } from '@modules/workspaces';
@@ -16,15 +17,15 @@ export class FakeInvitations implements InvitationRepository {
   readonly saved = new Map<string, Invitation>();
   saves = 0;
 
-  findById(id: InvitationId): Promise<Invitation | null> {
+  findById(id: InvitationId): Promise<Nullable<Invitation>> {
     return Promise.resolve(this.saved.get(id) ?? null);
   }
 
-  findByIdForUpdate(id: InvitationId): Promise<Invitation | null> {
+  findByIdForUpdate(id: InvitationId): Promise<Nullable<Invitation>> {
     return this.findById(id);
   }
 
-  findPendingByEmail(email: Email): Promise<Invitation | null> {
+  findPendingByEmail(email: Email): Promise<Nullable<Invitation>> {
     const found = [...this.saved.values()].find(
       (invitation) =>
         invitation.email.equals(email) && invitation.status === InvitationStatus.PENDING,
@@ -42,7 +43,7 @@ export class FakeInvitations implements InvitationRepository {
 export class FakeTenants implements TenantRepository {
   readonly saved = new Map<string, Tenant>();
 
-  findById(id: TenantId): Promise<Tenant | null> {
+  findById(id: TenantId): Promise<Nullable<Tenant>> {
     return Promise.resolve(this.saved.get(id) ?? null);
   }
 
@@ -55,11 +56,11 @@ export class FakeTenants implements TenantRepository {
 export class FakeUsers implements UserRepository {
   readonly saved: User[] = [];
 
-  findById(): Promise<User | null> {
+  findById(): Promise<Nullable<User>> {
     return Promise.resolve(null);
   }
 
-  findByEmail(email: Email): Promise<User | null> {
+  findByEmail(email: Email): Promise<Nullable<User>> {
     return Promise.resolve(this.saved.find((user) => user.email.equals(email)) ?? null);
   }
 
@@ -80,12 +81,12 @@ export class FakeUsers implements UserRepository {
 export class FakeWorkspaces implements WorkspaceRepository {
   readonly saved = new Map<string, Workspace>();
 
-  findByTenantId(tenantId: TenantId): Promise<Workspace | null> {
+  findByTenantId(tenantId: TenantId): Promise<Nullable<Workspace>> {
     const found = [...this.saved.values()].find((workspace) => workspace.tenantId === tenantId);
     return Promise.resolve(found ?? null);
   }
 
-  findByTenantIdForUpdate(tenantId: TenantId): Promise<Workspace | null> {
+  findByTenantIdForUpdate(tenantId: TenantId): Promise<Nullable<Workspace>> {
     return this.findByTenantId(tenantId);
   }
 

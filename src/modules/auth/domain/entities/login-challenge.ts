@@ -1,48 +1,66 @@
+import { AggregateRoot } from '@common/ddd';
 import type { Email } from '@common/primitives';
+import type { Nullable } from '@common/types';
 import type { TenantId } from '@modules/tenants';
 
+import {
+  LoginChallengeAttemptFailedEvent,
+  LoginChallengeConsumedEvent,
+  LoginChallengeCreatedEvent,
+  LoginChallengeRegeneratedEvent,
+} from '../events/login-challenge.events.js';
 import type { LoginChallengeId } from '../value-objects/ids.js';
 import { LoginChallengeStatus } from '../value-objects/login-challenge-status.js';
 
 export const MAX_LOGIN_ATTEMPTS = 5;
 
-export class LoginChallenge {
-  private constructor(
-    public readonly id: LoginChallengeId,
-    public readonly tenantId: TenantId | null,
-    public readonly email: Email,
-    private _otpHash: string,
-    private _expiresAt: Date,
-    private _attempts: number,
-    private _status: LoginChallengeStatus,
-    public readonly createdAt: Date,
-  ) {}
+type LoginChallengeProps = {
+  tenantId: Nullable<TenantId>;
+  email: Email;
+  otpHash: string;
+  expiresAt: Date;
+  attempts: number;
+  status: LoginChallengeStatus;
+  createdAt: Date;
+};
 
+export class LoginChallenge extends AggregateRoot<LoginChallengeProps, LoginChallengeId> {
   static create(
     props: {
       id: LoginChallengeId;
-      tenantId: TenantId | null;
+      tenantId: Nullable<TenantId>;
       email: Email;
       otpHash: string;
       expiresAt: Date;
     },
     now: Date,
   ): LoginChallenge {
-    return new LoginChallenge(
+    const challenge = new LoginChallenge(
+      {
+        tenantId: props.tenantId,
+        email: props.email,
+        otpHash: props.otpHash,
+        expiresAt: props.expiresAt,
+        attempts: 0,
+        status: LoginChallengeStatus.PENDING,
+        createdAt: now,
+      },
       props.id,
-      props.tenantId,
-      props.email,
-      props.otpHash,
-      props.expiresAt,
-      0,
-      LoginChallengeStatus.PENDING,
-      now,
     );
+    challenge.addEvent(
+      new LoginChallengeCreatedEvent(
+        props.id,
+        props.tenantId,
+        now.toISOString(),
+        props.expiresAt.toISOString(),
+      ),
+    );
+    return challenge;
   }
 
   static restore(props: {
     id: LoginChallengeId;
-    tenantId: TenantId | null;
+    tenantId: Nullable<TenantId>;
     email: Email;
     otpHash: string;
     expiresAt: Date;
@@ -51,52 +69,83 @@ export class LoginChallenge {
     createdAt: Date;
   }): LoginChallenge {
     return new LoginChallenge(
+      {
+        tenantId: props.tenantId,
+        email: props.email,
+        otpHash: props.otpHash,
+        expiresAt: props.expiresAt,
+        attempts: props.attempts,
+        status: props.status,
+        createdAt: props.createdAt,
+      },
       props.id,
-      props.tenantId,
-      props.email,
-      props.otpHash,
-      props.expiresAt,
-      props.attempts,
-      props.status,
-      props.createdAt,
     );
   }
 
+  get tenantId(): Nullable<TenantId> {
+    return this.props.tenantId;
+  }
+
+  get email(): Email {
+    return this.props.email;
+  }
+
   get otpHash(): string {
-    return this._otpHash;
+    return this.props.otpHash;
   }
 
   get expiresAt(): Date {
-    return this._expiresAt;
+    return this.props.expiresAt;
   }
 
   get attempts(): number {
-    return this._attempts;
+    return this.props.attempts;
   }
 
   get status(): LoginChallengeStatus {
-    return this._status;
+    return this.props.status;
+  }
+
+  get createdAt(): Date {
+    return this.props.createdAt;
   }
 
   verify(otpMatches: boolean, now: Date): boolean {
     if (
-      this._status !== LoginChallengeStatus.PENDING ||
-      now >= this._expiresAt ||
-      this._attempts >= MAX_LOGIN_ATTEMPTS
+      this.props.status !== LoginChallengeStatus.PENDING ||
+      now >= this.props.expiresAt ||
+      this.props.attempts >= MAX_LOGIN_ATTEMPTS
     ) {
       return false;
     }
     if (!otpMatches) {
-      this._attempts += 1;
+      this.props.attempts += 1;
+      this.addEvent(
+        new LoginChallengeAttemptFailedEvent(
+          this.id,
+          this.props.tenantId,
+          now.toISOString(),
+          this.props.attempts,
+        ),
+      );
       return false;
     }
-    this._status = LoginChallengeStatus.CONSUMED;
+    this.props.status = LoginChallengeStatus.CONSUMED;
+    this.addEvent(new LoginChallengeConsumedEvent(this.id, this.props.tenantId, now.toISOString()));
     return true;
   }
 
   regenerate(otpHash: string, expiresAt: Date): void {
-    this._otpHash = otpHash;
-    this._expiresAt = expiresAt;
-    this._attempts = 0;
+    this.props.otpHash = otpHash;
+    this.props.expiresAt = expiresAt;
+    this.props.attempts = 0;
+    this.addEvent(
+      new LoginChallengeRegeneratedEvent(
+        this.id,
+        this.props.tenantId,
+        new Date().toISOString(),
+        expiresAt.toISOString(),
+      ),
+    );
   }
 }

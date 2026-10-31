@@ -1,6 +1,8 @@
 import { and, eq, notInArray } from 'drizzle-orm';
 
 import type { DatabaseContext } from '@common/database';
+import { saveAggregate } from '@common/outbox';
+import type { Nullable } from '@common/types';
 import { type TenantId, toTenantId } from '@modules/tenants';
 import { toUserId } from '@modules/users';
 
@@ -34,16 +36,20 @@ function toWorkspace(row: WorkspaceRow, memberRows: readonly WorkspaceMemberRow[
 export class DrizzleWorkspaceRepository implements WorkspaceRepository {
   constructor(private readonly context: DatabaseContext) {}
 
-  findByTenantId(tenantId: TenantId): Promise<Workspace | null> {
+  findByTenantId(tenantId: TenantId): Promise<Nullable<Workspace>> {
     return this.find(tenantId, false);
   }
 
-  findByTenantIdForUpdate(tenantId: TenantId): Promise<Workspace | null> {
+  findByTenantIdForUpdate(tenantId: TenantId): Promise<Nullable<Workspace>> {
     return this.find(tenantId, true);
   }
 
   // Members are part of the aggregate: the stored set is made equal to the in-memory one.
-  async save(workspace: Workspace): Promise<void> {
+  save(workspace: Workspace): Promise<void> {
+    return saveAggregate(this.context, workspace, () => this.write(workspace));
+  }
+
+  private async write(workspace: Workspace): Promise<void> {
     const client = this.context.client;
     const name = workspace.name.value;
     const written = await client
@@ -85,7 +91,7 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     }
   }
 
-  private async find(tenantId: TenantId, lock: boolean): Promise<Workspace | null> {
+  private async find(tenantId: TenantId, lock: boolean): Promise<Nullable<Workspace>> {
     const query = this.context.client
       .select()
       .from(workspaces)

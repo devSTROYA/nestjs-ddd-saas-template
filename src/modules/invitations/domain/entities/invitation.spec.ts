@@ -6,6 +6,7 @@ import {
   InvitationLockedError,
   InvitationNotPendingError,
 } from '../errors/domain.error.js';
+import { InvitationEventNames } from '../events/invitation.events.js';
 import { newInvitationId } from '../value-objects/invitation-id.js';
 import { InvitationStatus } from '../value-objects/invitation-status.js';
 import { Invitation, MAX_OTP_ATTEMPTS } from './invitation.js';
@@ -70,6 +71,59 @@ describe('Invitation', () => {
     revoked.revoke();
     expect(revoked.status).toBe(InvitationStatus.REVOKED);
     expect(() => revoked.accept(true, NOW)).toThrow(InvitationNotPendingError);
+  });
+
+  it('raises an event for create and every mutation, once', () => {
+    const invitation = newInvitation();
+    expect(invitation.pullEvents()).toMatchObject([
+      {
+        name: InvitationEventNames.CREATED,
+        aggregateId: invitation.id,
+        tenantId: null,
+        email: 'a@b.co',
+        expiresAt: IN_10_MIN.toISOString(),
+        occurredAt: NOW.toISOString(),
+      },
+    ]);
+
+    invitation.accept(false, NOW);
+    const later = new Date(IN_10_MIN.getTime() + 60_000);
+    invitation.regenerate('hash2', later);
+    invitation.accept(true, NOW);
+
+    const events = invitation.pullEvents();
+    expect(events).toMatchObject([
+      { name: InvitationEventNames.OTP_FAILED, attempts: 1 },
+      { name: InvitationEventNames.OTP_REGENERATED, expiresAt: later.toISOString() },
+      { name: InvitationEventNames.ACCEPTED, email: 'a@b.co' },
+    ]);
+    expect(JSON.stringify(events)).not.toContain('hash');
+    expect(invitation.pullEvents()).toEqual([]);
+
+    const revoked = newInvitation();
+    revoked.pullEvents();
+    revoked.revoke();
+    expect(revoked.pullEvents()).toMatchObject([{ name: InvitationEventNames.REVOKED }]);
+  });
+
+  it('raises no event when rejected or on restore', () => {
+    const accepted = newInvitation();
+    accepted.accept(true, NOW);
+    accepted.pullEvents();
+    expect(() => accepted.revoke()).toThrow(InvitationNotPendingError);
+    expect(accepted.pullEvents()).toEqual([]);
+
+    const restored = Invitation.restore({
+      id: newInvitationId(),
+      email: Email.create('a@b.co'),
+      invitedBy: newAdminId(),
+      otpHash: 'hash',
+      expiresAt: IN_10_MIN,
+      attempts: 0,
+      status: InvitationStatus.PENDING,
+      createdAt: NOW,
+    });
+    expect(restored.pullEvents()).toEqual([]);
   });
 
   it('regenerate swaps the hash, extends expiry and resets attempts', () => {

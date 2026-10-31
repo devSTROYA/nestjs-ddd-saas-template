@@ -3,6 +3,7 @@ import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 
 import { CLOCK, type Clock } from '@common/clock';
 import { UNIT_OF_WORK, type UnitOfWork } from '@common/database';
+import type { Nullable } from '@common/types';
 import { ADMIN_REPOSITORY, type AdminRepository, toAdminId } from '@modules/admins';
 import { toTenantId } from '@modules/tenants';
 import { USER_REPOSITORY, type UserRepository, toUserId } from '@modules/users';
@@ -40,7 +41,7 @@ export class RefreshTokensHandler implements ICommandHandler<RefreshTokensComman
     return session;
   }
 
-  private async rotate(tokenHash: string): Promise<Session | null> {
+  private async rotate(tokenHash: string): Promise<Nullable<Session>> {
     const token = await this.refreshTokens.findByHashForUpdate(tokenHash);
     if (!token) {
       return null;

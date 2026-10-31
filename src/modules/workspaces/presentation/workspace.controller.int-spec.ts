@@ -11,16 +11,16 @@ import { configureApp } from '../../../configure-app.js';
 
 const ADMIN_ID = newAdminId();
 
-interface TokenBody {
+type TokenBody = {
   accessToken: string;
-}
+};
 
-interface WorkspaceBody {
+type WorkspaceBody = {
   id: string;
   name: string;
   role: string;
   members: { userId: string; role: string }[];
-}
+};
 
 describe('WorkspaceController', () => {
   const pool = new Pool({ connectionString: inject('databaseUrl') });

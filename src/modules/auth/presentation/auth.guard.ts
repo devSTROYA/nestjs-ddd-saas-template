@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import type { FastifyRequest } from 'fastify';
 
 import { CLOCK, type Clock } from '@common/clock';
+import type { Nullable } from '@common/types';
 
 import { TOKEN_SERVICE, type TokenService } from '../application/ports/token.service.js';
 import { ForbiddenError, UnauthenticatedError } from '../domain/errors/domain.error.js';
@@ -17,7 +18,7 @@ declare module 'fastify' {
 
 const BEARER_SCHEME = 'bearer';
 
-function bearerToken(header: string | undefined): string | null {
+function bearerToken(header: string | undefined): Nullable<string> {
   const [scheme, token] = header?.split(' ') ?? [];
   return scheme?.toLowerCase() === BEARER_SCHEME && token ? token : null;
 }

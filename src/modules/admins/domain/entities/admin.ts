@@ -1,27 +1,36 @@
+import { AggregateRoot } from '@common/ddd';
 import type { Email } from '@common/primitives';
 
+import { AdminCreatedEvent, AdminEmailChangedEvent } from '../events/admin.events.js';
 import type { AdminId } from '../value-objects/admin-id.js';
 
-export class Admin {
-  private constructor(
-    public readonly id: AdminId,
-    private _email: Email,
-    public readonly createdAt: Date,
-  ) {}
+type AdminProps = {
+  email: Email;
+  createdAt: Date;
+};
 
+export class Admin extends AggregateRoot<AdminProps, AdminId> {
   static create(props: { id: AdminId; email: Email }): Admin {
-    return new Admin(props.id, props.email, new Date());
+    const now = new Date();
+    const admin = new Admin({ email: props.email, createdAt: now }, props.id);
+    admin.addEvent(new AdminCreatedEvent(props.id, null, now.toISOString(), props.email.value));
+    return admin;
   }
 
   static restore(props: { id: AdminId; email: Email; createdAt: Date }): Admin {
-    return new Admin(props.id, props.email, props.createdAt);
+    return new Admin({ email: props.email, createdAt: props.createdAt }, props.id);
   }
 
   get email(): Email {
-    return this._email;
+    return this.props.email;
+  }
+
+  get createdAt(): Date {
+    return this.props.createdAt;
   }
 
   changeEmail(email: Email): void {
-    this._email = email;
+    this.props.email = email;
+    this.addEvent(new AdminEmailChangedEvent(this.id, null, new Date().toISOString(), email.value));
   }
 }

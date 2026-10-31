@@ -6,6 +6,7 @@ import { ClockModule } from '@common/clock';
 import { envFilePaths, validateEnv } from '@common/config';
 import { DatabaseModule } from '@common/database';
 import { DomainErrorFilter, ERROR_STATUS_REGISTRY } from '@common/errors';
+import { OutboxModule } from '@common/outbox';
 import { RateLimitGuard, RateLimitModule } from '@common/rate-limit';
 import { AuthGuard } from '@modules/auth';
 import { AppController } from './app.controller.js';
@@ -30,6 +31,7 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module.js';
     CqrsModule.forRoot(),
     ClockModule,
     DatabaseModule,
+    OutboxModule,
     RateLimitModule,
     HealthModule,
     AdminsModule,

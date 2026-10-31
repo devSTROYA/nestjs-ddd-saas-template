@@ -4,6 +4,7 @@ import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, type Clock } from '@common/clock';
 import { UNIT_OF_WORK, type UnitOfWork } from '@common/database';
 import { OTP_SERVICE, type OtpService } from '@common/otp';
+import type { Nullable } from '@common/types';
 import {
   TENANT_REPOSITORY,
   Tenant,
@@ -60,7 +61,7 @@ export class AcceptInvitationHandler implements ICommandHandler<
     command: AcceptInvitationCommand,
     tenantName: TenantName,
     userName: UserName,
-  ): Promise<AcceptInvitationResult | null> {
+  ): Promise<Nullable<AcceptInvitationResult>> {
     const invitation = await this.invitations.findByIdForUpdate(command.invitationId);
     if (!invitation) {
       throw new InvitationNotFoundError(command.invitationId);

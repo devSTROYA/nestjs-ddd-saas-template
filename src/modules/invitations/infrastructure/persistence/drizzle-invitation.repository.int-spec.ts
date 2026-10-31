@@ -12,6 +12,7 @@ import {
   InvitationAlreadyPendingError,
   InvitationNotPendingError,
 } from '../../domain/errors/domain.error.js';
+import { InvitationEventNames } from '../../domain/events/invitation.events.js';
 import { newInvitationId } from '../../domain/value-objects/invitation-id.js';
 import { InvitationStatus } from '../../domain/value-objects/invitation-status.js';
 import { DrizzleInvitationRepository } from './drizzle-invitation.repository.js';
@@ -21,7 +22,8 @@ const NOW = new Date('2026-01-01T00:00:00Z');
 const IN_15_MIN = new Date(NOW.getTime() + 15 * 60_000);
 
 const pool = new Pool({ connectionString: inject('databaseUrl') });
-const repository = new DrizzleInvitationRepository(new DatabaseContext(drizzle(pool)));
+const context = new DatabaseContext(drizzle(pool));
+const repository = new DrizzleInvitationRepository(context);
 
 const newInvitation = (email = 'a@b.co') =>
   Invitation.create(
@@ -36,7 +38,7 @@ const newInvitation = (email = 'a@b.co') =>
   );
 
 beforeEach(async () => {
-  await pool.query('TRUNCATE TABLE invitations, admins CASCADE');
+  await pool.query('TRUNCATE TABLE outbox, invitations, admins CASCADE');
   await pool.query("INSERT INTO admins (id, email) VALUES ($1, 'root@b.co')", [ADMIN_ID]);
 });
 
@@ -59,6 +61,33 @@ describe('DrizzleInvitationRepository', () => {
     expect(found?.attempts).toBe(0);
     expect(found?.status).toBe(InvitationStatus.PENDING);
     expect(found?.createdAt).toEqual(NOW);
+  });
+
+  it('writes the pending events to the outbox with the invitation', async () => {
+    const invitation = newInvitation();
+    await repository.save(invitation);
+
+    const { rows } = await pool.query<{ name: string; aggregate_id: string; tenant_id: null }>(
+      'SELECT name, aggregate_id, tenant_id FROM outbox',
+    );
+    expect(rows).toEqual([
+      { name: InvitationEventNames.CREATED, aggregate_id: invitation.id, tenant_id: null },
+    ]);
+  });
+
+  it('leaves neither the invitation nor its outbox row when the transaction fails', async () => {
+    const invitation = newInvitation();
+
+    await expect(
+      context.run(async () => {
+        await repository.save(invitation);
+        throw new Error('boom');
+      }),
+    ).rejects.toThrow('boom');
+
+    expect(await repository.findById(invitation.id)).toBeNull();
+    const { rows } = await pool.query('SELECT 1 FROM outbox');
+    expect(rows).toHaveLength(0);
   });
 
   it('returns null when nothing matches', async () => {

@@ -1,5 +1,6 @@
 import type { UnitOfWork } from '@common/database';
 import { Email } from '@common/primitives';
+import type { Nullable } from '@common/types';
 import { type TenantId, newTenantId } from '@modules/tenants';
 import {
   EmailAlreadyTakenError,
@@ -23,12 +24,12 @@ import { WorkspaceName } from '../domain/value-objects/workspace-name.js';
 export class FakeWorkspaces implements WorkspaceRepository {
   readonly saved = new Map<string, Workspace>();
 
-  findByTenantId(tenantId: TenantId): Promise<Workspace | null> {
+  findByTenantId(tenantId: TenantId): Promise<Nullable<Workspace>> {
     const found = [...this.saved.values()].find((workspace) => workspace.tenantId === tenantId);
     return Promise.resolve(found ?? null);
   }
 
-  findByTenantIdForUpdate(tenantId: TenantId): Promise<Workspace | null> {
+  findByTenantIdForUpdate(tenantId: TenantId): Promise<Nullable<Workspace>> {
     return this.findByTenantId(tenantId);
   }
 
@@ -41,12 +42,12 @@ export class FakeWorkspaces implements WorkspaceRepository {
 export class FakeUsers implements UserRepository {
   readonly saved = new Map<string, User>();
 
-  findById(tenantId: TenantId, id: UserId): Promise<User | null> {
+  findById(tenantId: TenantId, id: UserId): Promise<Nullable<User>> {
     const found = this.saved.get(id);
     return Promise.resolve(found?.tenantId === tenantId ? found : null);
   }
 
-  findByEmail(email: Email): Promise<User | null> {
+  findByEmail(email: Email): Promise<Nullable<User>> {
     const found = [...this.saved.values()].find((user) => user.email.equals(email));
     return Promise.resolve(found ?? null);
   }

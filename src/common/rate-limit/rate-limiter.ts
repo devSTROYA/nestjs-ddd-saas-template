@@ -4,11 +4,11 @@ import type { ThrottlerStorage } from '@nestjs/throttler';
 
 import { RateLimitExceededError } from './rate-limit.error.js';
 
-export interface RateLimitRule {
+export type RateLimitRule = {
   name: string;
   limit: number;
   windowMs: number;
-}
+};
 
 export interface RateLimiter {
   consume(rule: RateLimitRule, subject: string): Promise<void>;

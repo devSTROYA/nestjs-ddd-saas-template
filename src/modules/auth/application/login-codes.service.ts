@@ -4,6 +4,7 @@ import { CLOCK, type Clock } from '@common/clock';
 import { MailDeliveryError } from '@common/mail';
 import { OTP_SERVICE, type OtpService } from '@common/otp';
 import type { Email } from '@common/primitives';
+import type { Nullable } from '@common/types';
 import type { TenantId } from '@modules/tenants';
 
 import { LoginChallenge } from '../domain/entities/login-challenge.js';
@@ -29,7 +30,7 @@ export class LoginCodes {
   ) {}
 
   // Never reveals whether a code was already pending, and a failed delivery is only logged.
-  async send(email: Email, tenantId: TenantId | null): Promise<void> {
+  async send(email: Email, tenantId: Nullable<TenantId>): Promise<void> {
     const now = this.clock.now();
     const expiresAt = new Date(now.getTime() + LOGIN_OTP_TTL_MS);
     const otp = this.otpService.generate();
@@ -53,7 +54,12 @@ export class LoginCodes {
   }
 
   // Must run inside a transaction: the challenge row is locked while the attempt is counted.
-  async consume(email: Email, tenantId: TenantId | null, otp: string, now: Date): Promise<boolean> {
+  async consume(
+    email: Email,
+    tenantId: Nullable<TenantId>,
+    otp: string,
+    now: Date,
+  ): Promise<boolean> {
     const challenge = await this.challenges.findPendingByEmailForUpdate(email, tenantId);
     if (!challenge) {
       return false;
@@ -68,7 +74,7 @@ export class LoginCodes {
 
   private async challengeFor(
     email: Email,
-    tenantId: TenantId | null,
+    tenantId: Nullable<TenantId>,
     otp: string,
     expiresAt: Date,
     now: Date,

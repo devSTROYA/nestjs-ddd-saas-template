@@ -1,15 +1,16 @@
 import type { Email } from '@common/primitives';
+import type { Nullable } from '@common/types';
 import type { TenantId } from '@modules/tenants';
 
 import type { LoginChallenge } from '../../domain/entities/login-challenge.js';
 
 // `tenantId` is null for admin logins.
 export interface LoginChallengeRepository {
-  findPendingByEmail(email: Email, tenantId: TenantId | null): Promise<LoginChallenge | null>;
+  findPendingByEmail(email: Email, tenantId: Nullable<TenantId>): Promise<Nullable<LoginChallenge>>;
   findPendingByEmailForUpdate(
     email: Email,
-    tenantId: TenantId | null,
-  ): Promise<LoginChallenge | null>;
+    tenantId: Nullable<TenantId>,
+  ): Promise<Nullable<LoginChallenge>>;
   save(challenge: LoginChallenge): Promise<void>;
 }
 
