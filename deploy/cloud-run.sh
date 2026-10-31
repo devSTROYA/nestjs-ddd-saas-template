@@ -59,14 +59,19 @@ secret_flags() {
 
 deploy() {
   : "${IMAGE:?}" "${NETWORK:?}" "${SUBNET:?}" "${MAIL_FROM:?}"
+  # The outbox relay polls inside the web process, so an instance must always exist and always have CPU.
+  if (( MIN_INSTANCES < 1 )); then
+    echo "MIN_INSTANCES must be at least 1: the outbox relay runs in the web process" >&2
+    exit 1
+  fi
   gc run deploy "$SERVICE" --region "$REGION" --image "$IMAGE" \
     --service-account "$SERVICE_ACCOUNT" \
-    --cpu 1 --memory 512Mi --concurrency 50 --timeout 60 --cpu-boost \
+    --cpu 1 --memory 512Mi --concurrency 50 --timeout 60 --cpu-boost --no-cpu-throttling \
     --min-instances "$MIN_INSTANCES" --max-instances "$MAX_INSTANCES" \
     --port 8080 \
     --network "$NETWORK" --subnet "$SUBNET" --vpc-egress private-ranges-only \
     --ingress internal-and-cloud-load-balancing --allow-unauthenticated \
-    --set-env-vars "^##^NODE_OPTIONS=--max-old-space-size=384##DATABASE_POOL_MAX=${DATABASE_POOL_MAX}##TRUST_PROXY_HOPS=${TRUST_PROXY_HOPS}##MAIL_FROM=${MAIL_FROM}" \
+    --set-env-vars "^##^NODE_OPTIONS=--max-old-space-size=384##DATABASE_POOL_MAX=${DATABASE_POOL_MAX}##TRUST_PROXY_HOPS=${TRUST_PROXY_HOPS}##MAIL_FROM=${MAIL_FROM}##OUTBOX_RELAY_ENABLED=true" \
     --set-secrets "$(secret_flags)" \
     --startup-probe "httpGet.path=/v1/health/ready,httpGet.port=8080,periodSeconds=5,failureThreshold=12" \
     --liveness-probe "httpGet.path=/v1/health/live,httpGet.port=8080,periodSeconds=30"

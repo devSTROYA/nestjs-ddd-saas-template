@@ -377,10 +377,9 @@ Starting points, to be tuned with Cloud Run metrics (CPU, memory, latency, insta
 - **Min instances 0** for development and staging, **1** for production to avoid cold starts on the
   login endpoints. **Max instances** such that `max x DATABASE_POOL_MAX` is at most about 70% of the
   database's `max_connections` (for example 10 x 5 = 50).
-- **CPU allocation: only during requests** (the default) works only if the web process starts no
-  background work: set `OUTBOX_RELAY_ENABLED=false` and drain the outbox elsewhere (see "Domain
-  events and outbox"; `deploy/cloud-run.sh` does not set this up yet). Enable startup CPU boost.
-  Request timeout 30-60 s.
+- **CPU allocation: always** (`--no-cpu-throttling`, instance-based billing) because the outbox relay
+  polls inside the web process (see "Domain events and outbox"); this needs min instances of at
+  least 1, which the deploy step enforces. Enable startup CPU boost. Request timeout 30-60 s.
 - **Probes:** startup probe on `/v1/health/ready`, liveness probe on `/v1/health/live`.
 - **Network:** ingress "internal and cloud load balancing" behind a global external Application Load
   Balancer with Cloud Armor, and unauthenticated invocations allowed (the app does its own
@@ -487,14 +486,17 @@ Starting points, to be tuned with Cloud Run metrics (CPU, memory, latency, insta
   scaled to zero.** `OUTBOX_RELAY_ENABLED` (default `true`) decides whether an instance polls:
   - Polling inside the web process only fits a process that always has CPU: local development, a
     Fargate service, or a Cloud Run service with CPU always allocated and min instances of at least 1.
-  - **Cloud Run** (CPU only during requests, may scale to zero): deploy the web service with
-    `OUTBOX_RELAY_ENABLED=false` and drain with Cloud Scheduler triggering a Cloud Run Job that runs
-    `node dist/outbox-worker.js --once` (same image and Cloud SQL connection, no public endpoint, no
-    extra vendor). Why not poll in the service: with throttled CPU the timer freezes between requests,
-    a frozen instance keeps its transaction and row locks open until it wakes or is killed, and with
-    zero instances nothing is published at all. A run delivers at most `MAX_OUTBOX_BATCHES_PER_RUN`
-    batches (1,000 events); the rest waits for the next run. The delay before publish is at most the
-    schedule interval. `deploy/cloud-run.sh` does not create the job and schedule yet.
+  - **Cloud Run:** deploy the web service with CPU always allocated (`--no-cpu-throttling`) and min
+    instances of at least 1; the relay polls in the web process and events reach consumers about
+    `OUTBOX_POLL_INTERVAL_MS` after commit, with no Scheduler or Job. Do not use the default
+    request-based CPU: the timer freezes between requests, a frozen instance keeps its transaction and
+    row locks open until it wakes or is killed, and with zero instances nothing is published. Every
+    instance polls; that is safe (`SKIP LOCKED`) and costs one light query per second each. Cost: one
+    vCPU always on is about $45 a month after the free tier (240,000 vCPU-seconds and 450,000
+    GiB-seconds a month per billing account, shared with other services and jobs). The cheaper
+    fallback is request-based CPU, `OUTBOX_RELAY_ENABLED=false` and a Cloud Scheduler schedule that
+    runs a Cloud Run Job with `node dist/outbox-worker.js --once`, at the cost of up to about a minute
+    of delay.
   - **AWS Fargate:** web service with `OUTBOX_RELAY_ENABLED=false` plus a separate service running
     `node dist/outbox-worker.js` (desired count 1; more is safe because of `SKIP LOCKED`), or an ECS
     scheduled task running it with `--once`. Raise the task `stopTimeout` to at least 30 s.
@@ -508,7 +510,8 @@ Starting points, to be tuned with Cloud Run metrics (CPU, memory, latency, insta
 - **Idle cost:** a polling worker runs one query per `OUTBOX_POLL_INTERVAL_MS` even when idle, which
   keeps an auto-pausing database (Aurora Serverless, Cloud SQL with scheduled stops) awake. A
   scheduled one-shot still wakes it once per run; lengthen the schedule there.
-- **Not run yet:** `outbox-worker.js` was not run against a real Cloud Run Job or Fargate task.
+- **Not run yet:** the always-on Cloud Run settings and `outbox-worker.js` were not run against real
+  Cloud Run or Fargate.
 - **Known limits (`shortcut:` in the relay):** row locks are held while consumers run and there is no
   retry backoff; ordering is by event id and only best-effort across relays; processed rows are never
   deleted (add a retention job); `occurredAt` uses the wall clock in methods that receive no `now`.
