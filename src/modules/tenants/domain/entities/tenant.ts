@@ -4,30 +4,25 @@ import { TenantCreatedEvent, TenantRenamedEvent } from '../events/tenant.events.
 import type { TenantId } from '../value-objects/tenant-id.js';
 import type { TenantName } from '../value-objects/tenant-name.js';
 
-type TenantProps = {
+type Props = {
   name: TenantName;
   createdAt: Date;
 };
 
-type CreateTenantProps = {
+type CreateProps = {
   name: TenantName;
 };
 
-type RestoreTenantProps = {
-  name: TenantName;
-  createdAt: Date;
-};
-
-export class Tenant extends AggregateRoot<TenantProps, TenantId> {
-  static create(props: CreateTenantProps, id: TenantId): Tenant {
+export class Tenant extends AggregateRoot<Props, TenantId> {
+  static create(props: CreateProps, id: TenantId): Tenant {
     const now = new Date();
     const tenant = new Tenant({ name: props.name, createdAt: now }, id);
     tenant.addEvent(new TenantCreatedEvent(id, id, now.toISOString(), props.name.value));
     return tenant;
   }
 
-  static restore(props: RestoreTenantProps, id: TenantId): Tenant {
-    return new Tenant({ name: props.name, createdAt: props.createdAt }, id);
+  static restore(props: Props, id: TenantId): Tenant {
+    return new Tenant(props, id);
   }
 
   get name(): TenantName {

@@ -113,7 +113,7 @@ describe('DrizzleWorkspaceRepository', () => {
       {
         tenantId: otherTenantId,
         name: WorkspaceName.create('Hijack'),
-        members: [{ userId: intruder, role: WorkspaceRole.OWNER }],
+        roles: new Map([[intruder, WorkspaceRole.OWNER]]),
         createdAt: workspace.createdAt,
         updatedAt: workspace.updatedAt,
       },

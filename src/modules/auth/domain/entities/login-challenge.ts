@@ -14,7 +14,7 @@ import { LoginChallengeStatus } from '../value-objects/login-challenge-status.js
 
 export const MAX_LOGIN_ATTEMPTS = 5;
 
-type LoginChallengeProps = {
+type Props = {
   tenantId: Nullable<TenantId>;
   email: Email;
   otpHash: string;
@@ -24,25 +24,15 @@ type LoginChallengeProps = {
   createdAt: Date;
 };
 
-type CreateLoginChallengeProps = {
+type CreateProps = {
   tenantId: Nullable<TenantId>;
   email: Email;
   otpHash: string;
   expiresAt: Date;
 };
 
-type RestoreLoginChallengeProps = {
-  tenantId: Nullable<TenantId>;
-  email: Email;
-  otpHash: string;
-  expiresAt: Date;
-  attempts: number;
-  status: LoginChallengeStatus;
-  createdAt: Date;
-};
-
-export class LoginChallenge extends AggregateRoot<LoginChallengeProps, LoginChallengeId> {
-  static create(props: CreateLoginChallengeProps, id: LoginChallengeId, now: Date): LoginChallenge {
+export class LoginChallenge extends AggregateRoot<Props, LoginChallengeId> {
+  static create(props: CreateProps, id: LoginChallengeId, now: Date): LoginChallenge {
     const challenge = new LoginChallenge(
       {
         tenantId: props.tenantId,
@@ -66,19 +56,8 @@ export class LoginChallenge extends AggregateRoot<LoginChallengeProps, LoginChal
     return challenge;
   }
 
-  static restore(props: RestoreLoginChallengeProps, id: LoginChallengeId): LoginChallenge {
-    return new LoginChallenge(
-      {
-        tenantId: props.tenantId,
-        email: props.email,
-        otpHash: props.otpHash,
-        expiresAt: props.expiresAt,
-        attempts: props.attempts,
-        status: props.status,
-        createdAt: props.createdAt,
-      },
-      id,
-    );
+  static restore(props: Props, id: LoginChallengeId): LoginChallenge {
+    return new LoginChallenge(props, id);
   }
 
   get tenantId(): Nullable<TenantId> {

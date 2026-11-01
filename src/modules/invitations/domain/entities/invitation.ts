@@ -19,7 +19,7 @@ import { InvitationStatus } from '../value-objects/invitation-status.js';
 
 export const MAX_OTP_ATTEMPTS = 5;
 
-type InvitationProps = {
+type Props = {
   email: Email;
   invitedBy: AdminId;
   otpHash: string;
@@ -29,25 +29,15 @@ type InvitationProps = {
   createdAt: Date;
 };
 
-type CreateInvitationProps = {
+type CreateProps = {
   email: Email;
   invitedBy: AdminId;
   otpHash: string;
   expiresAt: Date;
 };
 
-type RestoreInvitationProps = {
-  email: Email;
-  invitedBy: AdminId;
-  otpHash: string;
-  expiresAt: Date;
-  attempts: number;
-  status: InvitationStatus;
-  createdAt: Date;
-};
-
-export class Invitation extends AggregateRoot<InvitationProps, InvitationId> {
-  static create(props: CreateInvitationProps, id: InvitationId, now: Date): Invitation {
+export class Invitation extends AggregateRoot<Props, InvitationId> {
+  static create(props: CreateProps, id: InvitationId, now: Date): Invitation {
     const invitation = new Invitation(
       {
         email: props.email,
@@ -72,19 +62,8 @@ export class Invitation extends AggregateRoot<InvitationProps, InvitationId> {
     return invitation;
   }
 
-  static restore(props: RestoreInvitationProps, id: InvitationId): Invitation {
-    return new Invitation(
-      {
-        email: props.email,
-        invitedBy: props.invitedBy,
-        otpHash: props.otpHash,
-        expiresAt: props.expiresAt,
-        attempts: props.attempts,
-        status: props.status,
-        createdAt: props.createdAt,
-      },
-      id,
-    );
+  static restore(props: Props, id: InvitationId): Invitation {
+    return new Invitation(props, id);
   }
 
   get email(): Email {

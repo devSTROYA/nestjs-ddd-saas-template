@@ -16,7 +16,7 @@ export const RotationOutcome = {
 
 export type RotationOutcome = (typeof RotationOutcome)[keyof typeof RotationOutcome];
 
-type RefreshTokenProps = {
+type Props = {
   familyId: TokenFamilyId;
   principal: Principal;
   tokenHash: string;
@@ -26,25 +26,15 @@ type RefreshTokenProps = {
   createdAt: Date;
 };
 
-type IssueRefreshTokenProps = {
+type CreateProps = {
   familyId: TokenFamilyId;
   principal: Principal;
   tokenHash: string;
   expiresAt: Date;
 };
 
-type RestoreRefreshTokenProps = {
-  familyId: TokenFamilyId;
-  principal: Principal;
-  tokenHash: string;
-  expiresAt: Date;
-  usedAt: Nullable<Date>;
-  revokedAt: Nullable<Date>;
-  createdAt: Date;
-};
-
-export class RefreshToken extends AggregateRoot<RefreshTokenProps, RefreshTokenId> {
-  static issue(props: IssueRefreshTokenProps, id: RefreshTokenId, now: Date): RefreshToken {
+export class RefreshToken extends AggregateRoot<Props, RefreshTokenId> {
+  static issue(props: CreateProps, id: RefreshTokenId, now: Date): RefreshToken {
     const token = new RefreshToken(
       {
         familyId: props.familyId,
@@ -69,19 +59,8 @@ export class RefreshToken extends AggregateRoot<RefreshTokenProps, RefreshTokenI
     return token;
   }
 
-  static restore(props: RestoreRefreshTokenProps, id: RefreshTokenId): RefreshToken {
-    return new RefreshToken(
-      {
-        familyId: props.familyId,
-        principal: props.principal,
-        tokenHash: props.tokenHash,
-        expiresAt: props.expiresAt,
-        usedAt: props.usedAt,
-        revokedAt: props.revokedAt,
-        createdAt: props.createdAt,
-      },
-      id,
-    );
+  static restore(props: Props, id: RefreshTokenId): RefreshToken {
+    return new RefreshToken(props, id);
   }
 
   get familyId(): TokenFamilyId {

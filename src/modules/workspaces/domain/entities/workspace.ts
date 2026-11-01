@@ -25,7 +25,7 @@ export type WorkspaceMember = {
   role: WorkspaceRole;
 };
 
-type WorkspaceProps = {
+type Props = {
   tenantId: TenantId;
   name: WorkspaceName;
   roles: Map<UserId, WorkspaceRole>;
@@ -33,22 +33,14 @@ type WorkspaceProps = {
   updatedAt: Date;
 };
 
-type CreateWorkspaceProps = {
+type CreateProps = {
   tenantId: TenantId;
   name: WorkspaceName;
   ownerId: UserId;
 };
 
-type RestoreWorkspaceProps = {
-  tenantId: TenantId;
-  name: WorkspaceName;
-  members: readonly WorkspaceMember[];
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-export class Workspace extends AggregateRoot<WorkspaceProps, WorkspaceId> {
-  static create(props: CreateWorkspaceProps, id: WorkspaceId): Workspace {
+export class Workspace extends AggregateRoot<Props, WorkspaceId> {
+  static create(props: CreateProps, id: WorkspaceId): Workspace {
     const now = new Date();
     const workspace = new Workspace(
       {
@@ -72,17 +64,8 @@ export class Workspace extends AggregateRoot<WorkspaceProps, WorkspaceId> {
     return workspace;
   }
 
-  static restore(props: RestoreWorkspaceProps, id: WorkspaceId): Workspace {
-    return new Workspace(
-      {
-        tenantId: props.tenantId,
-        name: props.name,
-        roles: new Map(props.members.map((member) => [member.userId, member.role])),
-        createdAt: props.createdAt,
-        updatedAt: props.updatedAt,
-      },
-      id,
-    );
+  static restore(props: Props, id: WorkspaceId): Workspace {
+    return new Workspace(props, id);
   }
 
   get tenantId(): TenantId {

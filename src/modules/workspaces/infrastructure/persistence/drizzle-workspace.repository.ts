@@ -23,12 +23,14 @@ function toWorkspace(row: WorkspaceRow, memberRows: readonly WorkspaceMemberRow[
     {
       tenantId: toTenantId(row.tenantId),
       name: WorkspaceName.restore(row.name),
-      members: memberRows.map((member) => {
-        if (!isWorkspaceRole(member.role)) {
-          throw new InvalidWorkspaceRoleError(member.role);
-        }
-        return { userId: toUserId(member.userId), role: member.role };
-      }),
+      roles: new Map(
+        memberRows.map((member) => {
+          if (!isWorkspaceRole(member.role)) {
+            throw new InvalidWorkspaceRoleError(member.role);
+          }
+          return [toUserId(member.userId), member.role];
+        }),
+      ),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     },

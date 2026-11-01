@@ -32,7 +32,7 @@ describe('Workspace', () => {
       {
         tenantId: newTenantId(),
         name: WorkspaceName.restore('Acme'),
-        members: [member],
+        roles: new Map([[member.userId, member.role]]),
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-02T00:00:00Z'),
       },
@@ -170,7 +170,7 @@ describe('Workspace', () => {
       {
         tenantId: newTenantId(),
         name: WorkspaceName.restore('Acme'),
-        members: [],
+        roles: new Map(),
         createdAt: new Date(),
         updatedAt: new Date(),
       },

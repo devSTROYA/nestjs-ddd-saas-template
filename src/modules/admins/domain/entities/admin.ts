@@ -4,30 +4,25 @@ import type { Email } from '@common/primitives';
 import { AdminCreatedEvent, AdminEmailChangedEvent } from '../events/admin.events.js';
 import type { AdminId } from '../value-objects/admin-id.js';
 
-type AdminProps = {
+type Props = {
   email: Email;
   createdAt: Date;
 };
 
-type CreateAdminProps = {
+type CreateProps = {
   email: Email;
 };
 
-type RestoreAdminProps = {
-  email: Email;
-  createdAt: Date;
-};
-
-export class Admin extends AggregateRoot<AdminProps, AdminId> {
-  static create(props: CreateAdminProps, id: AdminId): Admin {
+export class Admin extends AggregateRoot<Props, AdminId> {
+  static create(props: CreateProps, id: AdminId): Admin {
     const now = new Date();
     const admin = new Admin({ email: props.email, createdAt: now }, id);
     admin.addEvent(new AdminCreatedEvent(id, null, now.toISOString(), props.email.value));
     return admin;
   }
 
-  static restore(props: RestoreAdminProps, id: AdminId): Admin {
-    return new Admin({ email: props.email, createdAt: props.createdAt }, id);
+  static restore(props: Props, id: AdminId): Admin {
+    return new Admin(props, id);
   }
 
   get email(): Email {
