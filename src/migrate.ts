@@ -1,16 +1,19 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
-import { z } from 'zod';
 
-import { loadEnvFiles } from '@common/config';
+import { checkConfigOrExit, loadEnvFiles } from '@common/config';
+import { databaseConfig } from '@common/database';
+
+import { MIGRATE_CONFIGS } from './config-sets.js';
+import { runEntrypoint } from './run-entrypoint.js';
 
 const MIGRATIONS_FOLDER = './drizzle';
 
 async function run(): Promise<void> {
   loadEnvFiles();
-  const { DATABASE_URL } = z.object({ DATABASE_URL: z.url() }).parse(process.env);
-  const pool = new Pool({ connectionString: DATABASE_URL, max: 1 });
+  checkConfigOrExit(MIGRATE_CONFIGS);
+  const pool = new Pool({ connectionString: databaseConfig().url, max: 1 });
   try {
     await migrate(drizzle(pool), { migrationsFolder: MIGRATIONS_FOLDER });
   } finally {
@@ -18,4 +21,4 @@ async function run(): Promise<void> {
   }
 }
 
-await run();
+await runEntrypoint('Migrate', run);

@@ -5,11 +5,10 @@ import {
   Logger,
   type OnApplicationBootstrap,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import type { ConfigType } from '@nestjs/config';
 import { and, asc, eq, isNull, lt } from 'drizzle-orm';
 
 import { CLOCK, type Clock } from '@common/clock';
-import type { Env } from '@common/config';
 import { DATABASE_CONTEXT, type DatabaseContext } from '@common/database';
 import type { Nullable } from '@common/types';
 
@@ -21,6 +20,7 @@ import {
   OUTBOX_BATCH_SIZE,
   OUTBOX_CONSUMERS,
 } from './outbox.constants.js';
+import { outboxConfig } from './outbox.config.js';
 import { type OutboxRow, outbox } from './outbox.schema.js';
 import type { OutboxConsumer, StoredEvent } from './outbox-consumer.js';
 
@@ -41,11 +41,11 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
     @Inject(DATABASE_CONTEXT) private readonly context: DatabaseContext,
     @Inject(OUTBOX_CONSUMERS) private readonly consumers: readonly OutboxConsumer[],
     @Inject(CLOCK) private readonly clock: Clock,
-    @Inject(ConfigService) private readonly config: ConfigService<Env, true>,
+    @Inject(outboxConfig.KEY) private readonly config: ConfigType<typeof outboxConfig>,
   ) {}
 
   onApplicationBootstrap(): void {
-    if (this.config.get('OUTBOX_RELAY_ENABLED', { infer: true })) {
+    if (this.config.relayEnabled) {
       this.start();
     }
   }
@@ -105,7 +105,7 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
     if (!this.active) {
       return;
     }
-    const base = this.config.get('OUTBOX_POLL_INTERVAL_MS', { infer: true });
+    const base = this.config.pollIntervalMs;
     const interval = Math.min(base * 2 ** this.failures, Math.max(base, MAX_OUTBOX_BACKOFF_MS));
     this.timer = setTimeout(() => {
       this.running = this.tick();

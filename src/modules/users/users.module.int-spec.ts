@@ -3,7 +3,6 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { Pool } from 'pg';
 import { inject } from 'vitest';
 
-import { validateEnv } from '@common/config';
 import { Email } from '@common/primitives';
 import { TenantId } from '@modules/tenants';
 
@@ -17,24 +16,16 @@ describe('UsersModule', () => {
   let moduleRef: TestingModule;
 
   beforeAll(async () => {
+    vi.stubEnv('DATABASE_URL', inject('databaseUrl'));
+    vi.stubEnv('OTP_SECRET', 'x'.repeat(32));
+    vi.stubEnv('JWT_SECRET', 'y'.repeat(32));
     moduleRef = await Test.createTestingModule({
-      imports: [
-        ConfigModule.forRoot({
-          isGlobal: true,
-          ignoreEnvFile: true,
-          validate: () =>
-            validateEnv({
-              DATABASE_URL: inject('databaseUrl'),
-              OTP_SECRET: 'x'.repeat(32),
-              JWT_SECRET: 'y'.repeat(32),
-            }),
-        }),
-        UsersModule,
-      ],
+      imports: [ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }), UsersModule],
     }).compile();
   });
 
   afterAll(async () => {
+    vi.unstubAllEnvs();
     await moduleRef.close();
     await pool.end();
   });

@@ -25,9 +25,29 @@ changes, update this file in the same change.
   The server listens on `0.0.0.0` (Fastify defaults to localhost only, which breaks containers). In
   tests, boot with `FastifyAdapter` and `await app.getHttpAdapter().getInstance().ready()` before
   using `supertest`.
-- **Config: `@nestjs/config` + zod** (`src/common/config`). The env is validated once at boot and the
-  app fails fast with a readable message. `ConfigService` is typed through `Env`. Required:
-  `DATABASE_URL`, `OTP_SECRET`, `JWT_SECRET`; optional: `ADMIN_SEED_EMAIL`; defaults for `NODE_ENV` and `PORT`.
+- **Config: `@nestjs/config` + zod, one `registerAs` namespace per owner.** Each module owns the env
+  vars it uses in a `<name>.config.ts` next to it (`database`, `outbox`, `otp`, `mail`, `auth`,
+  `admins`; the app-level `app`, `logging`, `docs` live in `src/common/config`). The file holds a
+  zod schema and `registerAs('<name>', () => parseConfig('<name>', schema))` returning a camelCase
+  object. The owning module imports `ConfigModule.forFeature(xConfig)` and injects it typed:
+  `@Inject(xConfig.KEY) config: ConfigType<typeof xConfig>`. `ConfigModule.forRoot` (in `AppModule`
+  and `OutboxWorkerModule`) only loads the `.env` files into `process.env`; it has no `validate`.
+  Every entrypoint (`main.ts`, `seed.ts`, `outbox-worker.ts`, `migrate.ts`) first runs
+  `checkConfigOrExit(<list from src/config-sets.ts>)` before the Nest app exists: it runs all the
+  listed factories, logs one report through Nest's `Logger` (`Invalid configuration: N errors in M
+  variables`, then per namespace one line per error: `  ENV is required` for a missing variable,
+  `  ENV: validator message` otherwise, then a `.env.example` hint) and calls
+  `process.exit(1)` with no stack trace. `runEntrypoint` logs any other startup failure once and
+  exits 1. Validation at module load stays as the safety net: `parseConfig` throws a
+  `ConfigValidationError` (`Invalid <name> config:` plus the variable name), and only the
+  namespaces of modules that are loaded are validated. A new config must be added to the lists in
+  `src/config-sets.ts` of every entrypoint whose module graph loads it. `main.ts` calls `appConfig()` directly for `TRUST_PROXY_HOPS` before the Nest app
+  exists. Nothing outside `src/common/config` and the `*.config.ts` files reads `process.env`
+  (`drizzle.config.ts` is tooling and reads `DATABASE_URL` itself). To add a variable: put it in the
+  schema of the owning `*.config.ts` (create the file and `forFeature` import if the module has
+  none), expose it on the returned object, add it to `.env.example`, and extend that config's spec;
+  `src/env-example.spec.ts` fails if `.env.example` and the schemas drift. Required: `DATABASE_URL`,
+  `OTP_SECRET`, `JWT_SECRET`; optional: `ADMIN_SEED_EMAIL`; defaults for `NODE_ENV` and `PORT`.
 - **Environment files** (`envFilePaths`, used by `ConfigModule` and `drizzle.config.ts`): the
   runtime environment variables win, then `.env.<NODE_ENV>.local` (`.env.development.local` for
   development, `.env.test.local` for tests), then `.env` as the default that is closest to

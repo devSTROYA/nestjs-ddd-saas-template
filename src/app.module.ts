@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule, type ConfigType } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { CqrsModule } from '@nestjs/cqrs';
 import { ClockModule } from '@common/clock';
-import { type Env, envFilePaths, validateEnv } from '@common/config';
+import { appConfig, docsConfig, envFilePaths, loggingConfig } from '@common/config';
 import { DatabaseModule } from '@common/database';
 import { ERROR_STATUS_REGISTRY, ErrorFilter } from '@common/errors';
 import { loggerParams } from '@common/logging';
@@ -29,15 +29,17 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module.js';
       isGlobal: true,
       cache: true,
       envFilePath: envFilePaths(),
-      validate: validateEnv,
     }),
+    ConfigModule.forFeature(appConfig),
+    ConfigModule.forFeature(docsConfig),
     LoggerModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService<Env, true>) =>
+      imports: [ConfigModule.forFeature(loggingConfig), ConfigModule.forFeature(appConfig)],
+      inject: [loggingConfig.KEY, appConfig.KEY],
+      useFactory: (logging: ConfigType<typeof loggingConfig>, app: ConfigType<typeof appConfig>) =>
         loggerParams({
-          level: config.get('LOG_LEVEL', { infer: true }),
+          level: logging.level,
           quietPath: `/${API_PREFIX}/health`,
-          nodeEnv: config.get('NODE_ENV', { infer: true }),
+          nodeEnv: app.nodeEnv,
         }),
     }),
     CqrsModule.forRoot(),

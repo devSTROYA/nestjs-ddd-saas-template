@@ -1,3 +1,4 @@
+export * from './auth.config.js';
 export * from './domain/errors/domain.error.js';
 export * from './domain/events/login-challenge.events.js';
 export * from './domain/events/refresh-token.events.js';

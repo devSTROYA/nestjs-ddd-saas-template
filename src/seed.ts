@@ -1,17 +1,17 @@
 import { Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { CLOCK, type Clock } from '@common/clock';
-import type { Env } from '@common/config';
-import { ADMIN_REPOSITORY, type AdminRepository, seedAdmin } from '@modules/admins';
+import { checkConfigOrExit } from '@common/config';
+import { ADMIN_REPOSITORY, type AdminRepository, adminsConfig, seedAdmin } from '@modules/admins';
 import { AppModule } from './app.module.js';
+import { APP_CONFIGS } from './config-sets.js';
+import { runEntrypoint } from './run-entrypoint.js';
 
 async function seed(): Promise<void> {
+  checkConfigOrExit(APP_CONFIGS);
   const app = await NestFactory.createApplicationContext(AppModule);
   try {
-    const email = app.get<ConfigService<Env, true>>(ConfigService).get('ADMIN_SEED_EMAIL', {
-      infer: true,
-    });
+    const { seedEmail: email } = app.get(adminsConfig.KEY, { strict: false });
     if (!email) {
       throw new Error('ADMIN_SEED_EMAIL is required to seed the first admin');
     }
@@ -26,4 +26,4 @@ async function seed(): Promise<void> {
   }
 }
 
-await seed();
+await runEntrypoint('Seed', seed);

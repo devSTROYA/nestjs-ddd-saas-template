@@ -5,7 +5,6 @@ import type { INestApplication } from '@nestjs/common';
 import { Pool } from 'pg';
 import { inject } from 'vitest';
 
-import { validateEnv } from '@common/config';
 import { AdminId } from '@modules/admins';
 
 import { MAILER } from './application/ports/mailer.js';
@@ -41,18 +40,12 @@ describe('InvitationsModule', () => {
     );
 
   beforeAll(async () => {
+    vi.stubEnv('DATABASE_URL', inject('databaseUrl'));
+    vi.stubEnv('OTP_SECRET', 'x'.repeat(32));
+    vi.stubEnv('JWT_SECRET', 'y'.repeat(32));
     const moduleRef = await Test.createTestingModule({
       imports: [
-        ConfigModule.forRoot({
-          isGlobal: true,
-          ignoreEnvFile: true,
-          validate: () =>
-            validateEnv({
-              DATABASE_URL: inject('databaseUrl'),
-              OTP_SECRET: 'x'.repeat(32),
-              JWT_SECRET: 'y'.repeat(32),
-            }),
-        }),
+        ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }),
         CqrsModule.forRoot(),
         InvitationsModule,
       ],
@@ -72,6 +65,7 @@ describe('InvitationsModule', () => {
   });
 
   afterAll(async () => {
+    vi.unstubAllEnvs();
     await app.close();
     await pool.end();
   });

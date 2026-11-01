@@ -1,25 +1,22 @@
 import { Inject, Module, type OnApplicationShutdown } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigModule, type ConfigType } from '@nestjs/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
-import type { Env } from '../config/index.js';
 import { DATABASE, DATABASE_CONTEXT, type Database, DatabaseContext } from './database-context.js';
-
+import { databaseConfig } from './database.config.js';
 import { UNIT_OF_WORK } from './unit-of-work.js';
 
 const PG_POOL = Symbol('PG_POOL');
 
 @Module({
+  imports: [ConfigModule.forFeature(databaseConfig)],
   providers: [
     {
       provide: PG_POOL,
-      inject: [ConfigService],
-      useFactory: (config: ConfigService<Env, true>): Pool =>
-        new Pool({
-          connectionString: config.get('DATABASE_URL', { infer: true }),
-          max: config.get('DATABASE_POOL_MAX', { infer: true }),
-        }),
+      inject: [databaseConfig.KEY],
+      useFactory: (config: ConfigType<typeof databaseConfig>): Pool =>
+        new Pool({ connectionString: config.url, max: config.poolMax }),
     },
     {
       provide: DATABASE,

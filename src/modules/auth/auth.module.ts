@@ -1,8 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigModule, type ConfigType } from '@nestjs/config';
 
 import { ClockModule } from '@common/clock';
-import type { Env } from '@common/config';
 import { DATABASE_CONTEXT, DatabaseModule, type DatabaseContext } from '@common/database';
 import { MAIL_TRANSPORT, MailModule, type MailTransport } from '@common/mail';
 import { OtpModule } from '@common/otp';
@@ -15,6 +14,7 @@ import { LOGIN_MAILER } from './application/ports/login-mailer.js';
 import { REFRESH_TOKEN_CODEC } from './application/ports/refresh-token-codec.js';
 import { REFRESH_TOKEN_REPOSITORY } from './application/ports/refresh-token.repository.js';
 import { TOKEN_SERVICE } from './application/ports/token.service.js';
+import { authConfig } from './auth.config.js';
 import { LoginCodes } from './application/login-codes.service.js';
 import { SessionService } from './application/session.service.js';
 import { RequestUserLoginHandler } from './application/use-cases/request-user-login/request-user-login.handler.js';
@@ -32,6 +32,7 @@ import { AuthController } from './presentation/auth.controller.js';
 
 @Module({
   imports: [
+    ConfigModule.forFeature(authConfig),
     DatabaseModule,
     ClockModule,
     MailModule,
@@ -56,9 +57,9 @@ import { AuthController } from './presentation/auth.controller.js';
     },
     {
       provide: TOKEN_SERVICE,
-      inject: [ConfigService],
-      useFactory: (config: ConfigService<Env, true>): JoseTokenService =>
-        new JoseTokenService(config.get('JWT_SECRET', { infer: true })),
+      inject: [authConfig.KEY],
+      useFactory: (config: ConfigType<typeof authConfig>): JoseTokenService =>
+        new JoseTokenService(config.jwtSecret),
     },
     { provide: REFRESH_TOKEN_CODEC, useClass: Sha256RefreshTokenCodec },
     {

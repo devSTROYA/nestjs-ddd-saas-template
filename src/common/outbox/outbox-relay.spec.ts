@@ -1,7 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
-import type { Env } from '@common/config';
 import type { DatabaseContext } from '@common/database';
 
 import { MAX_OUTBOX_BACKOFF_MS } from './outbox.constants.js';
@@ -32,7 +30,7 @@ describe('OutboxRelay backoff', () => {
       { run } as unknown as DatabaseContext,
       [],
       { now: () => new Date() },
-      new ConfigService<Env, true>({ OUTBOX_POLL_INTERVAL_MS: BASE_MS }),
+      { pollIntervalMs: BASE_MS, relayEnabled: true },
     );
   });
 

@@ -8,7 +8,6 @@ import { Pool } from 'pg';
 import request from 'supertest';
 import { inject } from 'vitest';
 
-import { validateEnv } from '../config/index.js';
 import { trustProxy } from '../http/index.js';
 import { ERROR_STATUS_REGISTRY, ErrorFilter } from '../errors/index.js';
 import { rateLimitErrorStatus } from './rate-limit.error.js';
@@ -27,20 +26,9 @@ class LimitedController {
 }
 
 const buildApp = async (proxyHops: number): Promise<NestFastifyApplication> => {
+  vi.stubEnv('DATABASE_URL', inject('databaseUrl'));
   const moduleRef = await Test.createTestingModule({
-    imports: [
-      ConfigModule.forRoot({
-        isGlobal: true,
-        ignoreEnvFile: true,
-        validate: () =>
-          validateEnv({
-            DATABASE_URL: inject('databaseUrl'),
-            OTP_SECRET: 'x'.repeat(32),
-            JWT_SECRET: 'y'.repeat(32),
-          }),
-      }),
-      RateLimitModule,
-    ],
+    imports: [ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }), RateLimitModule],
     controllers: [LimitedController],
     providers: [
       { provide: ERROR_STATUS_REGISTRY, useValue: rateLimitErrorStatus },
@@ -74,6 +62,7 @@ describe('rate limiting over HTTP', () => {
   });
 
   afterAll(async () => {
+    vi.unstubAllEnvs();
     await Promise.all(apps.map((app) => app.close()));
     await pool.end();
   });

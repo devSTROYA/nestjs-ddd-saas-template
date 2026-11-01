@@ -1,3 +1,4 @@
+export * from './admins.config.js';
 export * from './domain/entities/admin.js';
 export * from './domain/errors/domain.error.js';
 export * from './domain/events/admin.events.js';

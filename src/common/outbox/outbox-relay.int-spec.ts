@@ -1,9 +1,7 @@
-import { ConfigService } from '@nestjs/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { inject } from 'vitest';
 
-import type { Env } from '@common/config';
 import { DatabaseContext } from '@common/database';
 import { newUuidV7 } from '@common/primitives';
 
@@ -24,15 +22,7 @@ const processedAt = new Date('2026-01-01T00:00:00.000Z');
 const clock = { now: () => processedAt };
 
 const relayFor = (consumers: OutboxConsumer[], relayEnabled = true): OutboxRelay =>
-  new OutboxRelay(
-    context,
-    consumers,
-    clock,
-    new ConfigService<Env, true>({
-      OUTBOX_RELAY_ENABLED: relayEnabled,
-      OUTBOX_POLL_INTERVAL_MS: POLL_INTERVAL_MS,
-    }),
-  );
+  new OutboxRelay(context, consumers, clock, { relayEnabled, pollIntervalMs: POLL_INTERVAL_MS });
 
 const delivering = (delivered: string[] = []): OutboxConsumer => ({
   handle: (event: StoredEvent) => {
