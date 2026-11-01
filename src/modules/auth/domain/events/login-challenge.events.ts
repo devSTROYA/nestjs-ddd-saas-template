@@ -1,5 +1,4 @@
-import { DomainEvent } from '@common/ddd';
-import type { Nullable } from '@common/types';
+import { DomainEvent, type DomainEventProps } from '@common/ddd';
 
 export const LoginChallengeEventNames = {
   CREATED: 'login_challenge.created',
@@ -10,14 +9,11 @@ export const LoginChallengeEventNames = {
 
 export class LoginChallengeCreatedEvent extends DomainEvent {
   readonly name = LoginChallengeEventNames.CREATED;
+  readonly expiresAt: string;
 
-  constructor(
-    aggregateId: string,
-    tenantId: Nullable<string>,
-    occurredAt: string,
-    public readonly expiresAt: string,
-  ) {
-    super(aggregateId, tenantId, occurredAt);
+  constructor(props: DomainEventProps & { expiresAt: string }) {
+    super(props);
+    this.expiresAt = props.expiresAt;
   }
 }
 
@@ -27,26 +23,20 @@ export class LoginChallengeConsumedEvent extends DomainEvent {
 
 export class LoginChallengeAttemptFailedEvent extends DomainEvent {
   readonly name = LoginChallengeEventNames.ATTEMPT_FAILED;
+  readonly attempts: number;
 
-  constructor(
-    aggregateId: string,
-    tenantId: Nullable<string>,
-    occurredAt: string,
-    public readonly attempts: number,
-  ) {
-    super(aggregateId, tenantId, occurredAt);
+  constructor(props: DomainEventProps & { attempts: number }) {
+    super(props);
+    this.attempts = props.attempts;
   }
 }
 
 export class LoginChallengeRegeneratedEvent extends DomainEvent {
   readonly name = LoginChallengeEventNames.REGENERATED;
+  readonly expiresAt: string;
 
-  constructor(
-    aggregateId: string,
-    tenantId: Nullable<string>,
-    occurredAt: string,
-    public readonly expiresAt: string,
-  ) {
-    super(aggregateId, tenantId, occurredAt);
+  constructor(props: DomainEventProps & { expiresAt: string }) {
+    super(props);
+    this.expiresAt = props.expiresAt;
   }
 }

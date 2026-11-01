@@ -1,5 +1,4 @@
-import { DomainEvent } from '@common/ddd';
-import type { Nullable } from '@common/types';
+import { DomainEvent, type DomainEventProps } from '@common/ddd';
 
 export const AdminEventNames = {
   CREATED: 'admin.created',
@@ -8,26 +7,20 @@ export const AdminEventNames = {
 
 export class AdminCreatedEvent extends DomainEvent {
   readonly name = AdminEventNames.CREATED;
+  readonly email: string;
 
-  constructor(
-    aggregateId: string,
-    tenantId: Nullable<string>,
-    occurredAt: string,
-    readonly email: string,
-  ) {
-    super(aggregateId, tenantId, occurredAt);
+  constructor(props: DomainEventProps & { email: string }) {
+    super(props);
+    this.email = props.email;
   }
 }
 
 export class AdminEmailChangedEvent extends DomainEvent {
   readonly name = AdminEventNames.EMAIL_CHANGED;
+  readonly email: string;
 
-  constructor(
-    aggregateId: string,
-    tenantId: Nullable<string>,
-    occurredAt: string,
-    readonly email: string,
-  ) {
-    super(aggregateId, tenantId, occurredAt);
+  constructor(props: DomainEventProps & { email: string }) {
+    super(props);
+    this.email = props.email;
   }
 }

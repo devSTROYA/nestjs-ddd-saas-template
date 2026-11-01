@@ -17,7 +17,14 @@ export class Admin extends AggregateRoot<Props, AdminId> {
   static create(props: CreateProps, id: AdminId): Admin {
     const now = new Date();
     const admin = new Admin({ email: props.email, createdAt: now }, id);
-    admin.addEvent(new AdminCreatedEvent(id, null, now.toISOString(), props.email.value));
+    admin.addEvent(
+      new AdminCreatedEvent({
+        aggregateId: id,
+        tenantId: null,
+        occurredAt: now.toISOString(),
+        email: props.email.value,
+      }),
+    );
     return admin;
   }
 
@@ -35,6 +42,13 @@ export class Admin extends AggregateRoot<Props, AdminId> {
 
   changeEmail(email: Email): void {
     this.props.email = email;
-    this.addEvent(new AdminEmailChangedEvent(this.id, null, new Date().toISOString(), email.value));
+    this.addEvent(
+      new AdminEmailChangedEvent({
+        aggregateId: this.id,
+        tenantId: null,
+        occurredAt: new Date().toISOString(),
+        email: email.value,
+      }),
+    );
   }
 }

@@ -26,13 +26,13 @@ export class User extends AggregateRoot<Props, UserId> {
       id,
     );
     user.addEvent(
-      new UserCreatedEvent(
-        id,
-        props.tenantId,
-        now.toISOString(),
-        props.email.value,
-        props.name.value,
-      ),
+      new UserCreatedEvent({
+        aggregateId: id,
+        tenantId: props.tenantId,
+        occurredAt: now.toISOString(),
+        email: props.email.value,
+        userName: props.name.value,
+      }),
     );
     return user;
   }
@@ -60,7 +60,12 @@ export class User extends AggregateRoot<Props, UserId> {
   rename(name: UserName): void {
     this.props.name = name;
     this.addEvent(
-      new UserRenamedEvent(this.id, this.tenantId, new Date().toISOString(), name.value),
+      new UserRenamedEvent({
+        aggregateId: this.id,
+        tenantId: this.tenantId,
+        occurredAt: new Date().toISOString(),
+        userName: name.value,
+      }),
     );
   }
 }

@@ -81,7 +81,12 @@ export class DrizzleRefreshTokenRepository implements RefreshTokenRepository {
         return;
       }
       await appendEvents(this.context, [
-        new RefreshTokenFamilyRevokedEvent(familyId, now.toISOString(), revoked.length),
+        new RefreshTokenFamilyRevokedEvent({
+          aggregateId: familyId,
+          tenantId: null,
+          occurredAt: now.toISOString(),
+          revokedTokens: revoked.length,
+        }),
       ]);
     });
   }

@@ -51,13 +51,13 @@ export class Invitation extends AggregateRoot<Props, InvitationId> {
       id,
     );
     invitation.addEvent(
-      new InvitationCreatedEvent(
-        id,
-        now.toISOString(),
-        props.email.value,
-        props.invitedBy,
-        props.expiresAt.toISOString(),
-      ),
+      new InvitationCreatedEvent({
+        aggregateId: id,
+        occurredAt: now.toISOString(),
+        email: props.email.value,
+        invitedBy: props.invitedBy,
+        expiresAt: props.expiresAt.toISOString(),
+      }),
     );
     return invitation;
   }
@@ -105,11 +105,23 @@ export class Invitation extends AggregateRoot<Props, InvitationId> {
     }
     if (!otpMatches) {
       this.props.attempts += 1;
-      this.addEvent(new InvitationOtpFailedEvent(this.id, now.toISOString(), this.props.attempts));
+      this.addEvent(
+        new InvitationOtpFailedEvent({
+          aggregateId: this.id,
+          occurredAt: now.toISOString(),
+          attempts: this.props.attempts,
+        }),
+      );
       return false;
     }
     this.props.status = InvitationStatus.ACCEPTED;
-    this.addEvent(new InvitationAcceptedEvent(this.id, now.toISOString(), this.props.email.value));
+    this.addEvent(
+      new InvitationAcceptedEvent({
+        aggregateId: this.id,
+        occurredAt: now.toISOString(),
+        email: this.props.email.value,
+      }),
+    );
     return true;
   }
 
@@ -117,7 +129,11 @@ export class Invitation extends AggregateRoot<Props, InvitationId> {
     this.assertPending();
     this.props.status = InvitationStatus.REVOKED;
     this.addEvent(
-      new InvitationRevokedEvent(this.id, new Date().toISOString(), this.props.email.value),
+      new InvitationRevokedEvent({
+        aggregateId: this.id,
+        occurredAt: new Date().toISOString(),
+        email: this.props.email.value,
+      }),
     );
   }
 
@@ -127,7 +143,11 @@ export class Invitation extends AggregateRoot<Props, InvitationId> {
     this.props.expiresAt = expiresAt;
     this.props.attempts = 0;
     this.addEvent(
-      new InvitationOtpRegeneratedEvent(this.id, new Date().toISOString(), expiresAt.toISOString()),
+      new InvitationOtpRegeneratedEvent({
+        aggregateId: this.id,
+        occurredAt: new Date().toISOString(),
+        expiresAt: expiresAt.toISOString(),
+      }),
     );
   }
 

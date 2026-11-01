@@ -46,12 +46,12 @@ export class LoginChallenge extends AggregateRoot<Props, LoginChallengeId> {
       id,
     );
     challenge.addEvent(
-      new LoginChallengeCreatedEvent(
-        id,
-        props.tenantId,
-        now.toISOString(),
-        props.expiresAt.toISOString(),
-      ),
+      new LoginChallengeCreatedEvent({
+        aggregateId: id,
+        tenantId: props.tenantId,
+        occurredAt: now.toISOString(),
+        expiresAt: props.expiresAt.toISOString(),
+      }),
     );
     return challenge;
   }
@@ -99,17 +99,23 @@ export class LoginChallenge extends AggregateRoot<Props, LoginChallengeId> {
     if (!otpMatches) {
       this.props.attempts += 1;
       this.addEvent(
-        new LoginChallengeAttemptFailedEvent(
-          this.id,
-          this.props.tenantId,
-          now.toISOString(),
-          this.props.attempts,
-        ),
+        new LoginChallengeAttemptFailedEvent({
+          aggregateId: this.id,
+          tenantId: this.props.tenantId,
+          occurredAt: now.toISOString(),
+          attempts: this.props.attempts,
+        }),
       );
       return false;
     }
     this.props.status = LoginChallengeStatus.CONSUMED;
-    this.addEvent(new LoginChallengeConsumedEvent(this.id, this.props.tenantId, now.toISOString()));
+    this.addEvent(
+      new LoginChallengeConsumedEvent({
+        aggregateId: this.id,
+        tenantId: this.props.tenantId,
+        occurredAt: now.toISOString(),
+      }),
+    );
     return true;
   }
 
@@ -118,12 +124,12 @@ export class LoginChallenge extends AggregateRoot<Props, LoginChallengeId> {
     this.props.expiresAt = expiresAt;
     this.props.attempts = 0;
     this.addEvent(
-      new LoginChallengeRegeneratedEvent(
-        this.id,
-        this.props.tenantId,
-        new Date().toISOString(),
-        expiresAt.toISOString(),
-      ),
+      new LoginChallengeRegeneratedEvent({
+        aggregateId: this.id,
+        tenantId: this.props.tenantId,
+        occurredAt: new Date().toISOString(),
+        expiresAt: expiresAt.toISOString(),
+      }),
     );
   }
 }

@@ -53,13 +53,13 @@ export class Workspace extends AggregateRoot<Props, WorkspaceId> {
       id,
     );
     workspace.addEvent(
-      new WorkspaceCreatedEvent(
-        id,
-        props.tenantId,
-        now.toISOString(),
-        props.ownerId,
-        props.name.value,
-      ),
+      new WorkspaceCreatedEvent({
+        aggregateId: id,
+        tenantId: props.tenantId,
+        occurredAt: now.toISOString(),
+        ownerId: props.ownerId,
+        workspaceName: props.name.value,
+      }),
     );
     return workspace;
   }
@@ -96,7 +96,12 @@ export class Workspace extends AggregateRoot<Props, WorkspaceId> {
     this.props.name = name;
     const now = this.touch();
     this.addEvent(
-      new WorkspaceRenamedEvent(this.id, this.props.tenantId, now.toISOString(), name.value),
+      new WorkspaceRenamedEvent({
+        aggregateId: this.id,
+        tenantId: this.props.tenantId,
+        occurredAt: now.toISOString(),
+        workspaceName: name.value,
+      }),
     );
   }
 
@@ -113,7 +118,13 @@ export class Workspace extends AggregateRoot<Props, WorkspaceId> {
     this.props.roles.set(userId, role);
     const now = this.touch();
     this.addEvent(
-      new WorkspaceMemberAddedEvent(this.id, this.props.tenantId, now.toISOString(), userId, role),
+      new WorkspaceMemberAddedEvent({
+        aggregateId: this.id,
+        tenantId: this.props.tenantId,
+        occurredAt: now.toISOString(),
+        userId,
+        role,
+      }),
     );
   }
 
@@ -128,14 +139,14 @@ export class Workspace extends AggregateRoot<Props, WorkspaceId> {
     this.props.roles.set(userId, role);
     const now = this.touch();
     this.addEvent(
-      new WorkspaceMemberRoleChangedEvent(
-        this.id,
-        this.props.tenantId,
-        now.toISOString(),
+      new WorkspaceMemberRoleChangedEvent({
+        aggregateId: this.id,
+        tenantId: this.props.tenantId,
+        occurredAt: now.toISOString(),
         userId,
-        current,
+        previousRole: current,
         role,
-      ),
+      }),
     );
   }
 
@@ -150,7 +161,12 @@ export class Workspace extends AggregateRoot<Props, WorkspaceId> {
     this.props.roles.delete(userId);
     const now = this.touch();
     this.addEvent(
-      new WorkspaceMemberRemovedEvent(this.id, this.props.tenantId, now.toISOString(), userId),
+      new WorkspaceMemberRemovedEvent({
+        aggregateId: this.id,
+        tenantId: this.props.tenantId,
+        occurredAt: now.toISOString(),
+        userId,
+      }),
     );
   }
 

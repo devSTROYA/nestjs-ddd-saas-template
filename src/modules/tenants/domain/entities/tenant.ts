@@ -17,7 +17,14 @@ export class Tenant extends AggregateRoot<Props, TenantId> {
   static create(props: CreateProps, id: TenantId): Tenant {
     const now = new Date();
     const tenant = new Tenant({ name: props.name, createdAt: now }, id);
-    tenant.addEvent(new TenantCreatedEvent(id, id, now.toISOString(), props.name.value));
+    tenant.addEvent(
+      new TenantCreatedEvent({
+        aggregateId: id,
+        tenantId: id,
+        occurredAt: now.toISOString(),
+        tenantName: props.name.value,
+      }),
+    );
     return tenant;
   }
 
@@ -35,6 +42,13 @@ export class Tenant extends AggregateRoot<Props, TenantId> {
 
   rename(name: TenantName): void {
     this.props.name = name;
-    this.addEvent(new TenantRenamedEvent(this.id, this.id, new Date().toISOString(), name.value));
+    this.addEvent(
+      new TenantRenamedEvent({
+        aggregateId: this.id,
+        tenantId: this.id,
+        occurredAt: new Date().toISOString(),
+        tenantName: name.value,
+      }),
+    );
   }
 }

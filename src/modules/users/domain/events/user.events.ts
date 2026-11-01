@@ -1,5 +1,4 @@
-import { DomainEvent } from '@common/ddd';
-import type { Nullable } from '@common/types';
+import { DomainEvent, type DomainEventProps } from '@common/ddd';
 
 export const UserEventNames = {
   CREATED: 'user.created',
@@ -8,27 +7,22 @@ export const UserEventNames = {
 
 export class UserCreatedEvent extends DomainEvent {
   readonly name = UserEventNames.CREATED;
+  readonly email: string;
+  readonly userName: string;
 
-  constructor(
-    aggregateId: string,
-    tenantId: Nullable<string>,
-    occurredAt: string,
-    readonly email: string,
-    readonly userName: string,
-  ) {
-    super(aggregateId, tenantId, occurredAt);
+  constructor(props: DomainEventProps & { email: string; userName: string }) {
+    super(props);
+    this.email = props.email;
+    this.userName = props.userName;
   }
 }
 
 export class UserRenamedEvent extends DomainEvent {
   readonly name = UserEventNames.RENAMED;
+  readonly userName: string;
 
-  constructor(
-    aggregateId: string,
-    tenantId: Nullable<string>,
-    occurredAt: string,
-    readonly userName: string,
-  ) {
-    super(aggregateId, tenantId, occurredAt);
+  constructor(props: DomainEventProps & { userName: string }) {
+    super(props);
+    this.userName = props.userName;
   }
 }

@@ -48,13 +48,13 @@ export class RefreshToken extends AggregateRoot<Props, RefreshTokenId> {
       id,
     );
     token.addEvent(
-      new RefreshTokenIssuedEvent(
-        id,
-        props.principal.tenantId ?? null,
-        now.toISOString(),
-        props.familyId,
-        props.principal.type,
-      ),
+      new RefreshTokenIssuedEvent({
+        aggregateId: id,
+        tenantId: props.principal.tenantId ?? null,
+        occurredAt: now.toISOString(),
+        familyId: props.familyId,
+        principalType: props.principal.type,
+      }),
     );
     return token;
   }
@@ -100,12 +100,12 @@ export class RefreshToken extends AggregateRoot<Props, RefreshTokenId> {
     }
     this.props.usedAt = now;
     this.addEvent(
-      new RefreshTokenRotatedEvent(
-        this.id,
-        this.props.principal.tenantId ?? null,
-        now.toISOString(),
-        this.props.familyId,
-      ),
+      new RefreshTokenRotatedEvent({
+        aggregateId: this.id,
+        tenantId: this.props.principal.tenantId ?? null,
+        occurredAt: now.toISOString(),
+        familyId: this.props.familyId,
+      }),
     );
     return RotationOutcome.ROTATED;
   }
