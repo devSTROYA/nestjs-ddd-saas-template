@@ -185,6 +185,23 @@ changes, update this file in the same change.
 - **Validation errors:** `422` with `{ "error": { "code": "INPUT_INVALID", "fields": [{ "path",
   "code" }] } }`. `code` is the zod issue code, never prose, so clients can translate per field.
   `DomainError` carries optional `details`, which the filter spreads into the `error` object.
+- **Request id and one error envelope:** the server generates the request id (UUID v7 via Fastify
+  `genReqId`; an incoming `x-request-id` is never trusted). It is sent as the `x-request-id`
+  response header on every response and as a top-level `requestId` beside `error` in every error
+  body: `{ "error": { "code", ...details }, "requestId" }`. One catch-all `ErrorFilter` handles
+  `DomainError` (status from the registry), HTTP/Fastify 4xx errors (status kept, code from a
+  status map, message never echoed; unknown 404 is `NOT_FOUND`) and everything else (500
+  `INTERNAL_ERROR`, logged with its stack; the request id is added to the log line as `reqId`).
+- **Logging:** pino through `nestjs-pino`, JSON lines on stdout (Cloud Run / Cloud Logging
+  friendly): the level is written as `severity` (`WARNING`, `CRITICAL`, ...), the text as
+  `message`. `LOG_LEVEL` (pino levels, default `info`, `silent` in tests) sets the threshold.
+  `req.headers.authorization`, `req.headers.cookie` and the `set-cookie` headers are redacted;
+  bodies are never logged. One access-log line per request (5xx `error`, 4xx `warn`, else `info`),
+  health probes excluded. There is one request id: `generateRequestId` creates it once in
+  Fastify's `genReqId` and stores it on the raw request, where pino-http reuses it, so the header,
+  the error body `requestId` and every log line's `reqId` (including Nest `Logger` calls during
+  the request) are identical. `main.ts` uses it for the app; the outbox worker, seed and migrate
+  scripts stay on Nest's default logger.
 - **Ids in the URL are validated in the handler** with `toInvitationId`, so a malformed id answers
   `422 ID_INVALID` instead of reaching the database.
 - **Controllers stay thin:** parse and validate, dispatch a command on the `CommandBus` (injected

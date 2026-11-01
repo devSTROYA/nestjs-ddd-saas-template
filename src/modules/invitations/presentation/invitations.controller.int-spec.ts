@@ -74,7 +74,10 @@ describe('InvitationsController', () => {
 
     const response = await accept(invitationId.value, { ...VALID_BODY, otp: wrong }).expect(422);
 
-    expect(response.body).toEqual({ error: { code: 'INVITATION_OTP_INVALID' } });
+    expect(response.body).toEqual({
+      error: { code: 'INVITATION_OTP_INVALID' },
+      requestId: expect.any(String),
+    });
   });
 
   it('answers 422 INPUT_INVALID listing every invalid field', async () => {
@@ -89,6 +92,7 @@ describe('InvitationsController', () => {
           { path: 'userName', code: 'invalid_type' },
         ],
       },
+      requestId: expect.any(String),
     });
   });
 
@@ -96,14 +100,21 @@ describe('InvitationsController', () => {
     const response = await accept('not-an-id', { ...VALID_BODY, otp }).expect(422);
 
     expect(response.body).toEqual({
-      error: { code: 'INPUT_INVALID', fields: [{ path: 'id', code: 'invalid_format' }] },
+      error: {
+        code: 'INPUT_INVALID',
+        fields: [{ path: 'id', code: 'invalid_format' }],
+      },
+      requestId: expect.any(String),
     });
   });
 
   it('answers 404 for an unknown invitation', async () => {
     const response = await accept(InvitationId.create().value, { ...VALID_BODY, otp }).expect(404);
 
-    expect(response.body).toEqual({ error: { code: 'INVITATION_NOT_FOUND' } });
+    expect(response.body).toEqual({
+      error: { code: 'INVITATION_NOT_FOUND' },
+      requestId: expect.any(String),
+    });
   });
 
   it('answers 422 for an empty tenant name', async () => {
@@ -113,7 +124,10 @@ describe('InvitationsController', () => {
       otp,
     }).expect(422);
 
-    expect(response.body).toEqual({ error: { code: 'TENANT_NAME_EMPTY' } });
+    expect(response.body).toEqual({
+      error: { code: 'TENANT_NAME_EMPTY' },
+      requestId: expect.any(String),
+    });
   });
 
   it('refuses to invite an email that already belongs to a registered user', async () => {
@@ -129,6 +143,9 @@ describe('InvitationsController', () => {
 
     const response = await accept(invitationId.value, { ...VALID_BODY, otp }).expect(409);
 
-    expect(response.body).toEqual({ error: { code: 'INVITATION_NOT_PENDING' } });
+    expect(response.body).toEqual({
+      error: { code: 'INVITATION_NOT_PENDING' },
+      requestId: expect.any(String),
+    });
   });
 });

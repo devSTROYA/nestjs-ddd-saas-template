@@ -10,7 +10,7 @@ import { inject } from 'vitest';
 
 import { validateEnv } from '../config/index.js';
 import { trustProxy } from '../http/index.js';
-import { DomainErrorFilter, ERROR_STATUS_REGISTRY } from '../errors/index.js';
+import { ERROR_STATUS_REGISTRY, ErrorFilter } from '../errors/index.js';
 import { rateLimitErrorStatus } from './rate-limit.error.js';
 import { RateLimitGuard } from './rate-limit.guard.js';
 import { RateLimitModule } from './rate-limit.module.js';
@@ -44,7 +44,7 @@ const buildApp = async (proxyHops: number): Promise<NestFastifyApplication> => {
     controllers: [LimitedController],
     providers: [
       { provide: ERROR_STATUS_REGISTRY, useValue: rateLimitErrorStatus },
-      { provide: APP_FILTER, useClass: DomainErrorFilter },
+      { provide: APP_FILTER, useClass: ErrorFilter },
       { provide: APP_GUARD, useClass: RateLimitGuard },
     ],
   }).compile();
@@ -88,7 +88,11 @@ describe('rate limiting over HTTP', () => {
     expect(allowed.headers['x-ratelimit-remaining']).toBe(String(LIMIT - 1));
 
     expect(blocked.body).toEqual({
-      error: { code: 'RATE_LIMIT_EXCEEDED', retryAfterSeconds: expect.any(Number) },
+      error: {
+        code: 'RATE_LIMIT_EXCEEDED',
+        retryAfterSeconds: expect.any(Number),
+      },
+      requestId: expect.any(String),
     });
     expect(Number(blocked.headers['retry-after'])).toBeGreaterThan(0);
   });

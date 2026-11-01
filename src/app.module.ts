@@ -1,14 +1,17 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { CqrsModule } from '@nestjs/cqrs';
 import { ClockModule } from '@common/clock';
-import { envFilePaths, validateEnv } from '@common/config';
+import { type Env, envFilePaths, validateEnv } from '@common/config';
 import { DatabaseModule } from '@common/database';
-import { DomainErrorFilter, ERROR_STATUS_REGISTRY } from '@common/errors';
+import { ERROR_STATUS_REGISTRY, ErrorFilter } from '@common/errors';
+import { loggerParams } from '@common/logging';
 import { OutboxModule } from '@common/outbox';
 import { RateLimitGuard, RateLimitModule } from '@common/rate-limit';
 import { AuthGuard } from '@modules/auth';
+import { LoggerModule } from 'nestjs-pino';
+import { API_PREFIX } from './api-prefix.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { errorStatus } from './error-status.js';
@@ -28,6 +31,14 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module.js';
       envFilePath: envFilePaths(),
       validate: validateEnv,
     }),
+    LoggerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<Env, true>) =>
+        loggerParams({
+          level: config.get('LOG_LEVEL', { infer: true }),
+          quietPath: `/${API_PREFIX}/health`,
+        }),
+    }),
     CqrsModule.forRoot(),
     ClockModule,
     DatabaseModule,
@@ -45,7 +56,7 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module.js';
   providers: [
     AppService,
     { provide: ERROR_STATUS_REGISTRY, useValue: errorStatus },
-    { provide: APP_FILTER, useClass: DomainErrorFilter },
+    { provide: APP_FILTER, useClass: ErrorFilter },
     { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
   ],

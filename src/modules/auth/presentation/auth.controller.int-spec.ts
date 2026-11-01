@@ -108,8 +108,14 @@ describe('AuthController', () => {
 
     expect(wrongCode.status).toBe(401);
     expect(unknown.status).toBe(401);
-    expect(wrongCode.body).toEqual({ error: { code: 'AUTH_CREDENTIALS_INVALID' } });
-    expect(unknown.body).toEqual(wrongCode.body);
+    expect(wrongCode.body).toEqual({
+      error: { code: 'AUTH_CREDENTIALS_INVALID' },
+      requestId: expect.any(String),
+    });
+    expect(unknown.body).toEqual({
+      error: { code: 'AUTH_CREDENTIALS_INVALID' },
+      requestId: expect.any(String),
+    });
   });
 
   it('answers 422 INPUT_INVALID for a malformed body', async () => {
@@ -118,7 +124,11 @@ describe('AuthController', () => {
     );
 
     expect(response.body).toEqual({
-      error: { code: 'INPUT_INVALID', fields: [{ path: 'otp', code: 'invalid_format' }] },
+      error: {
+        code: 'INPUT_INVALID',
+        fields: [{ path: 'otp', code: 'invalid_format' }],
+      },
+      requestId: expect.any(String),
     });
   });
 
@@ -130,7 +140,10 @@ describe('AuthController', () => {
 
     const created = await post('/v1/invitations', body, accessToken).expect(201);
 
-    expect(withoutToken.body).toEqual({ error: { code: 'AUTH_UNAUTHENTICATED' } });
+    expect(withoutToken.body).toEqual({
+      error: { code: 'AUTH_UNAUTHENTICATED' },
+      requestId: expect.any(String),
+    });
     expect((created.body as { invitationId: string }).invitationId).toMatch(/^[0-9a-f-]{36}$/);
   });
 
@@ -161,8 +174,14 @@ describe('AuthController', () => {
       refreshed.accessToken,
     ).expect(403);
 
-    expect(rejected.body).toEqual({ error: { code: 'AUTH_CREDENTIALS_INVALID' } });
-    expect(forbidden.body).toEqual({ error: { code: 'AUTH_FORBIDDEN' } });
+    expect(rejected.body).toEqual({
+      error: { code: 'AUTH_CREDENTIALS_INVALID' },
+      requestId: expect.any(String),
+    });
+    expect(forbidden.body).toEqual({
+      error: { code: 'AUTH_FORBIDDEN' },
+      requestId: expect.any(String),
+    });
     const { rows } = await pool.query('SELECT tenant_id FROM refresh_tokens');
     expect(rows).toEqual([{ tenant_id: tenantId }, { tenant_id: tenantId }]);
   });
@@ -189,8 +208,14 @@ describe('AuthController', () => {
       refreshToken: second.refreshToken,
     }).expect(401);
 
-    expect(replay.body).toEqual({ error: { code: 'AUTH_REFRESH_TOKEN_INVALID' } });
-    expect(afterReplay.body).toEqual(replay.body);
+    expect(replay.body).toEqual({
+      error: { code: 'AUTH_REFRESH_TOKEN_INVALID' },
+      requestId: expect.any(String),
+    });
+    expect(afterReplay.body).toEqual({
+      error: { code: 'AUTH_REFRESH_TOKEN_INVALID' },
+      requestId: expect.any(String),
+    });
   });
 
   it('logs out: 204, then the refresh token no longer works, and logging out twice is fine', async () => {
@@ -226,7 +251,11 @@ describe('AuthController', () => {
       const blocked = await attempt().expect(429);
 
       expect(blocked.body).toEqual({
-        error: { code: 'RATE_LIMIT_EXCEEDED', retryAfterSeconds: expect.any(Number) },
+        error: {
+          code: 'RATE_LIMIT_EXCEEDED',
+          retryAfterSeconds: expect.any(Number),
+        },
+        requestId: expect.any(String),
       });
       expect(Number(blocked.headers['retry-after'])).toBe(
         (blocked.body as { error: { retryAfterSeconds: number } }).error.retryAfterSeconds,

@@ -13,6 +13,8 @@ const MIN_SECRET_LENGTH = 32;
 const DEFAULT_POOL_MAX = 5;
 const DEFAULT_OUTBOX_POLL_INTERVAL_MS = 1000;
 
+const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const;
+
 const emptyToUndefined = (value: unknown): unknown => (value === '' ? undefined : value);
 
 const envSchema = z
@@ -22,6 +24,7 @@ const envSchema = z
     DATABASE_URL: z.url(),
     DATABASE_POOL_MAX: z.coerce.number().int().min(1).default(DEFAULT_POOL_MAX),
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
+    LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
     OUTBOX_POLL_INTERVAL_MS: z.coerce
       .number()
       .int()

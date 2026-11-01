@@ -14,6 +14,7 @@ describe('validateEnv', () => {
       DATABASE_URL,
       DATABASE_POOL_MAX: 5,
       TRUST_PROXY_HOPS: 0,
+      LOG_LEVEL: 'info',
       OUTBOX_POLL_INTERVAL_MS: 1000,
       OUTBOX_RELAY_ENABLED: true,
       OTP_SECRET,

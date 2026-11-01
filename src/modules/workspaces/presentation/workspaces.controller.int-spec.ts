@@ -177,7 +177,10 @@ describe('WorkspacesController', () => {
     }).expect(403);
     await call('get', `/v1/workspaces/${workspaceId}`).expect(401);
 
-    expect(forbidden.body).toEqual({ error: { code: 'WORKSPACE_OWNER_REQUIRED' } });
+    expect(forbidden.body).toEqual({
+      error: { code: 'WORKSPACE_OWNER_REQUIRED' },
+      requestId: expect.any(String),
+    });
   });
 
   it('keeps one owner: the last owner cannot leave or be demoted, others can', async () => {
@@ -193,8 +196,14 @@ describe('WorkspacesController', () => {
     await call('patch', `${members}/${devId}`, ownerToken, { role: 'owner' }).expect(204);
     await call('post', `/v1/workspaces/${workspaceId}/leave`, ownerToken).expect(204);
 
-    expect(leave.body).toEqual({ error: { code: 'WORKSPACE_LAST_OWNER_REQUIRED' } });
-    expect(demote.body).toEqual(leave.body);
+    expect(leave.body).toEqual({
+      error: { code: 'WORKSPACE_LAST_OWNER_REQUIRED' },
+      requestId: expect.any(String),
+    });
+    expect(demote.body).toEqual({
+      error: { code: 'WORKSPACE_LAST_OWNER_REQUIRED' },
+      requestId: expect.any(String),
+    });
     const devToken = await login('dev@acme.co');
     const view = (await call('get', `/v1/workspaces/${workspaceId}`, devToken).expect(200))
       .body as WorkspaceBody;
@@ -247,8 +256,12 @@ describe('WorkspacesController', () => {
     const changed = await call('patch', path, ownerToken, { role: 'admin' }).expect(404);
     const removed = await call('delete', path, ownerToken).expect(404);
 
-    expect(changed.body).toEqual({ error: { code: 'WORKSPACE_MEMBER_NOT_FOUND' } });
-    expect(removed.body).toEqual({ error: { code: 'WORKSPACE_MEMBER_NOT_FOUND' } });
+    const notFound = {
+      error: { code: 'WORKSPACE_MEMBER_NOT_FOUND' },
+      requestId: expect.any(String),
+    };
+    expect(changed.body).toEqual(notFound);
+    expect(removed.body).toEqual(notFound);
     const { rows } = await pool.query('SELECT 1 FROM users WHERE id = $1', [otherUserId]);
     expect(rows).toHaveLength(1);
   });
@@ -273,7 +286,10 @@ describe('WorkspacesController', () => {
       ]);
       for (const response of responses) {
         expect(response.status).toBe(404);
-        expect(response.body).toEqual({ error: { code: 'WORKSPACE_NOT_FOUND' } });
+        expect(response.body).toEqual({
+          error: { code: 'WORKSPACE_NOT_FOUND' },
+          requestId: expect.any(String),
+        });
       }
     }
     const { rows } = await pool.query('SELECT 1 FROM users WHERE id = $1', [otherUserId]);
@@ -293,11 +309,19 @@ describe('WorkspacesController', () => {
 
     expect(badWorkspace.status).toBe(422);
     expect(badWorkspace.body).toEqual({
-      error: { code: 'INPUT_INVALID', fields: [{ path: 'workspaceId', code: 'invalid_format' }] },
+      error: {
+        code: 'INPUT_INVALID',
+        fields: [{ path: 'workspaceId', code: 'invalid_format' }],
+      },
+      requestId: expect.any(String),
     });
     expect(badMember.status).toBe(422);
     expect(badMember.body).toEqual({
-      error: { code: 'INPUT_INVALID', fields: [{ path: 'userId', code: 'invalid_format' }] },
+      error: {
+        code: 'INPUT_INVALID',
+        fields: [{ path: 'userId', code: 'invalid_format' }],
+      },
+      requestId: expect.any(String),
     });
   });
 
@@ -406,7 +430,11 @@ describe('WorkspacesController', () => {
     }).expect(422);
 
     expect(invalid.body).toEqual({
-      error: { code: 'INPUT_INVALID', fields: [{ path: 'role', code: 'invalid_value' }] },
+      error: {
+        code: 'INPUT_INVALID',
+        fields: [{ path: 'role', code: 'invalid_value' }],
+      },
+      requestId: expect.any(String),
     });
   });
 });
