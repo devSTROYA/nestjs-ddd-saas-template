@@ -243,6 +243,12 @@ changes, update this file in the same change.
     red, maroon, peach, yellow, green, teal, sky, sapphire, blue, lavender). Set `DOCS_ACCENT` for
     the default, or add `?accent=mauve` to the `/docs` URL to try one without a restart. Unknown
     values fall back to the default, so the query cannot inject CSS.
+  - **Color mode:** `toggle` (default, Scalar's own behavior with the dark/light toggle visible) or
+    `system` (follows the OS theme, no toggle). Set `DOCS_COLOR_MODE` for the default, or add
+    `?mode=system` to the `/docs` URL; unknown values fall back to the default. Scalar prefers a
+    choice stored by its toggle (`localStorage.colorMode`) over the OS theme, so in `system` mode the
+    toggle is hidden (`hideDarkModeToggle`) and a tiny inline script injected before `</body>`
+    removes the stored choice; Scalar then follows the OS theme and updates live when it changes.
   - Kepler's original colors were read from `@scalar/themes` 0.20.0, and the palette values were
     checked against `catppuccin/palette`. The "Ask AI" agent
   (`agent.disabled`) and the developer tools console (`showDeveloperTools: "never"`) are turned off, and so are the "Test Request" button

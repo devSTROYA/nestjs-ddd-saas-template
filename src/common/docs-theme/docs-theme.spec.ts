@@ -6,6 +6,7 @@ import {
   MochaColor,
   isAccentColor,
 } from './catppuccin.js';
+import { COLOR_MODES, DEFAULT_COLOR_MODE, isColorMode } from './color-mode.js';
 import { buildDocsThemeCss, buildModeCss } from './docs-theme.js';
 import { darkRoles, lightRoles } from './scalar-roles.js';
 
@@ -135,5 +136,15 @@ describe('buildDocsThemeCss', () => {
 
     expect(recolored).toContain('--ctp-lavender: #123456;');
     expect(remapped).toContain('--scalar-color-purple: var(--ctp-pink);');
+  });
+});
+
+describe('color modes', () => {
+  it('defaults to toggle and only accepts toggle and system', () => {
+    expect(DEFAULT_COLOR_MODE).toBe('toggle');
+    expect(COLOR_MODES).toEqual(['toggle', 'system']);
+    expect(isColorMode('system')).toBe(true);
+    expect(isColorMode('dark')).toBe(false);
+    expect(isColorMode('')).toBe(false);
   });
 });

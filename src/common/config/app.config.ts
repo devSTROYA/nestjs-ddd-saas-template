@@ -3,8 +3,12 @@ import { z } from 'zod';
 import {
   ACCENT_COLORS,
   type AccentColor,
+  COLOR_MODES,
+  type ColorMode,
   DEFAULT_ACCENT,
+  DEFAULT_COLOR_MODE,
   isAccentColor,
+  isColorMode,
 } from '../docs-theme/index.js';
 
 const MAX_PORT = 65_535;
@@ -43,6 +47,14 @@ const envSchema = z
           message: `must be one of: ${ACCENT_COLORS.join(', ')}`,
         })
         .default(DEFAULT_ACCENT),
+    ),
+    DOCS_COLOR_MODE: z.preprocess(
+      emptyToUndefined,
+      z
+        .custom<ColorMode>((value) => typeof value === 'string' && isColorMode(value), {
+          message: `must be one of: ${COLOR_MODES.join(', ')}`,
+        })
+        .default(DEFAULT_COLOR_MODE),
     ),
   })
   .superRefine((env, context) => {

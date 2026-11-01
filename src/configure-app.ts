@@ -1,7 +1,7 @@
 import fastifyHelmet from '@fastify/helmet';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 
-import type { AccentColor } from '@common/docs-theme';
+import type { AccentColor, ColorMode } from '@common/docs-theme';
 
 import { mountApiDocs } from './api-docs.js';
 import { API_PREFIX } from './api-prefix.js';
@@ -11,6 +11,7 @@ const REQUEST_ID_HEADER = 'x-request-id';
 type ConfigureAppOptions = {
   docs: boolean;
   docsAccent?: AccentColor;
+  docsColorMode?: ColorMode;
 };
 
 export async function configureApp(
@@ -29,6 +30,6 @@ export async function configureApp(
     contentSecurityPolicy: options.docs ? false : undefined,
   });
   if (options.docs) {
-    mountApiDocs(app, options.docsAccent);
+    mountApiDocs(app, options.docsAccent, options.docsColorMode);
   }
 }

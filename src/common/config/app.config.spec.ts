@@ -20,6 +20,7 @@ describe('validateEnv', () => {
       OTP_SECRET,
       JWT_SECRET,
       DOCS_ACCENT: 'lavender',
+      DOCS_COLOR_MODE: 'toggle',
     });
   });
 
@@ -38,6 +39,13 @@ describe('validateEnv', () => {
     expect(validateEnv({ ...BASE, DOCS_ACCENT: '' }).DOCS_ACCENT).toBe('lavender');
     expect(() => validateEnv({ ...BASE, DOCS_ACCENT: 'banana' })).toThrow(/DOCS_ACCENT/);
     expect(() => validateEnv({ ...BASE, DOCS_ACCENT: 'surface0' })).toThrow(/DOCS_ACCENT/);
+  });
+
+  it('accepts a color mode for the docs, treats empty as toggle and rejects others', () => {
+    expect(validateEnv({ ...BASE, DOCS_COLOR_MODE: 'system' }).DOCS_COLOR_MODE).toBe('system');
+    expect(validateEnv({ ...BASE, DOCS_COLOR_MODE: 'toggle' }).DOCS_COLOR_MODE).toBe('toggle');
+    expect(validateEnv({ ...BASE, DOCS_COLOR_MODE: '' }).DOCS_COLOR_MODE).toBe('toggle');
+    expect(() => validateEnv({ ...BASE, DOCS_COLOR_MODE: 'dark' })).toThrow(/DOCS_COLOR_MODE/);
   });
 
   it('coerces numeric values from strings', () => {

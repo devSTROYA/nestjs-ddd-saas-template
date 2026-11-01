@@ -25,6 +25,7 @@ async function bootstrap() {
   await configureApp(app, {
     docs: config.get('NODE_ENV', { infer: true }) !== 'production',
     docsAccent: config.get('DOCS_ACCENT', { infer: true }),
+    docsColorMode: config.get('DOCS_COLOR_MODE', { infer: true }),
   });
   await app.listen(config.get('PORT', { infer: true }), ALL_INTERFACES);
 }

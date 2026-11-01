@@ -115,6 +115,40 @@ describe('API documentation', () => {
       }
     });
 
+    describe('color mode', () => {
+      const CLEAR_SCRIPT = "localStorage.removeItem('colorMode')";
+      const HIDDEN_TOGGLE = /hideDarkModeToggle["']?\s*:\s*true/;
+      const fetchPage = async (query: Record<string, string>): Promise<string> =>
+        (await request(app.getHttpServer()).get('/docs').query(query).expect(200)).text;
+
+      it('keeps the Scalar toggle by default and injects nothing', async () => {
+        const page = await fetchPage({});
+
+        expect(page).not.toMatch(HIDDEN_TOGGLE);
+        expect(page).not.toContain(CLEAR_SCRIPT);
+        expect(page).not.toContain('forceDarkModeState');
+      });
+
+      it('hides the toggle and drops a stored choice with ?mode=system', async () => {
+        const page = await fetchPage({ mode: 'system' });
+
+        expect(page).toMatch(HIDDEN_TOGGLE);
+        expect(page).toContain(CLEAR_SCRIPT);
+        expect(page).not.toContain('location.reload');
+        expect(page).not.toContain('forceDarkModeState');
+      });
+
+      it('falls back to toggle for an unknown mode', async () => {
+        for (const mode of ['banana', 'dark', 'system"}</script><script>x</script>']) {
+          const page = await fetchPage({ mode });
+
+          expect(page).not.toMatch(HIDDEN_TOGGLE);
+          expect(page).not.toContain(CLEAR_SCRIPT);
+          expect(page).not.toContain('<script>x</script>');
+        }
+      });
+    });
+
     it('documents every route of the application and nothing that does not exist', () => {
       const documented = apiRouteDocs.map(
         (route) => `${route.method.toUpperCase()} ${normalizePath(route.path)}`,
