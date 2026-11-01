@@ -4,6 +4,7 @@ import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, type Clock } from '@common/clock';
 import { OTP_SERVICE, type OtpService } from '@common/otp';
 import { Email } from '@common/primitives';
+import { AdminId } from '@modules/admins';
 import { USER_REPOSITORY, type UserRepository } from '@modules/users';
 
 import { Invitation } from '../../../domain/entities/invitation.js';
@@ -65,7 +66,7 @@ export class InviteTenantHandler implements ICommandHandler<InviteTenantCommand,
     return Invitation.create(
       {
         email,
-        invitedBy: command.adminId,
+        invitedBy: AdminId.restore(command.adminId),
         otpHash: this.otpService.hash(id.value, otp),
         expiresAt,
         createdAt: now,

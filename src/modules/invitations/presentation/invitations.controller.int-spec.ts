@@ -50,7 +50,7 @@ describe('InvitationsController', () => {
     invitationId = await app
       .get(CommandBus)
       .execute<InviteTenantCommand, InvitationId>(
-        new InviteTenantCommand(ADMIN_ID, 'owner@acme.co'),
+        new InviteTenantCommand(ADMIN_ID.value, 'owner@acme.co'),
       );
     otp = mailer.sent[0]?.otp ?? '';
   });
@@ -118,7 +118,7 @@ describe('InvitationsController', () => {
     await accept(invitationId.value, { ...VALID_BODY, otp }).expect(201);
 
     await expect(
-      app.get(CommandBus).execute(new InviteTenantCommand(ADMIN_ID, 'owner@acme.co')),
+      app.get(CommandBus).execute(new InviteTenantCommand(ADMIN_ID.value, 'owner@acme.co')),
     ).rejects.toMatchObject({ code: 'INVITATION_EMAIL_ALREADY_REGISTERED' });
   });
 

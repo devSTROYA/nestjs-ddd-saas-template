@@ -33,11 +33,11 @@ describe('InvitationsModule', () => {
   };
 
   const invite = (email = 'owner@acme.co'): Promise<InvitationId> =>
-    bus.execute<InviteTenantCommand, InvitationId>(new InviteTenantCommand(ADMIN_ID, email));
+    bus.execute<InviteTenantCommand, InvitationId>(new InviteTenantCommand(ADMIN_ID.value, email));
 
   const accept = (id: InvitationId, otp: string): Promise<AcceptInvitationResult> =>
     bus.execute<AcceptInvitationCommand, AcceptInvitationResult>(
-      new AcceptInvitationCommand(id, otp, 'Acme', 'Uz'),
+      new AcceptInvitationCommand(id.value, otp, 'Acme', 'Uz'),
     );
 
   beforeAll(async () => {

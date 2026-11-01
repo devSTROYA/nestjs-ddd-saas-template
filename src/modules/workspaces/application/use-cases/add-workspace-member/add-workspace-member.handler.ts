@@ -4,15 +4,18 @@ import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, type Clock } from '@common/clock';
 import { UNIT_OF_WORK, type UnitOfWork } from '@common/database';
 import { Email } from '@common/primitives';
+import { TenantId } from '@modules/tenants';
 import {
   EmailAlreadyTakenError,
   USER_REPOSITORY,
   User,
+  UserId,
   UserName,
   type UserRepository,
 } from '@modules/users';
 
 import { WorkspaceNotFoundError } from '../../../domain/errors/domain.error.js';
+import { WorkspaceId } from '../../../domain/value-objects/workspace-id.js';
 import {
   WORKSPACE_REPOSITORY,
   type WorkspaceRepository,
@@ -44,24 +47,26 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
     command: AddWorkspaceMemberCommand,
     email: Email,
   ): Promise<AddWorkspaceMemberResult> {
+    const actorId = UserId.restore(command.actorId);
+    const tenantId = TenantId.restore(command.tenantId);
     const workspace = await this.workspaces.findByIdForUpdate(
-      command.tenantId,
-      command.workspaceId,
+      tenantId,
+      WorkspaceId.restore(command.workspaceId),
     );
     if (!workspace) {
       throw new WorkspaceNotFoundError();
     }
-    workspace.assertOwner(command.actorId);
+    workspace.assertOwner(actorId);
 
     const existing = await this.users.findByEmail(email);
-    if (existing && !existing.tenantId.equals(command.tenantId)) {
+    if (existing && !existing.tenantId.equals(tenantId)) {
       throw new EmailAlreadyTakenError(email.value);
     }
     const now = this.clock.now();
     const user =
       existing ??
       User.create({
-        tenantId: command.tenantId,
+        tenantId,
         email,
         name: UserName.create(command.name),
         createdAt: now,

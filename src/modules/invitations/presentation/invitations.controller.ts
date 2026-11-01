@@ -3,7 +3,6 @@ import { CommandBus } from '@nestjs/cqrs';
 
 import { Throttle } from '@common/rate-limit';
 import { ZodValidationPipe } from '@common/validation';
-import { AdminId } from '@modules/admins';
 import {
   CurrentPrincipal,
   type Principal,
@@ -40,7 +39,7 @@ export class InvitationsController {
     @Body(new ZodValidationPipe(inviteTenantBodySchema)) body: InviteTenantBody,
   ): Promise<InviteTenantResponse> {
     const invitationId = await this.commandBus.execute<InviteTenantCommand, InvitationId>(
-      new InviteTenantCommand(AdminId.restore(principal.id), body.email),
+      new InviteTenantCommand(principal.id, body.email),
     );
     return { invitationId: invitationId.value };
   }
@@ -53,12 +52,7 @@ export class InvitationsController {
     @Body(new ZodValidationPipe(acceptInvitationBodySchema)) body: AcceptInvitationBody,
   ): Promise<AcceptInvitationResult> {
     return this.commandBus.execute<AcceptInvitationCommand, AcceptInvitationResult>(
-      new AcceptInvitationCommand(
-        InvitationId.restore(id),
-        body.otp,
-        body.tenantName,
-        body.userName,
-      ),
+      new AcceptInvitationCommand(id, body.otp, body.tenantName, body.userName),
     );
   }
 }

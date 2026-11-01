@@ -3,9 +3,11 @@ import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 
 import { CLOCK, type Clock } from '@common/clock';
 import { UNIT_OF_WORK, type UnitOfWork } from '@common/database';
-import { USER_REPOSITORY, type UserRepository } from '@modules/users';
+import { TenantId } from '@modules/tenants';
+import { USER_REPOSITORY, UserId, type UserRepository } from '@modules/users';
 
 import { WorkspaceNotFoundError } from '../../../domain/errors/domain.error.js';
+import { WorkspaceId } from '../../../domain/value-objects/workspace-id.js';
 import {
   WORKSPACE_REPOSITORY,
   type WorkspaceRepository,
@@ -27,17 +29,19 @@ export class RemoveWorkspaceMemberHandler implements ICommandHandler<
   // INFO: The user goes with the membership: a tenant has one workspace, so leaving it ends all access.
   execute(command: RemoveWorkspaceMemberCommand): Promise<void> {
     return this.unitOfWork.run(async () => {
+      const tenantId = TenantId.restore(command.tenantId);
+      const memberId = UserId.restore(command.memberId);
       const workspace = await this.workspaces.findByIdForUpdate(
-        command.tenantId,
-        command.workspaceId,
+        tenantId,
+        WorkspaceId.restore(command.workspaceId),
       );
       if (!workspace) {
         throw new WorkspaceNotFoundError();
       }
-      workspace.assertOwner(command.actorId);
-      workspace.removeMember(command.memberId, this.clock.now());
+      workspace.assertOwner(UserId.restore(command.actorId));
+      workspace.removeMember(memberId, this.clock.now());
       await this.workspaces.save(workspace);
-      await this.users.delete(command.tenantId, command.memberId);
+      await this.users.delete(tenantId, memberId);
     });
   }
 }

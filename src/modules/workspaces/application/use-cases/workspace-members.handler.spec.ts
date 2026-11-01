@@ -28,7 +28,14 @@ const addMember = (
   actor = kit.owner.id,
 ) =>
   kit.add.execute(
-    new AddWorkspaceMemberCommand(actor, kit.tenantId, kit.workspace.id, email, 'New Person', role),
+    new AddWorkspaceMemberCommand(
+      actor.value,
+      kit.tenantId.value,
+      kit.workspace.id.value,
+      email,
+      'New Person',
+      role,
+    ),
   );
 
 const addMembers = async (kit: WorkspaceKit, count: number): Promise<UserId[]> => {
@@ -40,11 +47,17 @@ const addMembers = async (kit: WorkspaceKit, count: number): Promise<UserId[]> =
 };
 
 const getView = (kit: WorkspaceKit, actor: UserId) =>
-  kit.get.execute(new GetWorkspaceQuery(actor, kit.tenantId, kit.workspace.id));
+  kit.get.execute(new GetWorkspaceQuery(actor.value, kit.tenantId.value, kit.workspace.id.value));
 
 const list = (kit: WorkspaceKit, actor: UserId, page: number, limit: number) =>
   kit.list.execute(
-    new ListWorkspaceMembersQuery(actor, kit.tenantId, kit.workspace.id, page, limit),
+    new ListWorkspaceMembersQuery(
+      actor.value,
+      kit.tenantId.value,
+      kit.workspace.id.value,
+      page,
+      limit,
+    ),
   );
 
 describe('AddWorkspaceMemberHandler', () => {
@@ -121,9 +134,9 @@ describe('AddWorkspaceMemberHandler', () => {
     const add = (tenantId: TenantId, workspaceId: WorkspaceId) =>
       kit.add.execute(
         new AddWorkspaceMemberCommand(
-          kit.owner.id,
-          tenantId,
-          workspaceId,
+          kit.owner.id.value,
+          tenantId.value,
+          workspaceId.value,
           'a@b.co',
           'x',
           WorkspaceRole.ADMIN,
@@ -141,10 +154,10 @@ describe('ChangeWorkspaceMemberRoleHandler', () => {
 
     await kit.changeRole.execute(
       new ChangeWorkspaceMemberRoleCommand(
-        kit.owner.id,
-        kit.tenantId,
-        kit.workspace.id,
-        userId,
+        kit.owner.id.value,
+        kit.tenantId.value,
+        kit.workspace.id.value,
+        userId.value,
         WorkspaceRole.OWNER,
       ),
     );
@@ -157,7 +170,13 @@ describe('ChangeWorkspaceMemberRoleHandler', () => {
     const { userId } = await addMember(kit, 'new@acme.co');
     const change = (actor: typeof userId, target: typeof userId, role: WorkspaceRole) =>
       kit.changeRole.execute(
-        new ChangeWorkspaceMemberRoleCommand(actor, kit.tenantId, kit.workspace.id, target, role),
+        new ChangeWorkspaceMemberRoleCommand(
+          actor.value,
+          kit.tenantId.value,
+          kit.workspace.id.value,
+          target.value,
+          role,
+        ),
       );
 
     await expect(change(userId, userId, WorkspaceRole.OWNER)).rejects.toThrow(
@@ -178,7 +197,12 @@ describe('RemoveWorkspaceMemberHandler', () => {
     const { userId } = await addMember(kit, 'new@acme.co');
     const remove = (actor: typeof userId, target: typeof userId) =>
       kit.remove.execute(
-        new RemoveWorkspaceMemberCommand(actor, kit.tenantId, kit.workspace.id, target),
+        new RemoveWorkspaceMemberCommand(
+          actor.value,
+          kit.tenantId.value,
+          kit.workspace.id.value,
+          target.value,
+        ),
       );
 
     await expect(remove(userId, kit.owner.id)).rejects.toThrow(WorkspaceOwnerRequiredError);
@@ -198,7 +222,9 @@ describe('LeaveWorkspaceHandler', () => {
     const kit = createWorkspaceKit();
     const { userId } = await addMember(kit, 'new@acme.co');
     const leave = (actor: typeof userId) =>
-      kit.leave.execute(new LeaveWorkspaceCommand(actor, kit.tenantId, kit.workspace.id));
+      kit.leave.execute(
+        new LeaveWorkspaceCommand(actor.value, kit.tenantId.value, kit.workspace.id.value),
+      );
 
     await expect(leave(kit.owner.id)).rejects.toThrow(LastWorkspaceOwnerRequiredError);
     await leave(userId);
@@ -213,7 +239,7 @@ describe('LeaveWorkspaceHandler', () => {
     await addMember(kit, 'second@acme.co', WorkspaceRole.OWNER);
 
     await kit.leave.execute(
-      new LeaveWorkspaceCommand(kit.owner.id, kit.tenantId, kit.workspace.id),
+      new LeaveWorkspaceCommand(kit.owner.id.value, kit.tenantId.value, kit.workspace.id.value),
     );
 
     expect(kit.workspace.roleOf(kit.owner.id)).toBeNull();
@@ -261,10 +287,14 @@ describe('GetWorkspaceHandler', () => {
 
     await expect(getView(kit, UserId.create())).rejects.toThrow(WorkspaceNotFoundError);
     await expect(
-      kit.get.execute(new GetWorkspaceQuery(kit.owner.id, kit.tenantId, WorkspaceId.create())),
+      kit.get.execute(
+        new GetWorkspaceQuery(kit.owner.id.value, kit.tenantId.value, WorkspaceId.create().value),
+      ),
     ).rejects.toThrow(WorkspaceNotFoundError);
     await expect(
-      kit.get.execute(new GetWorkspaceQuery(kit.owner.id, TenantId.create(), kit.workspace.id)),
+      kit.get.execute(
+        new GetWorkspaceQuery(kit.owner.id.value, TenantId.create().value, kit.workspace.id.value),
+      ),
     ).rejects.toThrow(WorkspaceNotFoundError);
   });
 });
@@ -291,12 +321,24 @@ describe('ListWorkspaceMembersHandler', () => {
     await expect(list(kit, UserId.create(), 1, 20)).rejects.toThrow(WorkspaceNotFoundError);
     await expect(
       kit.list.execute(
-        new ListWorkspaceMembersQuery(kit.owner.id, kit.tenantId, WorkspaceId.create(), 1, 20),
+        new ListWorkspaceMembersQuery(
+          kit.owner.id.value,
+          kit.tenantId.value,
+          WorkspaceId.create().value,
+          1,
+          20,
+        ),
       ),
     ).rejects.toThrow(WorkspaceNotFoundError);
     await expect(
       kit.list.execute(
-        new ListWorkspaceMembersQuery(kit.owner.id, TenantId.create(), kit.workspace.id, 1, 20),
+        new ListWorkspaceMembersQuery(
+          kit.owner.id.value,
+          TenantId.create().value,
+          kit.workspace.id.value,
+          1,
+          20,
+        ),
       ),
     ).rejects.toThrow(WorkspaceNotFoundError);
   });

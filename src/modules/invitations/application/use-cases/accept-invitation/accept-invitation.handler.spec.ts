@@ -60,7 +60,7 @@ const setup = async (expiresAt = IN_A_DAY) => {
 };
 
 const accept = (id: InvitationId, otp = OTP, tenantName = ' Acme ', userName = ' Uz ') =>
-  new AcceptInvitationCommand(id, otp, tenantName, userName);
+  new AcceptInvitationCommand(id.value, otp, tenantName, userName);
 
 describe('AcceptInvitationHandler', () => {
   it('creates the tenant, its owner and a workspace owned by them, and marks the invitation accepted', async () => {

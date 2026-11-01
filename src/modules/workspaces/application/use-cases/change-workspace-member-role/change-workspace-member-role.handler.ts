@@ -3,8 +3,11 @@ import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 
 import { CLOCK, type Clock } from '@common/clock';
 import { UNIT_OF_WORK, type UnitOfWork } from '@common/database';
+import { TenantId } from '@modules/tenants';
+import { UserId } from '@modules/users';
 
 import { WorkspaceNotFoundError } from '../../../domain/errors/domain.error.js';
+import { WorkspaceId } from '../../../domain/value-objects/workspace-id.js';
 import {
   WORKSPACE_REPOSITORY,
   type WorkspaceRepository,
@@ -25,14 +28,14 @@ export class ChangeWorkspaceMemberRoleHandler implements ICommandHandler<
   execute(command: ChangeWorkspaceMemberRoleCommand): Promise<void> {
     return this.unitOfWork.run(async () => {
       const workspace = await this.workspaces.findByIdForUpdate(
-        command.tenantId,
-        command.workspaceId,
+        TenantId.restore(command.tenantId),
+        WorkspaceId.restore(command.workspaceId),
       );
       if (!workspace) {
         throw new WorkspaceNotFoundError();
       }
-      workspace.assertOwner(command.actorId);
-      workspace.changeRole(command.memberId, command.role, this.clock.now());
+      workspace.assertOwner(UserId.restore(command.actorId));
+      workspace.changeRole(UserId.restore(command.memberId), command.role, this.clock.now());
       await this.workspaces.save(workspace);
     });
   }

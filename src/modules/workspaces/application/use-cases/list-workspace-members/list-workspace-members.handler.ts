@@ -1,7 +1,11 @@
 import { Inject } from '@nestjs/common';
 import { type IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 
+import { TenantId } from '@modules/tenants';
+import { UserId } from '@modules/users';
+
 import { WorkspaceNotFoundError } from '../../../domain/errors/domain.error.js';
+import { WorkspaceId } from '../../../domain/value-objects/workspace-id.js';
 import { WORKSPACE_QUERY, type WorkspaceQuery } from '../../ports/workspace.query.js';
 import {
   ListWorkspaceMembersQuery,
@@ -17,9 +21,9 @@ export class ListWorkspaceMembersHandler implements IQueryHandler<
 
   async execute(query: ListWorkspaceMembersQuery): Promise<ListWorkspaceMembersResult> {
     const found = await this.workspaces.listMembers({
-      tenantId: query.tenantId,
-      workspaceId: query.workspaceId,
-      actorId: query.actorId,
+      tenantId: TenantId.restore(query.tenantId),
+      workspaceId: WorkspaceId.restore(query.workspaceId),
+      actorId: UserId.restore(query.actorId),
       page: query.page,
       limit: query.limit,
     });

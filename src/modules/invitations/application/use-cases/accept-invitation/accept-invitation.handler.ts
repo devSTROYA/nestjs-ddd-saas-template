@@ -15,6 +15,7 @@ import {
 } from '@modules/workspaces';
 
 import { InvalidOtpError, InvitationNotFoundError } from '../../../domain/errors/domain.error.js';
+import { InvitationId } from '../../../domain/value-objects/invitation-id.js';
 import {
   INVITATION_REPOSITORY,
   type InvitationRepository,
@@ -55,9 +56,11 @@ export class AcceptInvitationHandler implements ICommandHandler<
     tenantName: TenantName,
     userName: UserName,
   ): Promise<Nullable<AcceptInvitationResult>> {
-    const invitation = await this.invitations.findByIdForUpdate(command.invitationId);
+    const invitation = await this.invitations.findByIdForUpdate(
+      InvitationId.restore(command.invitationId),
+    );
     if (!invitation) {
-      throw new InvitationNotFoundError(command.invitationId.value);
+      throw new InvitationNotFoundError(command.invitationId);
     }
 
     const otpMatches = this.otpService.matches(
