@@ -1,14 +1,14 @@
 import { Email } from '@common/primitives';
 import { RateLimitExceededError } from '@common/rate-limit';
-import { newTenantId } from '@modules/tenants';
-import { User, UserName, newUserId } from '@modules/users';
+import { TenantId } from '@modules/tenants';
+import { User, UserName } from '@modules/users';
 
 import { LoginChallengeStatus } from '../../../domain/value-objects/login-challenge-status.js';
 import { type AuthKit, OTP, createAuthKit } from '../../../testing/fakes.js';
 import { LOGIN_CODE_PER_EMAIL } from '../../rate-limits.js';
 import { RequestUserLoginCommand } from './request-user-login.command.js';
 
-const TENANT_ID = newTenantId();
+const TENANT_ID = TenantId.create();
 
 const request = (kit: AuthKit, email = 'owner@acme.co') =>
   kit.requestUserLogin.execute(new RequestUserLoginCommand(email));
@@ -16,10 +16,12 @@ const request = (kit: AuthKit, email = 'owner@acme.co') =>
 const withUser = async (): Promise<AuthKit> => {
   const kit = createAuthKit();
   await kit.users.save(
-    User.create(
-      { tenantId: TENANT_ID, email: Email.create('owner@acme.co'), name: UserName.create('Owner') },
-      newUserId(),
-    ),
+    User.create({
+      tenantId: TENANT_ID,
+      email: Email.create('owner@acme.co'),
+      name: UserName.create('Owner'),
+      createdAt: kit.clock.current,
+    }),
   );
   return kit;
 };
@@ -31,7 +33,7 @@ describe('RequestUserLoginHandler', () => {
     await request(kit, ' Owner@ACME.co ');
 
     const [challenge] = [...kit.challenges.saved.values()];
-    expect(challenge?.tenantId).toBe(TENANT_ID);
+    expect(challenge?.tenantId).toEqual(TENANT_ID);
     expect(challenge?.email.value).toBe('owner@acme.co');
     expect(challenge?.status).toBe(LoginChallengeStatus.PENDING);
     expect(kit.mailer.sent).toHaveLength(1);

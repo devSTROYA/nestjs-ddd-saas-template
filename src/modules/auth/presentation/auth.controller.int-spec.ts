@@ -5,7 +5,7 @@ import request from 'supertest';
 import { inject } from 'vitest';
 
 import { DEFAULT_RATE_LIMIT } from '@common/rate-limit';
-import { newAdminId } from '@modules/admins';
+import { AdminId } from '@modules/admins';
 
 import { LOGIN_MAILER } from '../application/ports/login-mailer.js';
 import { LOGIN_CODE_PER_EMAIL } from '../application/rate-limits.js';
@@ -13,7 +13,7 @@ import { LOGIN_VERIFY_PER_IP } from './auth.rate-limits.js';
 import { FakeLoginMailer } from '../testing/fakes.js';
 import { configureApp } from '../../../configure-app.js';
 
-const ADMIN_ID = newAdminId();
+const ADMIN_ID = AdminId.create();
 const ADMIN_EMAIL = 'root@b.co';
 
 type TokenBody = {
@@ -60,7 +60,10 @@ describe('AuthController', () => {
     await pool.query(
       'TRUNCATE TABLE rate_limits, refresh_tokens, login_challenges, invitations, users, tenants, admins CASCADE',
     );
-    await pool.query('INSERT INTO admins (id, email) VALUES ($1, $2)', [ADMIN_ID, ADMIN_EMAIL]);
+    await pool.query('INSERT INTO admins (id, email) VALUES ($1, $2)', [
+      ADMIN_ID.value,
+      ADMIN_EMAIL,
+    ]);
   });
 
   afterAll(async () => {

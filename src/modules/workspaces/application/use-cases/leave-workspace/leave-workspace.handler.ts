@@ -1,6 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 
+import { CLOCK, type Clock } from '@common/clock';
 import { UNIT_OF_WORK, type UnitOfWork } from '@common/database';
 import { USER_REPOSITORY, type UserRepository } from '@modules/users';
 
@@ -17,6 +18,7 @@ export class LeaveWorkspaceHandler implements ICommandHandler<LeaveWorkspaceComm
     @Inject(WORKSPACE_REPOSITORY) private readonly workspaces: WorkspaceRepository,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
     @Inject(UNIT_OF_WORK) private readonly unitOfWork: UnitOfWork,
+    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   execute(command: LeaveWorkspaceCommand): Promise<void> {
@@ -28,7 +30,7 @@ export class LeaveWorkspaceHandler implements ICommandHandler<LeaveWorkspaceComm
       if (!workspace) {
         throw new WorkspaceNotFoundError();
       }
-      workspace.removeMember(command.actorId);
+      workspace.removeMember(command.actorId, this.clock.now());
       await this.workspaces.save(workspace);
       await this.users.delete(command.tenantId, command.actorId);
     });

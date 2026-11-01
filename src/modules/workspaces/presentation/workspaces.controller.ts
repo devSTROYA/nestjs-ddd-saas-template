@@ -21,8 +21,8 @@ import {
   RequirePrincipal,
   UnauthenticatedError,
 } from '@modules/auth';
-import { type TenantId, toTenantId } from '@modules/tenants';
-import { type UserId, toUserId } from '@modules/users';
+import { TenantId } from '@modules/tenants';
+import { UserId } from '@modules/users';
 
 import type { WorkspaceView } from '../application/ports/workspace.query.js';
 import {
@@ -37,7 +37,7 @@ import {
   type ListWorkspaceMembersResult,
 } from '../application/use-cases/list-workspace-members/list-workspace-members.query.js';
 import { RemoveWorkspaceMemberCommand } from '../application/use-cases/remove-workspace-member/remove-workspace-member.command.js';
-import { toWorkspaceId } from '../domain/value-objects/workspace-id.js';
+import { WorkspaceId } from '../domain/value-objects/workspace-id.js';
 import {
   type AddWorkspaceMemberBody,
   type ChangeWorkspaceMemberRoleBody,
@@ -57,7 +57,7 @@ function actorOf(principal: Principal): Actor {
   if (!principal.tenantId) {
     throw new UnauthenticatedError();
   }
-  return { userId: toUserId(principal.id), tenantId: toTenantId(principal.tenantId) };
+  return { userId: UserId.restore(principal.id), tenantId: TenantId.restore(principal.tenantId) };
 }
 
 @Controller('workspaces')
@@ -75,7 +75,7 @@ export class WorkspacesController {
   ): Promise<WorkspaceView> {
     const actor = actorOf(principal);
     return this.queryBus.execute<GetWorkspaceQuery, WorkspaceView>(
-      new GetWorkspaceQuery(actor.userId, actor.tenantId, toWorkspaceId(workspaceId)),
+      new GetWorkspaceQuery(actor.userId, actor.tenantId, WorkspaceId.restore(workspaceId)),
     );
   }
 
@@ -91,7 +91,7 @@ export class WorkspacesController {
       new ListWorkspaceMembersQuery(
         actor.userId,
         actor.tenantId,
-        toWorkspaceId(workspaceId),
+        WorkspaceId.restore(workspaceId),
         params.page,
         params.limit,
       ),
@@ -109,7 +109,7 @@ export class WorkspacesController {
       new AddWorkspaceMemberCommand(
         actor.userId,
         actor.tenantId,
-        toWorkspaceId(workspaceId),
+        WorkspaceId.restore(workspaceId),
         body.email,
         body.name,
         body.role,
@@ -131,8 +131,8 @@ export class WorkspacesController {
       new ChangeWorkspaceMemberRoleCommand(
         actor.userId,
         actor.tenantId,
-        toWorkspaceId(workspaceId),
-        toUserId(userId),
+        WorkspaceId.restore(workspaceId),
+        UserId.restore(userId),
         body.role,
       ),
     );
@@ -150,8 +150,8 @@ export class WorkspacesController {
       new RemoveWorkspaceMemberCommand(
         actor.userId,
         actor.tenantId,
-        toWorkspaceId(workspaceId),
-        toUserId(userId),
+        WorkspaceId.restore(workspaceId),
+        UserId.restore(userId),
       ),
     );
   }
@@ -164,7 +164,7 @@ export class WorkspacesController {
   ): Promise<void> {
     const actor = actorOf(principal);
     await this.commandBus.execute<LeaveWorkspaceCommand, void>(
-      new LeaveWorkspaceCommand(actor.userId, actor.tenantId, toWorkspaceId(workspaceId)),
+      new LeaveWorkspaceCommand(actor.userId, actor.tenantId, WorkspaceId.restore(workspaceId)),
     );
   }
 }

@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { CLOCK, type Clock } from '@common/clock';
 import type { Env } from '@common/config';
 import { ADMIN_REPOSITORY, type AdminRepository, seedAdmin } from '@modules/admins';
 import { AppModule } from './app.module.js';
@@ -14,7 +15,11 @@ async function seed(): Promise<void> {
     if (!email) {
       throw new Error('ADMIN_SEED_EMAIL is required to seed the first admin');
     }
-    const result = await seedAdmin(app.get<AdminRepository>(ADMIN_REPOSITORY), email);
+    const result = await seedAdmin(
+      app.get<AdminRepository>(ADMIN_REPOSITORY),
+      email,
+      app.get<Clock>(CLOCK).now(),
+    );
     new Logger('Seed').log(`Admin ${email}: ${result}`);
   } finally {
     await app.close();

@@ -5,12 +5,11 @@ import { inject } from 'vitest';
 import { DatabaseContext } from '@common/database';
 import { Email } from '@common/primitives';
 import type { Nullable } from '@common/types';
-import { type TenantId, newTenantId } from '@modules/tenants';
+import { TenantId } from '@modules/tenants';
 
 import { LoginChallenge } from '../../domain/entities/login-challenge.js';
 import { LoginChallengeAlreadyPendingError } from '../../domain/errors/domain.error.js';
 import { LoginChallengeEventNames } from '../../domain/events/login-challenge.events.js';
-import { newLoginChallengeId } from '../../domain/value-objects/ids.js';
 import { LoginChallengeStatus } from '../../domain/value-objects/login-challenge-status.js';
 import { DrizzleLoginChallengeRepository } from './drizzle-login-challenge.repository.js';
 
@@ -23,15 +22,17 @@ const context = new DatabaseContext(drizzle(pool));
 const repository = new DrizzleLoginChallengeRepository(context);
 
 const newChallenge = (tenantId: Nullable<TenantId> = null) =>
-  LoginChallenge.create(
-    { tenantId, email: EMAIL, otpHash: 'hash', expiresAt: IN_15_MIN },
-    newLoginChallengeId(),
-    NOW,
-  );
+  LoginChallenge.create({
+    tenantId,
+    email: EMAIL,
+    otpHash: 'hash',
+    expiresAt: IN_15_MIN,
+    createdAt: NOW,
+  });
 
 const insertTenant = async (name: string): Promise<TenantId> => {
-  const id = newTenantId();
-  await pool.query('INSERT INTO tenants (id, name) VALUES ($1, $2)', [id, name]);
+  const id = TenantId.create();
+  await pool.query('INSERT INTO tenants (id, name) VALUES ($1, $2)', [id.value, name]);
   return id;
 };
 
@@ -50,7 +51,7 @@ describe('DrizzleLoginChallengeRepository', () => {
 
     const found = await repository.findPendingByEmail(EMAIL, null);
 
-    expect(found?.id).toBe(challenge.id);
+    expect(found?.id).toEqual(challenge.id);
     expect(found?.tenantId).toBeNull();
     expect(found?.email.value).toBe('root@b.co');
     expect(found?.otpHash).toBe('hash');
@@ -87,7 +88,7 @@ describe('DrizzleLoginChallengeRepository', () => {
     challenge.verify(true, NOW);
     await repository.save(challenge);
 
-    stale?.regenerate('new-hash', IN_15_MIN);
+    stale?.regenerate('new-hash', IN_15_MIN, NOW);
 
     await expect(repository.save(stale as LoginChallenge)).rejects.toThrow(
       LoginChallengeAlreadyPendingError,
@@ -131,9 +132,9 @@ describe('DrizzleLoginChallengeRepository', () => {
     await repository.save(inAcme);
     await repository.save(newChallenge(beta));
 
-    expect((await repository.findPendingByEmail(EMAIL, null))?.id).toBe(admin.id);
-    expect((await repository.findPendingByEmail(EMAIL, acme))?.id).toBe(inAcme.id);
-    expect((await repository.findPendingByEmail(EMAIL, acme))?.tenantId).toBe(acme);
+    expect((await repository.findPendingByEmail(EMAIL, null))?.id).toEqual(admin.id);
+    expect((await repository.findPendingByEmail(EMAIL, acme))?.id).toEqual(inAcme.id);
+    expect((await repository.findPendingByEmail(EMAIL, acme))?.tenantId).toEqual(acme);
   });
 
   it('writes the raised events to the outbox with the challenge', async () => {
@@ -146,7 +147,7 @@ describe('DrizzleLoginChallengeRepository', () => {
     expect(rows).toEqual([
       {
         name: LoginChallengeEventNames.CREATED,
-        aggregate_id: challenge.id,
+        aggregate_id: challenge.id.value,
         payload: { expiresAt: IN_15_MIN.toISOString() },
       },
     ]);

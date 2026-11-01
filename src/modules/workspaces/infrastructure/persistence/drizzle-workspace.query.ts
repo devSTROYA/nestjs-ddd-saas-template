@@ -3,7 +3,7 @@ import { and, count, desc, eq } from 'drizzle-orm';
 import type { DatabaseContext } from '@common/database';
 import type { Nullable } from '@common/types';
 import type { TenantId } from '@modules/tenants';
-import { type UserId, toUserId } from '@modules/users';
+import { UserId } from '@modules/users';
 
 import {
   WORKSPACE_VIEW_MEMBER_LIMIT,
@@ -12,7 +12,7 @@ import {
   type WorkspaceView,
 } from '../../application/ports/workspace.query.js';
 import { InvalidWorkspaceRoleError } from '../../domain/errors/domain.error.js';
-import { type WorkspaceId, toWorkspaceId } from '../../domain/value-objects/workspace-id.js';
+import { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { type WorkspaceRole, isWorkspaceRole } from '../../domain/value-objects/workspace-role.js';
 import { users } from '../../../users/infrastructure/persistence/user.schema.js';
 import { workspaceMembers } from './workspace-member.schema.js';
@@ -42,7 +42,7 @@ export class DrizzleWorkspaceQuery implements WorkspaceQuery {
       this.countMembers(workspaceId),
     ]);
     return {
-      id: toWorkspaceId(access.id),
+      id: WorkspaceId.restore(access.id),
       name: access.name,
       role: toRole(access.role),
       memberCount: total,
@@ -78,9 +78,12 @@ export class DrizzleWorkspaceQuery implements WorkspaceQuery {
       .from(workspaces)
       .innerJoin(
         workspaceMembers,
-        and(eq(workspaceMembers.workspaceId, workspaces.id), eq(workspaceMembers.userId, actorId)),
+        and(
+          eq(workspaceMembers.workspaceId, workspaces.id),
+          eq(workspaceMembers.userId, actorId.value),
+        ),
       )
-      .where(and(eq(workspaces.id, workspaceId), eq(workspaces.tenantId, tenantId)));
+      .where(and(eq(workspaces.id, workspaceId.value), eq(workspaces.tenantId, tenantId.value)));
     return row ?? null;
   }
 
@@ -98,12 +101,12 @@ export class DrizzleWorkspaceQuery implements WorkspaceQuery {
       })
       .from(workspaceMembers)
       .innerJoin(users, eq(users.id, workspaceMembers.userId))
-      .where(eq(workspaceMembers.workspaceId, workspaceId))
+      .where(eq(workspaceMembers.workspaceId, workspaceId.value))
       .orderBy(desc(workspaceMembers.createdAt), desc(workspaceMembers.userId))
       .limit(limit)
       .offset(offset);
     return rows.map((row) => ({
-      userId: toUserId(row.userId),
+      userId: UserId.restore(row.userId),
       name: row.name,
       email: row.email,
       role: toRole(row.role),
@@ -114,7 +117,7 @@ export class DrizzleWorkspaceQuery implements WorkspaceQuery {
     const [row] = await this.context.client
       .select({ total: count() })
       .from(workspaceMembers)
-      .where(eq(workspaceMembers.workspaceId, workspaceId));
+      .where(eq(workspaceMembers.workspaceId, workspaceId.value));
     return row?.total ?? 0;
   }
 }

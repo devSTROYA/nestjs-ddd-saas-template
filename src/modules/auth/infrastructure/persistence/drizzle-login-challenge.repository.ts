@@ -4,7 +4,7 @@ import { type DatabaseContext, isUniqueViolation } from '@common/database';
 import { saveAggregate } from '@common/outbox';
 import { Email } from '@common/primitives';
 import type { Nullable } from '@common/types';
-import { type TenantId, toTenantId } from '@modules/tenants';
+import { TenantId } from '@modules/tenants';
 
 import type { LoginChallengeRepository } from '../../application/ports/login-challenge.repository.js';
 import { LoginChallenge } from '../../domain/entities/login-challenge.js';
@@ -12,7 +12,7 @@ import {
   InvalidLoginChallengeStatusError,
   LoginChallengeAlreadyPendingError,
 } from '../../domain/errors/domain.error.js';
-import { toLoginChallengeId } from '../../domain/value-objects/ids.js';
+import { LoginChallengeId } from '../../domain/value-objects/ids.js';
 import {
   LoginChallengeStatus,
   isLoginChallengeStatus,
@@ -25,7 +25,7 @@ function toChallenge(row: LoginChallengeRow): LoginChallenge {
   }
   return LoginChallenge.restore(
     {
-      tenantId: row.tenantId ? toTenantId(row.tenantId) : null,
+      tenantId: row.tenantId ? TenantId.restore(row.tenantId) : null,
       email: Email.restore(row.email),
       otpHash: row.otpHash,
       expiresAt: row.expiresAt,
@@ -33,7 +33,7 @@ function toChallenge(row: LoginChallengeRow): LoginChallenge {
       status: row.status,
       createdAt: row.createdAt,
     },
-    toLoginChallengeId(row.id),
+    LoginChallengeId.restore(row.id),
   );
 }
 
@@ -76,8 +76,8 @@ export class DrizzleLoginChallengeRepository implements LoginChallengeRepository
         const written = await this.context.client
           .insert(loginChallenges)
           .values({
-            id: challenge.id,
-            tenantId: challenge.tenantId,
+            id: challenge.id.value,
+            tenantId: challenge.tenantId?.value ?? null,
             email: challenge.email.value,
             createdAt: challenge.createdAt,
             ...mutable,
@@ -102,7 +102,7 @@ export class DrizzleLoginChallengeRepository implements LoginChallengeRepository
 
   private pendingFor(email: Email, tenantId: Nullable<TenantId>) {
     return and(
-      tenantId ? eq(loginChallenges.tenantId, tenantId) : isNull(loginChallenges.tenantId),
+      tenantId ? eq(loginChallenges.tenantId, tenantId.value) : isNull(loginChallenges.tenantId),
       eq(loginChallenges.email, email.value),
       eq(loginChallenges.status, LoginChallengeStatus.PENDING),
     );

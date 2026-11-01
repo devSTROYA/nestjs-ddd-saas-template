@@ -1,7 +1,7 @@
 import { Email } from '@common/primitives';
-import { Admin, newAdminId } from '@modules/admins';
-import { newTenantId } from '@modules/tenants';
-import { User, UserName, newUserId } from '@modules/users';
+import { Admin } from '@modules/admins';
+import { TenantId } from '@modules/tenants';
+import { User, UserName } from '@modules/users';
 
 import { InvalidRefreshTokenError } from '../../../domain/errors/domain.error.js';
 import { type AuthKit, IP, OTP, createAuthKit } from '../../../testing/fakes.js';
@@ -17,7 +17,7 @@ const refresh = (kit: AuthKit, refreshToken: string) =>
 
 const loggedIn = async () => {
   const kit = createAuthKit();
-  const admin = Admin.create({ email: Email.create('root@b.co') }, newAdminId());
+  const admin = Admin.create({ email: Email.create('root@b.co'), createdAt: kit.clock.current });
   await kit.admins.save(admin);
   await kit.requestLogin.execute(new RequestAdminLoginCommand('root@b.co'));
   const session = await kit.verifyLogin.execute(new VerifyAdminLoginCommand('root@b.co', OTP, IP));
@@ -27,14 +27,12 @@ const loggedIn = async () => {
 describe('RefreshTokensHandler for tenant users', () => {
   it('rotates a user session, keeping the tenant, and revokes it once the user is gone', async () => {
     const kit = createAuthKit();
-    const user = User.create(
-      {
-        tenantId: newTenantId(),
-        email: Email.create('owner@acme.co'),
-        name: UserName.create('Owner'),
-      },
-      newUserId(),
-    );
+    const user = User.create({
+      tenantId: TenantId.create(),
+      email: Email.create('owner@acme.co'),
+      name: UserName.create('Owner'),
+      createdAt: kit.clock.current,
+    });
     await kit.users.save(user);
     await kit.requestUserLogin.execute(new RequestUserLoginCommand('owner@acme.co'));
     const session = await kit.verifyUserLogin.execute(
@@ -43,7 +41,7 @@ describe('RefreshTokensHandler for tenant users', () => {
 
     const next = await refresh(kit, session.refreshToken);
 
-    expect(next.accessToken).toBe(`access:user:${user.id}:${user.tenantId}`);
+    expect(next.accessToken).toBe(`access:user:${user.id.value}:${user.tenantId.value}`);
     kit.users.saved.clear();
     await expect(refresh(kit, next.refreshToken)).rejects.toThrow(InvalidRefreshTokenError);
   });
@@ -100,7 +98,7 @@ describe('RefreshTokensHandler', () => {
 
   it('rejects and revokes the session when the admin no longer exists', async () => {
     const { kit, admin, session } = await loggedIn();
-    kit.admins.saved.delete(admin.id);
+    kit.admins.saved.delete(admin.id.value);
 
     await expect(refresh(kit, session.refreshToken)).rejects.toThrow(InvalidRefreshTokenError);
 

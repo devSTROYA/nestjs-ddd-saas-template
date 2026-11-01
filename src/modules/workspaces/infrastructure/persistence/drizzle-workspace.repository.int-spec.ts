@@ -3,13 +3,13 @@ import { Pool } from 'pg';
 import { inject } from 'vitest';
 
 import { DatabaseContext } from '@common/database';
-import { type TenantId, newTenantId } from '@modules/tenants';
-import { type UserId, newUserId } from '@modules/users';
+import { TenantId } from '@modules/tenants';
+import { UserId } from '@modules/users';
 
 import { Workspace } from '../../domain/entities/workspace.js';
 import { WorkspaceIdConflictError } from '../../domain/errors/domain.error.js';
 import { WorkspaceEventNames } from '../../domain/events/workspace.events.js';
-import { newWorkspaceId } from '../../domain/value-objects/workspace-id.js';
+import { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspaceName } from '../../domain/value-objects/workspace-name.js';
 import { WorkspaceRole } from '../../domain/value-objects/workspace-role.js';
 import { DrizzleWorkspaceRepository } from './drizzle-workspace.repository.js';
@@ -19,23 +19,28 @@ const context = new DatabaseContext(drizzle(pool));
 const repository = new DrizzleWorkspaceRepository(context);
 
 const insertTenant = async (): Promise<TenantId> => {
-  const id = newTenantId();
-  await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'T')", [id]);
+  const id = TenantId.create();
+  await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'T')", [id.value]);
   return id;
 };
 
 const insertUser = async (tenantId: TenantId, email: string): Promise<UserId> => {
-  const id = newUserId();
+  const id = UserId.create();
   await pool.query("INSERT INTO users (id, tenant_id, email, name) VALUES ($1, $2, $3, 'U')", [
-    id,
-    tenantId,
+    id.value,
+    tenantId.value,
     email,
   ]);
   return id;
 };
 
 const newWorkspace = (tenantId: TenantId, ownerId: UserId) =>
-  Workspace.create({ tenantId, name: WorkspaceName.create('Acme'), ownerId }, newWorkspaceId());
+  Workspace.create({
+    tenantId,
+    name: WorkspaceName.create('Acme'),
+    ownerId,
+    createdAt: new Date(),
+  });
 
 beforeEach(async () => {
   await pool.query('TRUNCATE TABLE outbox, workspace_members, workspaces, users, tenants CASCADE');
@@ -51,12 +56,12 @@ describe('DrizzleWorkspaceRepository', () => {
     const owner = await insertUser(tenantId, 'o@a.co');
     const admin = await insertUser(tenantId, 'a@a.co');
     const workspace = newWorkspace(tenantId, owner);
-    workspace.addMember(admin, WorkspaceRole.ADMIN);
+    workspace.addMember(admin, WorkspaceRole.ADMIN, new Date());
     await repository.save(workspace);
 
     const found = await repository.findById(tenantId, workspace.id);
 
-    expect(found?.id).toBe(workspace.id);
+    expect(found?.id).toEqual(workspace.id);
     expect(found?.name.value).toBe('Acme');
     expect(found?.createdAt).toEqual(workspace.createdAt);
     expect(found?.members).toEqual(
@@ -73,9 +78,9 @@ describe('DrizzleWorkspaceRepository', () => {
     const workspace = newWorkspace(tenantId, await insertUser(tenantId, 'o@a.co'));
     await repository.save(workspace);
 
-    expect(await repository.findById(tenantId, newWorkspaceId())).toBeNull();
-    expect(await repository.findById(newTenantId(), workspace.id)).toBeNull();
-    expect(await repository.findByIdForUpdate(newTenantId(), workspace.id)).toBeNull();
+    expect(await repository.findById(tenantId, WorkspaceId.create())).toBeNull();
+    expect(await repository.findById(TenantId.create(), workspace.id)).toBeNull();
+    expect(await repository.findByIdForUpdate(TenantId.create(), workspace.id)).toBeNull();
   });
 
   it('persists role changes and removals so the stored members match the aggregate', async () => {
@@ -84,12 +89,12 @@ describe('DrizzleWorkspaceRepository', () => {
     const second = await insertUser(tenantId, 's@a.co');
     const third = await insertUser(tenantId, 't@a.co');
     const workspace = newWorkspace(tenantId, owner);
-    workspace.addMember(second, WorkspaceRole.ADMIN);
-    workspace.addMember(third, WorkspaceRole.ADMIN);
+    workspace.addMember(second, WorkspaceRole.ADMIN, new Date());
+    workspace.addMember(third, WorkspaceRole.ADMIN, new Date());
     await repository.save(workspace);
 
-    workspace.changeRole(second, WorkspaceRole.OWNER);
-    workspace.removeMember(third);
+    workspace.changeRole(second, WorkspaceRole.OWNER, new Date());
+    workspace.removeMember(third, new Date());
     await repository.save(workspace);
 
     const found = await repository.findById(tenantId, workspace.id);
@@ -119,7 +124,7 @@ describe('DrizzleWorkspaceRepository', () => {
       {
         tenantId: otherTenantId,
         name: WorkspaceName.create('Hijack'),
-        roles: new Map([[intruder, WorkspaceRole.OWNER]]),
+        roles: new Map([[intruder.value, WorkspaceRole.OWNER]]),
         createdAt: workspace.createdAt,
         updatedAt: workspace.updatedAt,
       },
@@ -141,7 +146,7 @@ describe('DrizzleWorkspaceRepository', () => {
 
     const found = await context.run(() => repository.findByIdForUpdate(tenantId, workspace.id));
 
-    expect(found?.tenantId).toBe(tenantId);
+    expect(found?.tenantId).toEqual(tenantId);
   });
 
   it('rolls back a save made inside a failed transaction', async () => {
@@ -165,7 +170,7 @@ describe('DrizzleWorkspaceRepository', () => {
     const tenantId = await insertTenant();
     const owner = await insertUser(tenantId, 'o@a.co');
     const workspace = newWorkspace(tenantId, owner);
-    workspace.addMember(await insertUser(tenantId, 'a@a.co'), WorkspaceRole.ADMIN);
+    workspace.addMember(await insertUser(tenantId, 'a@a.co'), WorkspaceRole.ADMIN, new Date());
     await repository.save(workspace);
 
     const { rows } = await pool.query<{ name: string; aggregate_id: string; tenant_id: string }>(
@@ -174,8 +179,16 @@ describe('DrizzleWorkspaceRepository', () => {
     expect(rows).toHaveLength(2);
     expect(rows).toEqual(
       expect.arrayContaining([
-        { name: WorkspaceEventNames.CREATED, aggregate_id: workspace.id, tenant_id: tenantId },
-        { name: WorkspaceEventNames.MEMBER_ADDED, aggregate_id: workspace.id, tenant_id: tenantId },
+        {
+          name: WorkspaceEventNames.CREATED,
+          aggregate_id: workspace.id.value,
+          tenant_id: tenantId.value,
+        },
+        {
+          name: WorkspaceEventNames.MEMBER_ADDED,
+          aggregate_id: workspace.id.value,
+          tenant_id: tenantId.value,
+        },
       ]),
     );
   });

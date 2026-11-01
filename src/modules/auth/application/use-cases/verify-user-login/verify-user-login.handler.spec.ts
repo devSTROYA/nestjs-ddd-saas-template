@@ -1,6 +1,6 @@
 import { Email } from '@common/primitives';
-import { newTenantId } from '@modules/tenants';
-import { User, UserName, newUserId } from '@modules/users';
+import { TenantId } from '@modules/tenants';
+import { User, UserName } from '@modules/users';
 
 import { InvalidCredentialsError } from '../../../domain/errors/domain.error.js';
 import { PrincipalType } from '../../../domain/value-objects/principal.js';
@@ -22,10 +22,12 @@ import { RequestUserLoginCommand } from '../request-user-login/request-user-logi
 import { VerifyUserLoginCommand } from './verify-user-login.command.js';
 
 const addUser = async (kit: AuthKit, email: string) => {
-  const user = User.create(
-    { tenantId: newTenantId(), email: Email.create(email), name: UserName.create('Owner') },
-    newUserId(),
-  );
+  const user = User.create({
+    tenantId: TenantId.create(),
+    email: Email.create(email),
+    name: UserName.create('Owner'),
+    createdAt: kit.clock.current,
+  });
   await kit.users.save(user);
   return user;
 };
@@ -44,12 +46,12 @@ describe('VerifyUserLoginHandler', () => {
 
     const session = await verify(kit, 'owner@acme.co');
 
-    expect(session.accessToken).toBe(`access:user:${user.id}:${user.tenantId}`);
+    expect(session.accessToken).toBe(`access:user:${user.id.value}:${user.tenantId.value}`);
     const [stored] = [...kit.refreshTokens.saved.values()];
     expect(stored?.principal).toEqual({
       type: PrincipalType.USER,
-      id: user.id,
-      tenantId: user.tenantId,
+      id: user.id.value,
+      tenantId: user.tenantId.value,
     });
   });
 

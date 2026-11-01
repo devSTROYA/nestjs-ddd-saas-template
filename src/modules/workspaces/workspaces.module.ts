@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { ClockModule } from '@common/clock';
 import { DATABASE_CONTEXT, DatabaseModule, type DatabaseContext } from '@common/database';
 
 import { TenantsModule } from '../tenants/tenants.module.js';
@@ -17,7 +18,7 @@ import { DrizzleWorkspaceRepository } from './infrastructure/persistence/drizzle
 import { WorkspacesController } from './presentation/workspaces.controller.js';
 
 @Module({
-  imports: [DatabaseModule, TenantsModule, UsersModule],
+  imports: [ClockModule, DatabaseModule, TenantsModule, UsersModule],
   controllers: [WorkspacesController],
   providers: [
     {

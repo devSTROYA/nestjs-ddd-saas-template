@@ -1,7 +1,7 @@
 import { Email, InvalidEmailError } from '@common/primitives';
-import { newAdminId } from '@modules/admins';
-import { newTenantId } from '@modules/tenants';
-import { User, UserName, newUserId } from '@modules/users';
+import { AdminId } from '@modules/admins';
+import { TenantId } from '@modules/tenants';
+import { User, UserName } from '@modules/users';
 
 import { InvitationEmailAlreadyRegisteredError } from '../../../domain/errors/domain.error.js';
 import { InvitationStatus } from '../../../domain/value-objects/invitation-status.js';
@@ -17,7 +17,7 @@ import { InviteTenantCommand } from './invite-tenant.command.js';
 import { INVITATION_TTL_MS, InviteTenantHandler } from './invite-tenant.handler.js';
 
 const NOW = new Date('2026-01-01T00:00:00Z');
-const ADMIN_ID = newAdminId();
+const ADMIN_ID = AdminId.create();
 
 const setup = () => {
   const invitations = new FakeInvitations();
@@ -39,11 +39,11 @@ describe('InviteTenantHandler', () => {
 
     const id = await handler.execute(new InviteTenantCommand(ADMIN_ID, ' New@Tenant.co '));
 
-    const invitation = invitations.saved.get(id);
+    const invitation = invitations.saved.get(id.value);
     expect(invitation?.email.value).toBe('new@tenant.co');
-    expect(invitation?.invitedBy).toBe(ADMIN_ID);
+    expect(invitation?.invitedBy).toEqual(ADMIN_ID);
     expect(invitation?.status).toBe(InvitationStatus.PENDING);
-    expect(invitation?.otpHash).toBe(fakeOtpService.hash(id, OTP));
+    expect(invitation?.otpHash).toBe(fakeOtpService.hash(id.value, OTP));
     expect(invitation?.expiresAt).toEqual(new Date(NOW.getTime() + INVITATION_TTL_MS));
     expect(mailer.sent).toHaveLength(1);
     expect(mailer.sent[0]).toMatchObject({ invitationId: id, otp: OTP });
@@ -58,38 +58,38 @@ describe('InviteTenantHandler', () => {
     const { handler, invitations, mailer } = setup();
 
     const first = await handler.execute(new InviteTenantCommand(ADMIN_ID, 'new@tenant.co'));
-    invitations.saved.get(first)?.accept(false, NOW);
-    const second = await handler.execute(new InviteTenantCommand(newAdminId(), 'new@tenant.co'));
+    invitations.saved.get(first.value)?.accept(false, NOW);
+    const second = await handler.execute(
+      new InviteTenantCommand(AdminId.create(), 'new@tenant.co'),
+    );
 
-    expect(second).toBe(first);
+    expect(second).toEqual(first);
     expect(invitations.saved.size).toBe(1);
-    expect(invitations.saved.get(first)?.attempts).toBe(0);
-    expect(invitations.saved.get(first)?.invitedBy).toBe(ADMIN_ID);
+    expect(invitations.saved.get(first.value)?.attempts).toBe(0);
+    expect(invitations.saved.get(first.value)?.invitedBy).toEqual(ADMIN_ID);
     expect(mailer.sent).toHaveLength(2);
   });
 
   it('creates a new invitation when the previous one is no longer pending', async () => {
     const { handler, invitations } = setup();
     const first = await handler.execute(new InviteTenantCommand(ADMIN_ID, 'new@tenant.co'));
-    invitations.saved.get(first)?.revoke();
+    invitations.saved.get(first.value)?.revoke(NOW);
 
     const second = await handler.execute(new InviteTenantCommand(ADMIN_ID, 'new@tenant.co'));
 
-    expect(second).not.toBe(first);
+    expect(second).not.toEqual(first);
     expect(invitations.saved.size).toBe(2);
   });
 
   it('rejects an email that already belongs to a registered user, without a mail', async () => {
     const { handler, invitations, users, mailer } = setup();
     await users.save(
-      User.create(
-        {
-          tenantId: newTenantId(),
-          email: Email.create('owner@tenant.co'),
-          name: UserName.create('Owner'),
-        },
-        newUserId(),
-      ),
+      User.create({
+        tenantId: TenantId.create(),
+        email: Email.create('owner@tenant.co'),
+        name: UserName.create('Owner'),
+        createdAt: NOW,
+      }),
     );
 
     await expect(

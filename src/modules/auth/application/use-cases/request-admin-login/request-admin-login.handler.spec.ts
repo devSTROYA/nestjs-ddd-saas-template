@@ -2,7 +2,7 @@ import { Logger } from '@nestjs/common';
 
 import { MailDeliveryError } from '@common/mail';
 import { RateLimitExceededError } from '@common/rate-limit';
-import { Admin, newAdminId } from '@modules/admins';
+import { Admin } from '@modules/admins';
 import { Email, InvalidEmailError } from '@common/primitives';
 
 import { LOGIN_CODE_PER_EMAIL } from '../../rate-limits.js';
@@ -17,7 +17,9 @@ const request = (kit: AuthKit, email = 'root@b.co') =>
 
 const withAdmin = async (): Promise<AuthKit> => {
   const kit = createAuthKit();
-  await kit.admins.save(Admin.create({ email: Email.create('root@b.co') }, newAdminId()));
+  await kit.admins.save(
+    Admin.create({ email: Email.create('root@b.co'), createdAt: kit.clock.current }),
+  );
   return kit;
 };
 
@@ -30,7 +32,7 @@ describe('RequestAdminLoginHandler', () => {
     const [challenge] = [...kit.challenges.saved.values()];
     expect(challenge?.email.value).toBe('root@b.co');
     expect(challenge?.status).toBe(LoginChallengeStatus.PENDING);
-    expect(challenge?.otpHash).toBe(fakeOtpService.hash(challenge?.id ?? '', OTP));
+    expect(challenge?.otpHash).toBe(fakeOtpService.hash(challenge?.id.value ?? '', OTP));
     expect(challenge?.expiresAt).toEqual(new Date(kit.clock.current.getTime() + LOGIN_OTP_TTL_MS));
     expect(kit.mailer.sent).toHaveLength(1);
     expect(kit.mailer.sent[0]?.otp).toBe(OTP);

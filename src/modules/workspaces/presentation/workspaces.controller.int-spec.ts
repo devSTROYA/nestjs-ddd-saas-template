@@ -5,11 +5,11 @@ import request from 'supertest';
 import { inject } from 'vitest';
 
 import { MAIL_TRANSPORT, type MailMessage } from '@common/mail';
-import { newAdminId } from '@modules/admins';
+import { AdminId } from '@modules/admins';
 
 import { configureApp } from '../../../configure-app.js';
 
-const ADMIN_ID = newAdminId();
+const ADMIN_ID = AdminId.create();
 
 type TokenBody = {
   accessToken: string;
@@ -123,7 +123,7 @@ describe('WorkspacesController', () => {
     await pool.query(
       'TRUNCATE TABLE rate_limits, refresh_tokens, login_challenges, invitations, workspace_members, workspaces, users, tenants, admins CASCADE',
     );
-    await pool.query("INSERT INTO admins (id, email) VALUES ($1, 'root@b.co')", [ADMIN_ID]);
+    await pool.query("INSERT INTO admins (id, email) VALUES ($1, 'root@b.co')", [ADMIN_ID.value]);
   });
 
   afterAll(async () => {

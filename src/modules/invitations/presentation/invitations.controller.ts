@@ -3,7 +3,7 @@ import { CommandBus } from '@nestjs/cqrs';
 
 import { Throttle } from '@common/rate-limit';
 import { ZodValidationPipe } from '@common/validation';
-import { toAdminId } from '@modules/admins';
+import { AdminId } from '@modules/admins';
 import {
   CurrentPrincipal,
   type Principal,
@@ -17,7 +17,7 @@ import {
   type AcceptInvitationResult,
 } from '../application/use-cases/accept-invitation/accept-invitation.command.js';
 import { InviteTenantCommand } from '../application/use-cases/invite-tenant/invite-tenant.command.js';
-import { type InvitationId, toInvitationId } from '../domain/value-objects/invitation-id.js';
+import { InvitationId } from '../domain/value-objects/invitation-id.js';
 import { ACCEPT_PER_IP } from './invitation.rate-limits.js';
 import {
   type AcceptInvitationBody,
@@ -40,9 +40,9 @@ export class InvitationsController {
     @Body(new ZodValidationPipe(inviteTenantBodySchema)) body: InviteTenantBody,
   ): Promise<InviteTenantResponse> {
     const invitationId = await this.commandBus.execute<InviteTenantCommand, InvitationId>(
-      new InviteTenantCommand(toAdminId(principal.id), body.email),
+      new InviteTenantCommand(AdminId.restore(principal.id), body.email),
     );
-    return { invitationId };
+    return { invitationId: invitationId.value };
   }
 
   @Public()
@@ -53,7 +53,12 @@ export class InvitationsController {
     @Body(new ZodValidationPipe(acceptInvitationBodySchema)) body: AcceptInvitationBody,
   ): Promise<AcceptInvitationResult> {
     return this.commandBus.execute<AcceptInvitationCommand, AcceptInvitationResult>(
-      new AcceptInvitationCommand(toInvitationId(id), body.otp, body.tenantName, body.userName),
+      new AcceptInvitationCommand(
+        InvitationId.restore(id),
+        body.otp,
+        body.tenantName,
+        body.userName,
+      ),
     );
   }
 }

@@ -4,32 +4,30 @@ import { inject } from 'vitest';
 
 import { DatabaseContext } from '@common/database';
 import type { Nullable } from '@common/types';
-import { newAdminId } from '@modules/admins';
+import { AdminId } from '@modules/admins';
 
 import { RefreshToken } from '../../domain/entities/refresh-token.js';
 import { RefreshTokenEventNames } from '../../domain/events/refresh-token.events.js';
-import {
-  type TokenFamilyId,
-  newRefreshTokenId,
-  newTokenFamilyId,
-} from '../../domain/value-objects/ids.js';
+import { TokenFamilyId } from '../../domain/value-objects/ids.js';
 import { PrincipalType } from '../../domain/value-objects/principal.js';
 import { DrizzleRefreshTokenRepository } from './drizzle-refresh-token.repository.js';
 
 const NOW = new Date('2026-01-01T00:00:00Z');
 const IN_A_DAY = new Date(NOW.getTime() + 24 * 60 * 60 * 1000);
-const PRINCIPAL = { type: PrincipalType.ADMIN, id: newAdminId() };
+const PRINCIPAL = { type: PrincipalType.ADMIN, id: AdminId.create().value };
 
 const pool = new Pool({ connectionString: inject('databaseUrl') });
 const context = new DatabaseContext(drizzle(pool));
 const repository = new DrizzleRefreshTokenRepository(context);
 
-const issue = (tokenHash: string, familyId: TokenFamilyId = newTokenFamilyId()) =>
-  RefreshToken.issue(
-    { familyId, principal: PRINCIPAL, tokenHash, expiresAt: IN_A_DAY },
-    newRefreshTokenId(),
-    NOW,
-  );
+const issue = (tokenHash: string, familyId: TokenFamilyId = TokenFamilyId.create()) =>
+  RefreshToken.issue({
+    familyId,
+    principal: PRINCIPAL,
+    tokenHash,
+    expiresAt: IN_A_DAY,
+    createdAt: NOW,
+  });
 
 beforeEach(async () => {
   await pool.query('TRUNCATE TABLE refresh_tokens, outbox');
@@ -46,8 +44,8 @@ describe('DrizzleRefreshTokenRepository', () => {
 
     const found = await context.run(() => repository.findByHashForUpdate('a'.repeat(64)));
 
-    expect(found?.id).toBe(token.id);
-    expect(found?.familyId).toBe(token.familyId);
+    expect(found?.id).toEqual(token.id);
+    expect(found?.familyId).toEqual(token.familyId);
     expect(found?.principal).toEqual(PRINCIPAL);
     expect(found?.expiresAt).toEqual(IN_A_DAY);
     expect(found?.usedAt).toBeNull();
@@ -87,8 +85,8 @@ describe('DrizzleRefreshTokenRepository', () => {
     expect(rows).toEqual([
       {
         name: RefreshTokenEventNames.ISSUED,
-        aggregate_id: token.id,
-        payload: { familyId: token.familyId, principalType: PrincipalType.ADMIN },
+        aggregate_id: token.id.value,
+        payload: { familyId: token.familyId.value, principalType: PrincipalType.ADMIN },
       },
     ]);
   });
@@ -108,7 +106,7 @@ describe('DrizzleRefreshTokenRepository', () => {
   });
 
   it('revokes every unrevoked token of one family and leaves other families alone', async () => {
-    const family = newTokenFamilyId();
+    const family = TokenFamilyId.create();
     await repository.save(issue('a'.repeat(64), family));
     await repository.save(issue('b'.repeat(64), family));
     await repository.save(issue('c'.repeat(64)));
@@ -122,7 +120,7 @@ describe('DrizzleRefreshTokenRepository', () => {
   });
 
   it('queues one family_revoked event only when revoking changed something', async () => {
-    const family = newTokenFamilyId();
+    const family = TokenFamilyId.create();
     await repository.save(issue('a'.repeat(64), family));
     await pool.query('TRUNCATE TABLE outbox');
 
@@ -135,7 +133,7 @@ describe('DrizzleRefreshTokenRepository', () => {
     expect(rows).toEqual([
       {
         name: RefreshTokenEventNames.FAMILY_REVOKED,
-        aggregate_id: family,
+        aggregate_id: family.value,
         payload: { revokedTokens: 1 },
       },
     ]);

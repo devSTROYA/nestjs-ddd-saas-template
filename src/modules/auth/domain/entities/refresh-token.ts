@@ -5,7 +5,7 @@ import {
   RefreshTokenIssuedEvent,
   RefreshTokenRotatedEvent,
 } from '../events/refresh-token.events.js';
-import type { RefreshTokenId, TokenFamilyId } from '../value-objects/ids.js';
+import { RefreshTokenId, type TokenFamilyId } from '../value-objects/ids.js';
 import type { Principal } from '../value-objects/principal.js';
 
 export const RotationOutcome = {
@@ -31,10 +31,12 @@ type CreateProps = {
   principal: Principal;
   tokenHash: string;
   expiresAt: Date;
+  createdAt: Date;
 };
 
 export class RefreshToken extends AggregateRoot<Props, RefreshTokenId> {
-  static issue(props: CreateProps, id: RefreshTokenId, now: Date): RefreshToken {
+  static issue(props: CreateProps): RefreshToken {
+    const id = RefreshTokenId.create();
     const token = new RefreshToken(
       {
         familyId: props.familyId,
@@ -43,16 +45,16 @@ export class RefreshToken extends AggregateRoot<Props, RefreshTokenId> {
         expiresAt: props.expiresAt,
         usedAt: null,
         revokedAt: null,
-        createdAt: now,
+        createdAt: props.createdAt,
       },
       id,
     );
     token.addEvent(
       new RefreshTokenIssuedEvent({
-        aggregateId: id,
+        aggregateId: id.value,
         tenantId: props.principal.tenantId ?? null,
-        occurredAt: now.toISOString(),
-        familyId: props.familyId,
+        occurredAt: props.createdAt.toISOString(),
+        familyId: props.familyId.value,
         principalType: props.principal.type,
       }),
     );
@@ -101,10 +103,10 @@ export class RefreshToken extends AggregateRoot<Props, RefreshTokenId> {
     this.props.usedAt = now;
     this.addEvent(
       new RefreshTokenRotatedEvent({
-        aggregateId: this.id,
+        aggregateId: this.id.value,
         tenantId: this.props.principal.tenantId ?? null,
         occurredAt: now.toISOString(),
-        familyId: this.props.familyId,
+        familyId: this.props.familyId.value,
       }),
     );
     return RotationOutcome.ROTATED;

@@ -8,7 +8,7 @@ import { USER_REPOSITORY, type UserRepository } from '@modules/users';
 
 import { Invitation } from '../../../domain/entities/invitation.js';
 import { InvitationEmailAlreadyRegisteredError } from '../../../domain/errors/domain.error.js';
-import { type InvitationId, newInvitationId } from '../../../domain/value-objects/invitation-id.js';
+import { InvitationId } from '../../../domain/value-objects/invitation-id.js';
 import {
   INVITATION_REPOSITORY,
   type InvitationRepository,
@@ -41,7 +41,7 @@ export class InviteTenantHandler implements ICommandHandler<InviteTenantCommand,
     const pending = await this.invitations.findPendingByEmail(email);
     const invitation = pending ?? this.newInvitation(command, email, expiresAt, now, otp);
     if (pending) {
-      pending.regenerate(this.otpService.hash(pending.id, otp), expiresAt);
+      pending.regenerate(this.otpService.hash(pending.id.value, otp), expiresAt, now);
     }
 
     await this.invitations.save(invitation);
@@ -61,16 +61,16 @@ export class InviteTenantHandler implements ICommandHandler<InviteTenantCommand,
     now: Date,
     otp: string,
   ): Invitation {
-    const id = newInvitationId();
+    const id = InvitationId.create();
     return Invitation.create(
       {
         email,
         invitedBy: command.adminId,
-        otpHash: this.otpService.hash(id, otp),
+        otpHash: this.otpService.hash(id.value, otp),
         expiresAt,
+        createdAt: now,
       },
       id,
-      now,
     );
   }
 }

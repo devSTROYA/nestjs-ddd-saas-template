@@ -5,11 +5,10 @@ import { inject } from 'vitest';
 
 import { validateEnv } from '@common/config';
 import { Email } from '@common/primitives';
-import { newTenantId } from '@modules/tenants';
+import { TenantId } from '@modules/tenants';
 
 import { USER_REPOSITORY, type UserRepository } from './application/ports/user.repository.js';
 import { User } from './domain/entities/user.js';
-import { newUserId } from './domain/value-objects/user-id.js';
 import { UserName } from './domain/value-objects/user-name.js';
 import { UsersModule } from './users.module.js';
 
@@ -41,13 +40,15 @@ describe('UsersModule', () => {
   });
 
   it('provides a repository wired to the configured database', async () => {
-    const tenantId = newTenantId();
-    await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'Wired')", [tenantId]);
+    const tenantId = TenantId.create();
+    await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'Wired')", [tenantId.value]);
     const repository = moduleRef.get<UserRepository>(USER_REPOSITORY);
-    const user = User.create(
-      { tenantId, email: Email.create('wired@b.co'), name: UserName.create('Uz') },
-      newUserId(),
-    );
+    const user = User.create({
+      tenantId,
+      email: Email.create('wired@b.co'),
+      name: UserName.create('Uz'),
+      createdAt: new Date(),
+    });
 
     await repository.save(user);
 

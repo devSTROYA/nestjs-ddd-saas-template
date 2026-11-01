@@ -66,11 +66,16 @@ changes, update this file in the same change.
   can still be loaded).
 - **Value objects only where there is a real rule:** `Email`, `UserName`, `TenantName`. They follow
   the same `create` / `restore` / `equals` shape. Names have a max length that matches the column.
-- **Ids are branded strings holding a UUID v7.** `toXId(value)` validates (throws `ID_INVALID`),
-  `newXId()` generates. Why a brand and not a class: ids stay plain strings in JSON, logs and Drizzle
-  `uuid` columns, with no wrapping and `===` still works, while the compiler still stops a `UserId`
-  being used as a `TenantId`. The brand is compile-time only, so every id entering from outside must
-  go through `toXId`.
+- **Ids are classes holding a UUID v7.** Every id extends `UuidV7Id` and has the same shape as the other
+  value objects: `XId.restore(value)` validates (throws `ID_INVALID`), `XId.create()` generates,
+  `.value` is the plain uuid. A private brand member keeps each id nominal, so a `UserId` is not a
+  `TenantId`. `equals` is true only for the same class and value, so never compare ids with `===`, and
+  never key a `Map`, `Set` or object by an id: use `.value`. `toJSON` and `toString` return the uuid, so
+  JSON responses are unchanged. Plain strings are used only at the edges: database columns and Drizzle
+  (`id.value`, rows mapped back with `XId.restore`), domain event payloads, JWT and principal payloads,
+  and request params and bodies (controllers call `XId.restore`). Aggregate factories generate their
+  own id; only `Admin`, `Invitation` and `LoginChallenge` take an optional trailing id (fixed seed id,
+  OTP hash bound to the id).
 - **Time:** `Invitation.create` receives `now` so tests control it. `User`, `Tenant`, `Admin` and
   `Workspace` still use `new Date()` inside `create` (known gap, see the end of this file).
 - **Email validation:** WHATWG-style pattern after trimming and lowercasing, total length at most 254

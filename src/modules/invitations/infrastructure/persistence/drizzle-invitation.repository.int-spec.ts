@@ -4,7 +4,7 @@ import { inject } from 'vitest';
 
 import { DatabaseContext } from '@common/database';
 import { Email } from '@common/primitives';
-import { newAdminId } from '@modules/admins';
+import { AdminId } from '@modules/admins';
 
 import { Invitation } from '../../domain/entities/invitation.js';
 import {
@@ -13,11 +13,11 @@ import {
   InvitationNotPendingError,
 } from '../../domain/errors/domain.error.js';
 import { InvitationEventNames } from '../../domain/events/invitation.events.js';
-import { newInvitationId } from '../../domain/value-objects/invitation-id.js';
+import { InvitationId } from '../../domain/value-objects/invitation-id.js';
 import { InvitationStatus } from '../../domain/value-objects/invitation-status.js';
 import { DrizzleInvitationRepository } from './drizzle-invitation.repository.js';
 
-const ADMIN_ID = newAdminId();
+const ADMIN_ID = AdminId.create();
 const NOW = new Date('2026-01-01T00:00:00Z');
 const IN_15_MIN = new Date(NOW.getTime() + 15 * 60_000);
 
@@ -26,20 +26,17 @@ const context = new DatabaseContext(drizzle(pool));
 const repository = new DrizzleInvitationRepository(context);
 
 const newInvitation = (email = 'a@b.co') =>
-  Invitation.create(
-    {
-      email: Email.create(email),
-      invitedBy: ADMIN_ID,
-      otpHash: 'hash',
-      expiresAt: IN_15_MIN,
-    },
-    newInvitationId(),
-    NOW,
-  );
+  Invitation.create({
+    email: Email.create(email),
+    invitedBy: ADMIN_ID,
+    otpHash: 'hash',
+    expiresAt: IN_15_MIN,
+    createdAt: NOW,
+  });
 
 beforeEach(async () => {
   await pool.query('TRUNCATE TABLE outbox, invitations, admins CASCADE');
-  await pool.query("INSERT INTO admins (id, email) VALUES ($1, 'root@b.co')", [ADMIN_ID]);
+  await pool.query("INSERT INTO admins (id, email) VALUES ($1, 'root@b.co')", [ADMIN_ID.value]);
 });
 
 afterAll(async () => {
@@ -53,9 +50,9 @@ describe('DrizzleInvitationRepository', () => {
 
     const found = await repository.findById(invitation.id);
 
-    expect(found?.id).toBe(invitation.id);
+    expect(found?.id).toEqual(invitation.id);
     expect(found?.email.value).toBe('a@b.co');
-    expect(found?.invitedBy).toBe(ADMIN_ID);
+    expect(found?.invitedBy).toEqual(ADMIN_ID);
     expect(found?.otpHash).toBe('hash');
     expect(found?.expiresAt).toEqual(IN_15_MIN);
     expect(found?.attempts).toBe(0);
@@ -71,7 +68,7 @@ describe('DrizzleInvitationRepository', () => {
       'SELECT name, aggregate_id, tenant_id FROM outbox',
     );
     expect(rows).toEqual([
-      { name: InvitationEventNames.CREATED, aggregate_id: invitation.id, tenant_id: null },
+      { name: InvitationEventNames.CREATED, aggregate_id: invitation.id.value, tenant_id: null },
     ]);
   });
 
@@ -91,7 +88,7 @@ describe('DrizzleInvitationRepository', () => {
   });
 
   it('returns null when nothing matches', async () => {
-    expect(await repository.findById(newInvitationId())).toBeNull();
+    expect(await repository.findById(InvitationId.create())).toBeNull();
     expect(await repository.findPendingByEmail(Email.create('x@y.co'))).toBeNull();
   });
 
@@ -100,7 +97,7 @@ describe('DrizzleInvitationRepository', () => {
     await repository.save(invitation);
 
     invitation.accept(false, NOW);
-    invitation.regenerate('hash2', new Date(IN_15_MIN.getTime() + 1000));
+    invitation.regenerate('hash2', new Date(IN_15_MIN.getTime() + 1000), NOW);
     invitation.accept(false, NOW);
     invitation.accept(true, NOW);
     await repository.save(invitation);
@@ -118,7 +115,7 @@ describe('DrizzleInvitationRepository', () => {
     invitation.accept(true, NOW);
     await repository.save(invitation);
 
-    stale?.regenerate('hash2', new Date(IN_15_MIN.getTime() + 1000));
+    stale?.regenerate('hash2', new Date(IN_15_MIN.getTime() + 1000), NOW);
 
     await expect(repository.save(stale as Invitation)).rejects.toThrow(InvitationNotPendingError);
     const found = await repository.findById(invitation.id);
@@ -134,7 +131,7 @@ describe('DrizzleInvitationRepository', () => {
 
     const pending = newInvitation();
     await repository.save(pending);
-    expect((await repository.findPendingByEmail(pending.email))?.id).toBe(pending.id);
+    expect((await repository.findPendingByEmail(pending.email))?.id).toEqual(pending.id);
   });
 
   it('allows only one pending invitation per email', async () => {
@@ -145,7 +142,7 @@ describe('DrizzleInvitationRepository', () => {
 
   it('allows a new pending invitation after the previous one was accepted or revoked', async () => {
     const first = newInvitation();
-    first.revoke();
+    first.revoke(NOW);
     await repository.save(first);
 
     await repository.save(newInvitation());
@@ -154,26 +151,23 @@ describe('DrizzleInvitationRepository', () => {
   });
 
   it('requires the inviting admin to exist', async () => {
-    const orphan = Invitation.create(
-      {
-        email: Email.create('a@b.co'),
-        invitedBy: newAdminId(),
-        otpHash: 'hash',
-        expiresAt: IN_15_MIN,
-      },
-      newInvitationId(),
-      NOW,
-    );
+    const orphan = Invitation.create({
+      email: Email.create('a@b.co'),
+      invitedBy: AdminId.create(),
+      otpHash: 'hash',
+      expiresAt: IN_15_MIN,
+      createdAt: NOW,
+    });
 
     await expect(repository.save(orphan)).rejects.toMatchObject({ cause: { code: '23503' } });
   });
 
   it('fails loudly when the stored status is unknown', async () => {
-    const id = newInvitationId();
+    const id = InvitationId.create();
     await pool.query(
       `INSERT INTO invitations (id, email, invited_by, otp_hash, expires_at, status)
        VALUES ($1, 'z@b.co', $2, 'hash', $3, 'weird')`,
-      [id, ADMIN_ID, IN_15_MIN],
+      [id.value, ADMIN_ID.value, IN_15_MIN],
     );
 
     await expect(repository.findById(id)).rejects.toThrow(InvalidInvitationStatusError);

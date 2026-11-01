@@ -3,12 +3,12 @@ import { Pool } from 'pg';
 import { inject } from 'vitest';
 
 import { DatabaseContext } from '@common/database';
-import { type TenantId, newTenantId } from '@modules/tenants';
-import { type UserId, newUserId } from '@modules/users';
+import { TenantId } from '@modules/tenants';
+import { UserId } from '@modules/users';
 
 import { Workspace } from '../../domain/entities/workspace.js';
 import { WORKSPACE_VIEW_MEMBER_LIMIT } from '../../application/ports/workspace.query.js';
-import { type WorkspaceId, newWorkspaceId } from '../../domain/value-objects/workspace-id.js';
+import { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspaceName } from '../../domain/value-objects/workspace-name.js';
 import { WorkspaceRole } from '../../domain/value-objects/workspace-role.js';
 import { DrizzleWorkspaceQuery } from './drizzle-workspace.query.js';
@@ -20,16 +20,16 @@ const repository = new DrizzleWorkspaceRepository(context);
 const query = new DrizzleWorkspaceQuery(context);
 
 const insertTenant = async (): Promise<TenantId> => {
-  const id = newTenantId();
-  await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'T')", [id]);
+  const id = TenantId.create();
+  await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'T')", [id.value]);
   return id;
 };
 
 const insertUser = async (tenantId: TenantId, email: string, name: string): Promise<UserId> => {
-  const id = newUserId();
+  const id = UserId.create();
   await pool.query('INSERT INTO users (id, tenant_id, email, name) VALUES ($1, $2, $3, $4)', [
-    id,
-    tenantId,
+    id.value,
+    tenantId.value,
     email,
     name,
   ]);
@@ -50,10 +50,12 @@ const seedWorkspace = async (
 ): Promise<{ tenantId: TenantId; workspaceId: WorkspaceId; owner: UserId; added: UserId[] }> => {
   const tenantId = await insertTenant();
   const owner = await insertUser(tenantId, 'o@a.co', 'Olive');
-  const workspace = Workspace.create(
-    { tenantId, name: WorkspaceName.create('Acme'), ownerId: owner },
-    newWorkspaceId(),
-  );
+  const workspace = Workspace.create({
+    tenantId,
+    name: WorkspaceName.create('Acme'),
+    ownerId: owner,
+    createdAt: new Date(),
+  });
   await repository.save(workspace);
   const start = Date.now();
   await pool.query('UPDATE workspace_members SET created_at = $1', [new Date(start)]);
@@ -62,7 +64,7 @@ const seedWorkspace = async (
     const userId = await insertUser(tenantId, `m${index}@a.co`, `Member ${index}`);
     await pool.query(
       "INSERT INTO workspace_members (workspace_id, user_id, role, created_at) VALUES ($1, $2, 'admin', $3)",
-      [workspace.id, userId, new Date(start + (index + 1) * 60_000)],
+      [workspace.id.value, userId.value, new Date(start + (index + 1) * 60_000)],
     );
     added.push(userId);
   }
@@ -108,7 +110,7 @@ describe('DrizzleWorkspaceQuery', () => {
 
       const view = await query.findViewFor(tenantId, workspaceId, owner);
 
-      const ids = view?.members.map((member) => member.userId) ?? [];
+      const ids = view?.members.map((member) => member.userId.value) ?? [];
       expect(ids).toEqual([...ids].sort().reverse());
     });
 
@@ -119,7 +121,7 @@ describe('DrizzleWorkspaceQuery', () => {
       const stranger = await insertUser(otherTenantId, 's@b.co', 'Sam');
 
       expect(await query.findViewFor(tenantId, workspaceId, outsider)).toBeNull();
-      expect(await query.findViewFor(tenantId, newWorkspaceId(), owner)).toBeNull();
+      expect(await query.findViewFor(tenantId, WorkspaceId.create(), owner)).toBeNull();
       expect(await query.findViewFor(otherTenantId, workspaceId, owner)).toBeNull();
       expect(await query.findViewFor(otherTenantId, workspaceId, stranger)).toBeNull();
     });
@@ -158,7 +160,9 @@ describe('DrizzleWorkspaceQuery', () => {
         query.listMembers({ ...params, page: 1, limit: 20 });
 
       expect(await list({ tenantId, workspaceId, actorId: outsider })).toBeNull();
-      expect(await list({ tenantId, workspaceId: newWorkspaceId(), actorId: owner })).toBeNull();
+      expect(
+        await list({ tenantId, workspaceId: WorkspaceId.create(), actorId: owner }),
+      ).toBeNull();
       expect(await list({ tenantId: otherTenantId, workspaceId, actorId: owner })).toBeNull();
     });
   });

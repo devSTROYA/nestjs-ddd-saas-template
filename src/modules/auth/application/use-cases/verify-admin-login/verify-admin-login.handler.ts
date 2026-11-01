@@ -9,7 +9,7 @@ import type { Nullable } from '@common/types';
 import { ADMIN_REPOSITORY, type AdminRepository } from '@modules/admins';
 
 import { InvalidCredentialsError } from '../../../domain/errors/domain.error.js';
-import { newTokenFamilyId } from '../../../domain/value-objects/ids.js';
+import { TokenFamilyId } from '../../../domain/value-objects/ids.js';
 import { PrincipalType } from '../../../domain/value-objects/principal.js';
 import { LoginCodes } from '../../login-codes.service.js';
 import { assertVerifyAllowed, recordVerifyFailure } from '../../rate-limits.js';
@@ -50,8 +50,8 @@ export class VerifyAdminLoginHandler implements ICommandHandler<VerifyAdminLogin
       return null;
     }
     return this.sessions.issue(
-      { type: PrincipalType.ADMIN, id: admin.id },
-      newTokenFamilyId(),
+      { type: PrincipalType.ADMIN, id: admin.id.value },
+      TokenFamilyId.create(),
       now,
     );
   }

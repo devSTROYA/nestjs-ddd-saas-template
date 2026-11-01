@@ -1,7 +1,7 @@
-import { newAdminId } from '@modules/admins';
+import { AdminId } from '@modules/admins';
 
 import { RefreshTokenEventNames } from '../events/refresh-token.events.js';
-import { newRefreshTokenId, newTokenFamilyId } from '../value-objects/ids.js';
+import { RefreshTokenId, TokenFamilyId } from '../value-objects/ids.js';
 import { PrincipalType } from '../value-objects/principal.js';
 import { RefreshToken, RotationOutcome } from './refresh-token.js';
 
@@ -9,16 +9,13 @@ const NOW = new Date('2026-01-01T00:00:00Z');
 const IN_A_DAY = new Date(NOW.getTime() + 24 * 60 * 60 * 1000);
 
 const issue = (): RefreshToken =>
-  RefreshToken.issue(
-    {
-      familyId: newTokenFamilyId(),
-      principal: { type: PrincipalType.ADMIN, id: newAdminId() },
-      tokenHash: 'hash',
-      expiresAt: IN_A_DAY,
-    },
-    newRefreshTokenId(),
-    NOW,
-  );
+  RefreshToken.issue({
+    familyId: TokenFamilyId.create(),
+    principal: { type: PrincipalType.ADMIN, id: AdminId.create().value },
+    tokenHash: 'hash',
+    expiresAt: IN_A_DAY,
+    createdAt: NOW,
+  });
 
 describe('RefreshToken', () => {
   it('rotates once and marks itself used', () => {
@@ -38,7 +35,7 @@ describe('RefreshToken', () => {
   it('reports reuse for a revoked token', () => {
     const token = RefreshToken.restore(
       { ...issueProps(), usedAt: null, revokedAt: NOW },
-      newRefreshTokenId(),
+      RefreshTokenId.create(),
     );
 
     expect(token.rotate(NOW)).toBe(RotationOutcome.REUSED);
@@ -58,10 +55,10 @@ describe('RefreshToken', () => {
     expect(events).toMatchObject([
       {
         name: RefreshTokenEventNames.ISSUED,
-        aggregateId: token.id,
+        aggregateId: token.id.value,
         tenantId: null,
         occurredAt: NOW.toISOString(),
-        familyId: token.familyId,
+        familyId: token.familyId.value,
         principalType: PrincipalType.ADMIN,
       },
     ]);
@@ -77,7 +74,11 @@ describe('RefreshToken', () => {
     token.rotate(NOW);
 
     expect(token.pullEvents()).toMatchObject([
-      { name: RefreshTokenEventNames.ROTATED, aggregateId: token.id, familyId: token.familyId },
+      {
+        name: RefreshTokenEventNames.ROTATED,
+        aggregateId: token.id.value,
+        familyId: token.familyId.value,
+      },
     ]);
   });
 
@@ -93,7 +94,7 @@ describe('RefreshToken', () => {
   it('raises no event on restore', () => {
     const token = RefreshToken.restore(
       { ...issueProps(), usedAt: null, revokedAt: null },
-      newRefreshTokenId(),
+      RefreshTokenId.create(),
     );
 
     expect(token.pullEvents()).toEqual([]);
@@ -102,8 +103,8 @@ describe('RefreshToken', () => {
 
 function issueProps() {
   return {
-    familyId: newTokenFamilyId(),
-    principal: { type: PrincipalType.ADMIN, id: newAdminId() },
+    familyId: TokenFamilyId.create(),
+    principal: { type: PrincipalType.ADMIN, id: AdminId.create().value },
     tokenHash: 'hash',
     expiresAt: IN_A_DAY,
     createdAt: NOW,

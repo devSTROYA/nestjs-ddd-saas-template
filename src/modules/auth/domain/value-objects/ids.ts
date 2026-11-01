@@ -1,21 +1,37 @@
-import { newUuidV7, parseUuidV7 } from '@common/primitives';
+import { newUuidV7, parseUuidV7, UuidV7Id } from '@common/primitives';
 
-declare const loginChallengeIdBrand: unique symbol;
-declare const refreshTokenIdBrand: unique symbol;
-declare const tokenFamilyIdBrand: unique symbol;
+export class LoginChallengeId extends UuidV7Id {
+  declare private readonly loginChallengeIdBrand: true;
 
-export type LoginChallengeId = string & { readonly [loginChallengeIdBrand]: true };
-export type RefreshTokenId = string & { readonly [refreshTokenIdBrand]: true };
-export type TokenFamilyId = string & { readonly [tokenFamilyIdBrand]: true };
+  static create(): LoginChallengeId {
+    return new LoginChallengeId(newUuidV7());
+  }
 
-export const toLoginChallengeId = (value: string): LoginChallengeId =>
-  parseUuidV7(value) as LoginChallengeId;
-export const newLoginChallengeId = (): LoginChallengeId => newUuidV7() as LoginChallengeId;
+  static restore(value: string): LoginChallengeId {
+    return new LoginChallengeId(parseUuidV7(value));
+  }
+}
 
-export const toRefreshTokenId = (value: string): RefreshTokenId =>
-  parseUuidV7(value) as RefreshTokenId;
-export const newRefreshTokenId = (): RefreshTokenId => newUuidV7() as RefreshTokenId;
+export class RefreshTokenId extends UuidV7Id {
+  declare private readonly refreshTokenIdBrand: true;
 
-export const toTokenFamilyId = (value: string): TokenFamilyId =>
-  parseUuidV7(value) as TokenFamilyId;
-export const newTokenFamilyId = (): TokenFamilyId => newUuidV7() as TokenFamilyId;
+  static create(): RefreshTokenId {
+    return new RefreshTokenId(newUuidV7());
+  }
+
+  static restore(value: string): RefreshTokenId {
+    return new RefreshTokenId(parseUuidV7(value));
+  }
+}
+
+export class TokenFamilyId extends UuidV7Id {
+  declare private readonly tokenFamilyIdBrand: true;
+
+  static create(): TokenFamilyId {
+    return new TokenFamilyId(newUuidV7());
+  }
+
+  static restore(value: string): TokenFamilyId {
+    return new TokenFamilyId(parseUuidV7(value));
+  }
+}

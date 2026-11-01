@@ -2,7 +2,7 @@ import { AggregateRoot } from '@common/ddd';
 import type { Email } from '@common/primitives';
 
 import { AdminCreatedEvent, AdminEmailChangedEvent } from '../events/admin.events.js';
-import type { AdminId } from '../value-objects/admin-id.js';
+import { AdminId } from '../value-objects/admin-id.js';
 
 type Props = {
   email: Email;
@@ -11,17 +11,18 @@ type Props = {
 
 type CreateProps = {
   email: Email;
+  createdAt: Date;
 };
 
 export class Admin extends AggregateRoot<Props, AdminId> {
-  static create(props: CreateProps, id: AdminId): Admin {
-    const now = new Date();
-    const admin = new Admin({ email: props.email, createdAt: now }, id);
+  // INFO: the seeded admin has a fixed id.
+  static create(props: CreateProps, id: AdminId = AdminId.create()): Admin {
+    const admin = new Admin({ email: props.email, createdAt: props.createdAt }, id);
     admin.addEvent(
       new AdminCreatedEvent({
-        aggregateId: id,
+        aggregateId: id.value,
         tenantId: null,
-        occurredAt: now.toISOString(),
+        occurredAt: props.createdAt.toISOString(),
         email: props.email.value,
       }),
     );
@@ -40,13 +41,13 @@ export class Admin extends AggregateRoot<Props, AdminId> {
     return this.props.createdAt;
   }
 
-  changeEmail(email: Email): void {
+  changeEmail(email: Email, now: Date): void {
     this.props.email = email;
     this.addEvent(
       new AdminEmailChangedEvent({
-        aggregateId: this.id,
+        aggregateId: this.id.value,
         tenantId: null,
-        occurredAt: new Date().toISOString(),
+        occurredAt: now.toISOString(),
         email: email.value,
       }),
     );

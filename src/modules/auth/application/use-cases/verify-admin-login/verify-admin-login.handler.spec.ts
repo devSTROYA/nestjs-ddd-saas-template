@@ -1,6 +1,6 @@
 import { Email } from '@common/primitives';
 import { RateLimitExceededError } from '@common/rate-limit';
-import { Admin, newAdminId } from '@modules/admins';
+import { Admin } from '@modules/admins';
 
 import { MAX_LOGIN_ATTEMPTS } from '../../../domain/entities/login-challenge.js';
 import { InvalidCredentialsError } from '../../../domain/errors/domain.error.js';
@@ -27,7 +27,7 @@ const verify = (kit: AuthKit, otp: string, email = 'root@b.co', ip = IP) =>
 
 const withPendingLogin = async () => {
   const kit = createAuthKit();
-  const admin = Admin.create({ email: Email.create('root@b.co') }, newAdminId());
+  const admin = Admin.create({ email: Email.create('root@b.co'), createdAt: kit.clock.current });
   await kit.admins.save(admin);
   await kit.requestLogin.execute(new RequestAdminLoginCommand('root@b.co'));
   return { kit, admin };
@@ -41,13 +41,13 @@ describe('VerifyAdminLoginHandler', () => {
 
     expect(await kit.tokens.verifyAccessToken(session.accessToken)).toEqual({
       type: PrincipalType.ADMIN,
-      id: admin.id,
+      id: admin.id.value,
     });
     expect(session.expiresInSeconds).toBe(900);
     const [stored] = [...kit.refreshTokens.saved.values()];
     expect(stored?.tokenHash).toBe(kit.codec.hash(session.refreshToken));
     expect(stored?.tokenHash).not.toBe(session.refreshToken);
-    expect(stored?.principal).toEqual({ type: PrincipalType.ADMIN, id: admin.id });
+    expect(stored?.principal).toEqual({ type: PrincipalType.ADMIN, id: admin.id.value });
     expect(stored?.expiresAt).toEqual(new Date(kit.clock.current.getTime() + REFRESH_TOKEN_TTL_MS));
     expect([...kit.challenges.saved.values()][0]?.status).toBe(LoginChallengeStatus.CONSUMED);
   });

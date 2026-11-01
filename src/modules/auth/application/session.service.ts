@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 
 import { RefreshToken } from '../domain/entities/refresh-token.js';
-import { type TokenFamilyId, newRefreshTokenId } from '../domain/value-objects/ids.js';
+import type { TokenFamilyId } from '../domain/value-objects/ids.js';
 import type { Principal } from '../domain/value-objects/principal.js';
 import { REFRESH_TOKEN_CODEC, type RefreshTokenCodec } from './ports/refresh-token-codec.js';
 import {
@@ -28,16 +28,13 @@ export class SessionService {
   async issue(principal: Principal, familyId: TokenFamilyId, now: Date): Promise<Session> {
     const refreshToken = this.codec.generate();
     await this.refreshTokens.save(
-      RefreshToken.issue(
-        {
-          familyId,
-          principal,
-          tokenHash: this.codec.hash(refreshToken),
-          expiresAt: new Date(now.getTime() + REFRESH_TOKEN_TTL_MS),
-        },
-        newRefreshTokenId(),
-        now,
-      ),
+      RefreshToken.issue({
+        familyId,
+        principal,
+        tokenHash: this.codec.hash(refreshToken),
+        expiresAt: new Date(now.getTime() + REFRESH_TOKEN_TTL_MS),
+        createdAt: now,
+      }),
     );
     const access = await this.tokens.issueAccessToken(principal, now);
     return {

@@ -8,11 +8,7 @@ import type { RefreshTokenRepository } from '../../application/ports/refresh-tok
 import { RefreshToken } from '../../domain/entities/refresh-token.js';
 import { InvalidPrincipalTypeError } from '../../domain/errors/domain.error.js';
 import { RefreshTokenFamilyRevokedEvent } from '../../domain/events/refresh-token.events.js';
-import {
-  type TokenFamilyId,
-  toRefreshTokenId,
-  toTokenFamilyId,
-} from '../../domain/value-objects/ids.js';
+import { RefreshTokenId, TokenFamilyId } from '../../domain/value-objects/ids.js';
 import { isPrincipalType } from '../../domain/value-objects/principal.js';
 import { type RefreshTokenRow, refreshTokens } from './refresh-token.schema.js';
 
@@ -22,7 +18,7 @@ function toToken(row: RefreshTokenRow): RefreshToken {
   }
   return RefreshToken.restore(
     {
-      familyId: toTokenFamilyId(row.familyId),
+      familyId: TokenFamilyId.restore(row.familyId),
       principal: {
         type: row.principalType,
         id: row.principalId,
@@ -34,7 +30,7 @@ function toToken(row: RefreshTokenRow): RefreshToken {
       revokedAt: row.revokedAt,
       createdAt: row.createdAt,
     },
-    toRefreshTokenId(row.id),
+    RefreshTokenId.restore(row.id),
   );
 }
 
@@ -56,8 +52,8 @@ export class DrizzleRefreshTokenRepository implements RefreshTokenRepository {
       await this.context.client
         .insert(refreshTokens)
         .values({
-          id: token.id,
-          familyId: token.familyId,
+          id: token.id.value,
+          familyId: token.familyId.value,
           principalType: token.principal.type,
           principalId: token.principal.id,
           tenantId: token.principal.tenantId ?? null,
@@ -75,14 +71,14 @@ export class DrizzleRefreshTokenRepository implements RefreshTokenRepository {
       const revoked = await this.context.client
         .update(refreshTokens)
         .set({ revokedAt: now })
-        .where(and(eq(refreshTokens.familyId, familyId), isNull(refreshTokens.revokedAt)))
+        .where(and(eq(refreshTokens.familyId, familyId.value), isNull(refreshTokens.revokedAt)))
         .returning({ id: refreshTokens.id });
       if (revoked.length === 0) {
         return;
       }
       await appendEvents(this.context, [
         new RefreshTokenFamilyRevokedEvent({
-          aggregateId: familyId,
+          aggregateId: familyId.value,
           tenantId: null,
           occurredAt: now.toISOString(),
           revokedTokens: revoked.length,

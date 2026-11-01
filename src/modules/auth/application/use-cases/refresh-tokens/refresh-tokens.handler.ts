@@ -4,9 +4,9 @@ import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, type Clock } from '@common/clock';
 import { UNIT_OF_WORK, type UnitOfWork } from '@common/database';
 import type { Nullable } from '@common/types';
-import { ADMIN_REPOSITORY, type AdminRepository, toAdminId } from '@modules/admins';
-import { toTenantId } from '@modules/tenants';
-import { USER_REPOSITORY, type UserRepository, toUserId } from '@modules/users';
+import { ADMIN_REPOSITORY, AdminId, type AdminRepository } from '@modules/admins';
+import { TenantId } from '@modules/tenants';
+import { USER_REPOSITORY, UserId, type UserRepository } from '@modules/users';
 
 import { type RefreshToken, RotationOutcome } from '../../../domain/entities/refresh-token.js';
 import { InvalidRefreshTokenError } from '../../../domain/errors/domain.error.js';
@@ -64,11 +64,11 @@ export class RefreshTokensHandler implements ICommandHandler<RefreshTokensComman
   private async principalExists(token: RefreshToken): Promise<boolean> {
     const { type, id, tenantId } = token.principal;
     if (type === PrincipalType.ADMIN) {
-      return (await this.admins.findById(toAdminId(id))) !== null;
+      return (await this.admins.findById(AdminId.restore(id))) !== null;
     }
     return (
       tenantId !== undefined &&
-      (await this.users.findById(toTenantId(tenantId), toUserId(id))) !== null
+      (await this.users.findById(TenantId.restore(tenantId), UserId.restore(id))) !== null
     );
   }
 }

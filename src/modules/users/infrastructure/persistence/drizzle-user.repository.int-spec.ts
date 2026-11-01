@@ -7,34 +7,32 @@ import { DatabaseContext } from '@common/database';
 import { User } from '../../domain/entities/user.js';
 import { EmailAlreadyTakenError, UserIdConflictError } from '../../domain/errors/domain.error.js';
 import { Email } from '@common/primitives';
-import { newTenantId } from '@modules/tenants';
+import { TenantId } from '@modules/tenants';
 import { UserEventNames } from '../../domain/events/user.events.js';
-import { newUserId } from '../../domain/value-objects/user-id.js';
+import { UserId } from '../../domain/value-objects/user-id.js';
 import { UserName } from '../../domain/value-objects/user-name.js';
 import { DrizzleUserRepository } from './drizzle-user.repository.js';
 
-const TENANT_A = newTenantId();
-const TENANT_B = newTenantId();
+const TENANT_A = TenantId.create();
+const TENANT_B = TenantId.create();
 
 const pool = new Pool({ connectionString: inject('databaseUrl') });
 const context = new DatabaseContext(drizzle(pool));
 const repository = new DrizzleUserRepository(context);
 
 const newUser = (overrides: { tenantId?: typeof TENANT_A; email?: string } = {}) =>
-  User.create(
-    {
-      tenantId: overrides.tenantId ?? TENANT_A,
-      email: Email.create(overrides.email ?? 'a@b.co'),
-      name: UserName.create('Uz'),
-    },
-    newUserId(),
-  );
+  User.create({
+    tenantId: overrides.tenantId ?? TENANT_A,
+    email: Email.create(overrides.email ?? 'a@b.co'),
+    name: UserName.create('Uz'),
+    createdAt: new Date(),
+  });
 
 beforeEach(async () => {
   await pool.query('TRUNCATE TABLE users, tenants, outbox CASCADE');
   await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'A'), ($2, 'B')", [
-    TENANT_A,
-    TENANT_B,
+    TENANT_A.value,
+    TENANT_B.value,
   ]);
 });
 
@@ -59,8 +57,8 @@ describe('DrizzleUserRepository', () => {
     const byEmail = await repository.findByEmail(user.email);
 
     for (const found of [byId, byEmail]) {
-      expect(found?.id).toBe(user.id);
-      expect(found?.tenantId).toBe(TENANT_A);
+      expect(found?.id).toEqual(user.id);
+      expect(found?.tenantId).toEqual(TENANT_A);
       expect(found?.email.value).toBe('a@b.co');
       expect(found?.name.value).toBe('Uz');
       expect(found?.createdAt).toEqual(user.createdAt);
@@ -71,7 +69,7 @@ describe('DrizzleUserRepository', () => {
     const user = newUser();
     await repository.save(user);
 
-    expect(await outboxNames(user.id)).toEqual([UserEventNames.CREATED]);
+    expect(await outboxNames(user.id.value)).toEqual([UserEventNames.CREATED]);
   });
 
   it('leaves neither the user nor its events when the surrounding transaction fails', async () => {
@@ -85,18 +83,18 @@ describe('DrizzleUserRepository', () => {
     ).rejects.toThrow('boom');
 
     expect(await repository.findById(TENANT_A, user.id)).toBeNull();
-    expect(await outboxNames(user.id)).toEqual([]);
+    expect(await outboxNames(user.id.value)).toEqual([]);
   });
 
   it('returns null when nothing matches', async () => {
-    expect(await repository.findById(TENANT_A, newUserId())).toBeNull();
+    expect(await repository.findById(TENANT_A, UserId.create())).toBeNull();
     expect(await repository.findByEmail(Email.create('x@y.co'))).toBeNull();
   });
 
   it('updates the name when saving an existing user', async () => {
     const user = newUser();
     await repository.save(user);
-    user.rename(UserName.create('Xy'));
+    user.rename(UserName.create('Xy'), new Date());
     await repository.save(user);
 
     expect((await repository.findById(TENANT_A, user.id))?.name.value).toBe('Xy');
@@ -121,8 +119,13 @@ describe('DrizzleUserRepository', () => {
   it('refuses to overwrite a user that belongs to another tenant', async () => {
     const original = newUser();
     await repository.save(original);
-    const intruder = User.create(
-      { tenantId: TENANT_B, email: Email.create('evil@b.co'), name: UserName.create('Evil') },
+    const intruder = User.restore(
+      {
+        tenantId: TENANT_B,
+        email: Email.create('evil@b.co'),
+        name: UserName.create('Evil'),
+        createdAt: new Date(),
+      },
       original.id,
     );
 
@@ -136,7 +139,7 @@ describe('DrizzleUserRepository', () => {
 
     await repository.delete(TENANT_B, user.id);
     expect(await repository.findById(TENANT_A, user.id)).not.toBeNull();
-    await repository.delete(TENANT_A, newUserId());
+    await repository.delete(TENANT_A, UserId.create());
     expect(await repository.findByEmail(user.email)).not.toBeNull();
 
     await repository.delete(TENANT_A, user.id);
@@ -144,11 +147,11 @@ describe('DrizzleUserRepository', () => {
     expect(await repository.findByEmail(user.email)).toBeNull();
     const again = newUser({ tenantId: TENANT_B });
     await repository.save(again);
-    expect((await repository.findByEmail(again.email))?.id).toBe(again.id);
+    expect((await repository.findByEmail(again.email))?.id).toEqual(again.id);
   });
 
   it('rejects a user whose tenant does not exist', async () => {
-    const orphan = newUser({ tenantId: newTenantId() });
+    const orphan = newUser({ tenantId: TenantId.create() });
 
     await expect(repository.save(orphan)).rejects.toMatchObject({ cause: { code: '23503' } });
   });
@@ -156,9 +159,9 @@ describe('DrizzleUserRepository', () => {
   it('restricts deleting a tenant that still has users', async () => {
     await repository.save(newUser());
 
-    await expect(pool.query('DELETE FROM tenants WHERE id = $1', [TENANT_A])).rejects.toMatchObject(
-      { code: '23001' },
-    );
+    await expect(
+      pool.query('DELETE FROM tenants WHERE id = $1', [TENANT_A.value]),
+    ).rejects.toMatchObject({ code: '23001' });
   });
 
   describe('transactions', () => {

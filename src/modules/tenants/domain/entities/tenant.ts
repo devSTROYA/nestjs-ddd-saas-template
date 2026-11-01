@@ -1,7 +1,7 @@
 import { AggregateRoot } from '@common/ddd';
 
 import { TenantCreatedEvent, TenantRenamedEvent } from '../events/tenant.events.js';
-import type { TenantId } from '../value-objects/tenant-id.js';
+import { TenantId } from '../value-objects/tenant-id.js';
 import type { TenantName } from '../value-objects/tenant-name.js';
 
 type Props = {
@@ -11,17 +11,18 @@ type Props = {
 
 type CreateProps = {
   name: TenantName;
+  createdAt: Date;
 };
 
 export class Tenant extends AggregateRoot<Props, TenantId> {
-  static create(props: CreateProps, id: TenantId): Tenant {
-    const now = new Date();
-    const tenant = new Tenant({ name: props.name, createdAt: now }, id);
+  static create(props: CreateProps): Tenant {
+    const id = TenantId.create();
+    const tenant = new Tenant({ name: props.name, createdAt: props.createdAt }, id);
     tenant.addEvent(
       new TenantCreatedEvent({
-        aggregateId: id,
-        tenantId: id,
-        occurredAt: now.toISOString(),
+        aggregateId: id.value,
+        tenantId: id.value,
+        occurredAt: props.createdAt.toISOString(),
         tenantName: props.name.value,
       }),
     );
@@ -40,13 +41,13 @@ export class Tenant extends AggregateRoot<Props, TenantId> {
     return this.props.createdAt;
   }
 
-  rename(name: TenantName): void {
+  rename(name: TenantName, now: Date): void {
     this.props.name = name;
     this.addEvent(
       new TenantRenamedEvent({
-        aggregateId: this.id,
-        tenantId: this.id,
-        occurredAt: new Date().toISOString(),
+        aggregateId: this.id.value,
+        tenantId: this.id.value,
+        occurredAt: now.toISOString(),
         tenantName: name.value,
       }),
     );

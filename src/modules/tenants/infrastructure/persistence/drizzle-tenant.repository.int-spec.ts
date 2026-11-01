@@ -6,7 +6,7 @@ import { DatabaseContext } from '@common/database';
 
 import { Tenant } from '../../domain/entities/tenant.js';
 import { TenantEventNames } from '../../domain/events/tenant.events.js';
-import { newTenantId } from '../../domain/value-objects/tenant-id.js';
+import { TenantId } from '../../domain/value-objects/tenant-id.js';
 import { TenantName } from '../../domain/value-objects/tenant-name.js';
 import { DrizzleTenantRepository } from './drizzle-tenant.repository.js';
 
@@ -15,7 +15,7 @@ const context = new DatabaseContext(drizzle(pool));
 const repository = new DrizzleTenantRepository(context);
 
 const newTenant = (name = 'Acme') =>
-  Tenant.create({ name: TenantName.create(name) }, newTenantId());
+  Tenant.create({ name: TenantName.create(name), createdAt: new Date() });
 
 beforeEach(async () => {
   await pool.query('TRUNCATE TABLE tenants, outbox CASCADE');
@@ -40,7 +40,7 @@ describe('DrizzleTenantRepository', () => {
 
     const found = await repository.findById(tenant.id);
 
-    expect(found?.id).toBe(tenant.id);
+    expect(found?.id).toEqual(tenant.id);
     expect(found?.name.value).toBe('Acme');
     expect(found?.createdAt).toEqual(tenant.createdAt);
   });
@@ -49,7 +49,7 @@ describe('DrizzleTenantRepository', () => {
     const tenant = newTenant();
     await repository.save(tenant);
 
-    expect(await outboxNames(tenant.id)).toEqual([TenantEventNames.CREATED]);
+    expect(await outboxNames(tenant.id.value)).toEqual([TenantEventNames.CREATED]);
   });
 
   it('leaves neither the tenant nor its events when the surrounding transaction fails', async () => {
@@ -63,17 +63,17 @@ describe('DrizzleTenantRepository', () => {
     ).rejects.toThrow('boom');
 
     expect(await repository.findById(tenant.id)).toBeNull();
-    expect(await outboxNames(tenant.id)).toEqual([]);
+    expect(await outboxNames(tenant.id.value)).toEqual([]);
   });
 
   it('returns null when nothing matches', async () => {
-    expect(await repository.findById(newTenantId())).toBeNull();
+    expect(await repository.findById(TenantId.create())).toBeNull();
   });
 
   it('updates the name when saving an existing tenant', async () => {
     const tenant = newTenant();
     await repository.save(tenant);
-    tenant.rename(TenantName.create('Beta'));
+    tenant.rename(TenantName.create('Beta'), new Date());
     await repository.save(tenant);
 
     expect((await repository.findById(tenant.id))?.name.value).toBe('Beta');

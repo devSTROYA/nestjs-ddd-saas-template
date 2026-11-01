@@ -1,13 +1,13 @@
-import { newUuidV7, parseUuidV7 } from '@common/primitives';
+import { newUuidV7, parseUuidV7, UuidV7Id } from '@common/primitives';
 
-declare const workspaceIdBrand: unique symbol;
+export class WorkspaceId extends UuidV7Id {
+  declare private readonly workspaceIdBrand: true;
 
-export type WorkspaceId = string & { readonly [workspaceIdBrand]: true };
+  static create(): WorkspaceId {
+    return new WorkspaceId(newUuidV7());
+  }
 
-export function toWorkspaceId(value: string): WorkspaceId {
-  return parseUuidV7(value) as WorkspaceId;
-}
-
-export function newWorkspaceId(): WorkspaceId {
-  return newUuidV7() as WorkspaceId;
+  static restore(value: string): WorkspaceId {
+    return new WorkspaceId(parseUuidV7(value));
+  }
 }

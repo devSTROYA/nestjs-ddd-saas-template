@@ -1,7 +1,7 @@
 import { Email } from '@common/primitives';
 
 import { LoginChallengeEventNames } from '../events/login-challenge.events.js';
-import { newLoginChallengeId } from '../value-objects/ids.js';
+import { LoginChallengeId } from '../value-objects/ids.js';
 import { LoginChallengeStatus } from '../value-objects/login-challenge-status.js';
 import { LoginChallenge, MAX_LOGIN_ATTEMPTS } from './login-challenge.js';
 
@@ -9,16 +9,13 @@ const NOW = new Date('2026-01-01T00:00:00Z');
 const IN_15_MIN = new Date(NOW.getTime() + 15 * 60_000);
 
 const newChallenge = (): LoginChallenge =>
-  LoginChallenge.create(
-    {
-      tenantId: null,
-      email: Email.create('root@b.co'),
-      otpHash: 'hash',
-      expiresAt: IN_15_MIN,
-    },
-    newLoginChallengeId(),
-    NOW,
-  );
+  LoginChallenge.create({
+    tenantId: null,
+    email: Email.create('root@b.co'),
+    otpHash: 'hash',
+    expiresAt: IN_15_MIN,
+    createdAt: NOW,
+  });
 
 describe('LoginChallenge', () => {
   it('starts pending with zero attempts', () => {
@@ -66,7 +63,7 @@ describe('LoginChallenge', () => {
     challenge.verify(false, NOW);
     const later = new Date(IN_15_MIN.getTime() + 60_000);
 
-    challenge.regenerate('hash2', later);
+    challenge.regenerate('hash2', later, NOW);
 
     expect(challenge.otpHash).toBe('hash2');
     expect(challenge.expiresAt).toBe(later);
@@ -79,7 +76,7 @@ describe('LoginChallenge', () => {
     expect(challenge.pullEvents()).toMatchObject([
       {
         name: LoginChallengeEventNames.CREATED,
-        aggregateId: challenge.id,
+        aggregateId: challenge.id.value,
         tenantId: null,
         occurredAt: NOW.toISOString(),
         expiresAt: IN_15_MIN.toISOString(),
@@ -96,7 +93,7 @@ describe('LoginChallenge', () => {
     challenge.verify(true, NOW);
 
     expect(challenge.pullEvents()).toMatchObject([
-      { name: LoginChallengeEventNames.CONSUMED, aggregateId: challenge.id },
+      { name: LoginChallengeEventNames.CONSUMED, aggregateId: challenge.id.value },
     ]);
   });
 
@@ -127,11 +124,15 @@ describe('LoginChallenge', () => {
     challenge.pullEvents();
     const later = new Date(IN_15_MIN.getTime() + 60_000);
 
-    challenge.regenerate('secret-hash', later);
+    challenge.regenerate('secret-hash', later, IN_15_MIN);
 
     const events = challenge.pullEvents();
     expect(events).toMatchObject([
-      { name: LoginChallengeEventNames.REGENERATED, expiresAt: later.toISOString() },
+      {
+        name: LoginChallengeEventNames.REGENERATED,
+        expiresAt: later.toISOString(),
+        occurredAt: IN_15_MIN.toISOString(),
+      },
     ]);
     expect(JSON.stringify(events)).not.toContain('secret-hash');
   });
@@ -147,7 +148,7 @@ describe('LoginChallenge', () => {
         status: LoginChallengeStatus.PENDING,
         createdAt: NOW,
       },
-      newLoginChallengeId(),
+      LoginChallengeId.create(),
     );
 
     expect(challenge.pullEvents()).toEqual([]);

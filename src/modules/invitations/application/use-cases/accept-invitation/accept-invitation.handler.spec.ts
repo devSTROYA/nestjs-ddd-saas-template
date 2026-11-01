@@ -1,5 +1,5 @@
 import { Email } from '@common/primitives';
-import { newAdminId } from '@modules/admins';
+import { AdminId } from '@modules/admins';
 import { EmptyTenantNameError } from '@modules/tenants';
 import { EmptyNameError } from '@modules/users';
 
@@ -10,7 +10,7 @@ import {
   InvitationNotFoundError,
   InvitationNotPendingError,
 } from '../../../domain/errors/domain.error.js';
-import { type InvitationId, newInvitationId } from '../../../domain/value-objects/invitation-id.js';
+import { InvitationId } from '../../../domain/value-objects/invitation-id.js';
 import { InvitationStatus } from '../../../domain/value-objects/invitation-status.js';
 import {
   FakeInvitations,
@@ -33,17 +33,17 @@ const setup = async (expiresAt = IN_A_DAY) => {
   const tenants = new FakeTenants();
   const users = new FakeUsers();
   const workspaces = new FakeWorkspaces();
-  const id = newInvitationId();
+  const id = InvitationId.create();
   await invitations.save(
     Invitation.create(
       {
         email: Email.create('owner@acme.co'),
-        invitedBy: newAdminId(),
-        otpHash: fakeOtpService.hash(id, OTP),
+        invitedBy: AdminId.create(),
+        otpHash: fakeOtpService.hash(id.value, OTP),
         expiresAt,
+        createdAt: NOW,
       },
       id,
-      NOW,
     ),
   );
   invitations.saves = 0;
@@ -68,18 +68,18 @@ describe('AcceptInvitationHandler', () => {
 
     const result = await handler.execute(accept(id));
 
-    const workspace = workspaces.saved.get(result.workspaceId);
-    expect(workspace?.tenantId).toBe(result.tenantId);
+    const workspace = workspaces.saved.get(result.workspaceId.value);
+    expect(workspace?.tenantId).toEqual(result.tenantId);
     expect(workspace?.name.value).toBe('Acme');
     expect(workspace?.members).toEqual([{ userId: result.userId, role: 'owner' }]);
 
-    expect(tenants.saved.get(result.tenantId)?.name.value).toBe('Acme');
+    expect(tenants.saved.get(result.tenantId.value)?.name.value).toBe('Acme');
     expect(users.saved).toHaveLength(1);
-    expect(users.saved[0]?.id).toBe(result.userId);
-    expect(users.saved[0]?.tenantId).toBe(result.tenantId);
+    expect(users.saved[0]?.id).toEqual(result.userId);
+    expect(users.saved[0]?.tenantId).toEqual(result.tenantId);
     expect(users.saved[0]?.email.value).toBe('owner@acme.co');
     expect(users.saved[0]?.name.value).toBe('Uz');
-    expect(invitations.saved.get(id)?.status).toBe(InvitationStatus.ACCEPTED);
+    expect(invitations.saved.get(id.value)?.status).toBe(InvitationStatus.ACCEPTED);
   });
 
   it('persists the failed attempt and creates nothing on a wrong otp', async () => {
@@ -88,8 +88,8 @@ describe('AcceptInvitationHandler', () => {
     await expect(handler.execute(accept(id, '000000'))).rejects.toThrow(InvalidOtpError);
 
     expect(invitations.saves).toBe(1);
-    expect(invitations.saved.get(id)?.attempts).toBe(1);
-    expect(invitations.saved.get(id)?.status).toBe(InvitationStatus.PENDING);
+    expect(invitations.saved.get(id.value)?.attempts).toBe(1);
+    expect(invitations.saved.get(id.value)?.status).toBe(InvitationStatus.PENDING);
     expect(tenants.saved.size).toBe(0);
     expect(users.saved).toHaveLength(0);
   });
@@ -97,7 +97,7 @@ describe('AcceptInvitationHandler', () => {
   it('rejects an unknown invitation', async () => {
     const { handler } = await setup();
 
-    await expect(handler.execute(accept(newInvitationId()))).rejects.toThrow(
+    await expect(handler.execute(accept(InvitationId.create()))).rejects.toThrow(
       InvitationNotFoundError,
     );
   });
@@ -124,6 +124,6 @@ describe('AcceptInvitationHandler', () => {
     await expect(handler.execute(accept(id, OTP, '  '))).rejects.toThrow(EmptyTenantNameError);
     await expect(handler.execute(accept(id, OTP, 'Acme', '  '))).rejects.toThrow(EmptyNameError);
     expect(invitations.saves).toBe(0);
-    expect(invitations.saved.get(id)?.attempts).toBe(0);
+    expect(invitations.saved.get(id.value)?.attempts).toBe(0);
   });
 });

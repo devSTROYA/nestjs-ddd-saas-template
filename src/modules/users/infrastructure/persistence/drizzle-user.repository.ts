@@ -8,20 +8,20 @@ import { EmailAlreadyTakenError, UserIdConflictError } from '../../domain/errors
 import { saveAggregate } from '@common/outbox';
 import { Email } from '@common/primitives';
 import type { Nullable } from '@common/types';
-import { type TenantId, toTenantId } from '@modules/tenants';
-import { type UserId, toUserId } from '../../domain/value-objects/user-id.js';
+import { TenantId } from '@modules/tenants';
+import { UserId } from '../../domain/value-objects/user-id.js';
 import { UserName } from '../../domain/value-objects/user-name.js';
 import { type UserRow, users } from './user.schema.js';
 
 function toUser(row: UserRow): User {
   return User.restore(
     {
-      tenantId: toTenantId(row.tenantId),
+      tenantId: TenantId.restore(row.tenantId),
       email: Email.restore(row.email),
       name: UserName.restore(row.name),
       createdAt: row.createdAt,
     },
-    toUserId(row.id),
+    UserId.restore(row.id),
   );
 }
 
@@ -32,7 +32,7 @@ export class DrizzleUserRepository implements UserRepository {
     const [row] = await this.context.client
       .select()
       .from(users)
-      .where(and(eq(users.tenantId, tenantId), eq(users.id, id)));
+      .where(and(eq(users.tenantId, tenantId.value), eq(users.id, id.value)));
     return row ? toUser(row) : null;
   }
 
@@ -47,7 +47,7 @@ export class DrizzleUserRepository implements UserRepository {
   async delete(tenantId: TenantId, id: UserId): Promise<void> {
     await this.context.client
       .delete(users)
-      .where(and(eq(users.tenantId, tenantId), eq(users.id, id)));
+      .where(and(eq(users.tenantId, tenantId.value), eq(users.id, id.value)));
   }
 
   async save(user: User): Promise<void> {
@@ -57,8 +57,8 @@ export class DrizzleUserRepository implements UserRepository {
         const written = await this.context.client
           .insert(users)
           .values({
-            id: user.id,
-            tenantId: user.tenantId,
+            id: user.id.value,
+            tenantId: user.tenantId.value,
             email: user.email.value,
             name,
             createdAt: user.createdAt,
@@ -66,11 +66,11 @@ export class DrizzleUserRepository implements UserRepository {
           .onConflictDoUpdate({
             target: users.id,
             set: { name, updatedAt: new Date() },
-            setWhere: eq(users.tenantId, user.tenantId),
+            setWhere: eq(users.tenantId, user.tenantId.value),
           })
           .returning({ id: users.id });
         if (written.length === 0) {
-          throw new UserIdConflictError(user.id);
+          throw new UserIdConflictError(user.id.value);
         }
       } catch (error) {
         if (isUniqueViolation(error)) {

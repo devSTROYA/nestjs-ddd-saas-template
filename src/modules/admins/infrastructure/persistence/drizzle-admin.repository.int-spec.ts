@@ -9,7 +9,7 @@ import { SEED_ADMIN_ID, seedAdmin } from '../../application/seed-admin.js';
 import { Admin } from '../../domain/entities/admin.js';
 import { AdminEmailAlreadyTakenError } from '../../domain/errors/domain.error.js';
 import { AdminEventNames } from '../../domain/events/admin.events.js';
-import { newAdminId } from '../../domain/value-objects/admin-id.js';
+import { AdminId } from '../../domain/value-objects/admin-id.js';
 import { DrizzleAdminRepository } from './drizzle-admin.repository.js';
 
 const pool = new Pool({ connectionString: inject('databaseUrl') });
@@ -24,8 +24,10 @@ const outboxNames = async (aggregateId: string): Promise<string[]> => {
   return rows.map((row) => row.name);
 };
 
+const NOW = new Date('2026-01-01T00:00:00Z');
+
 const newAdmin = (email = 'root@b.co') =>
-  Admin.create({ email: Email.create(email) }, newAdminId());
+  Admin.create({ email: Email.create(email), createdAt: NOW });
 
 beforeEach(async () => {
   await pool.query('TRUNCATE TABLE admins, outbox CASCADE');
@@ -44,7 +46,7 @@ describe('DrizzleAdminRepository', () => {
     const byEmail = await repository.findByEmail(admin.email);
 
     for (const found of [byId, byEmail]) {
-      expect(found?.id).toBe(admin.id);
+      expect(found?.id).toEqual(admin.id);
       expect(found?.email.value).toBe('root@b.co');
       expect(found?.createdAt).toEqual(admin.createdAt);
     }
@@ -54,7 +56,7 @@ describe('DrizzleAdminRepository', () => {
     const admin = newAdmin();
     await repository.save(admin);
 
-    expect(await outboxNames(admin.id)).toEqual([AdminEventNames.CREATED]);
+    expect(await outboxNames(admin.id.value)).toEqual([AdminEventNames.CREATED]);
   });
 
   it('leaves neither the admin nor its events when the surrounding transaction fails', async () => {
@@ -68,11 +70,11 @@ describe('DrizzleAdminRepository', () => {
     ).rejects.toThrow('boom');
 
     expect(await repository.findById(admin.id)).toBeNull();
-    expect(await outboxNames(admin.id)).toEqual([]);
+    expect(await outboxNames(admin.id.value)).toEqual([]);
   });
 
   it('returns null when nothing matches', async () => {
-    expect(await repository.findById(newAdminId())).toBeNull();
+    expect(await repository.findById(AdminId.create())).toBeNull();
     expect(await repository.findByEmail(Email.create('x@y.co'))).toBeNull();
   });
 
@@ -85,7 +87,7 @@ describe('DrizzleAdminRepository', () => {
   it('updates the email when saving an existing admin', async () => {
     const admin = newAdmin('old@b.co');
     await repository.save(admin);
-    admin.changeEmail(Email.create('new@b.co'));
+    admin.changeEmail(Email.create('new@b.co'), NOW);
     await repository.save(admin);
 
     expect(await repository.findByEmail(Email.create('old@b.co'))).toBeNull();
@@ -93,20 +95,22 @@ describe('DrizzleAdminRepository', () => {
   });
 
   it('seeds once, then keeps the same admin when the seed email changes', async () => {
-    expect(await seedAdmin(repository, 'admin@mycompany.io')).toBe('created');
-    expect(await seedAdmin(repository, 'admin@mycompany.io')).toBe('unchanged');
-    expect(await seedAdmin(repository, 'admin@mycompany.com')).toBe('updated');
+    expect(await seedAdmin(repository, 'admin@mycompany.io', NOW)).toBe('created');
+    expect(await seedAdmin(repository, 'admin@mycompany.io', NOW)).toBe('unchanged');
+    expect(await seedAdmin(repository, 'admin@mycompany.com', NOW)).toBe('updated');
 
     const { rows } = await pool.query<{ id: string; email: string }>(
       'SELECT id, email FROM admins',
     );
-    expect(rows).toEqual([{ id: SEED_ADMIN_ID, email: 'admin@mycompany.com' }]);
+    expect(rows).toEqual([{ id: SEED_ADMIN_ID.value, email: 'admin@mycompany.com' }]);
   });
 
   it('refuses to seed an email that belongs to another admin', async () => {
-    await seedAdmin(repository, 'root@b.co');
+    await seedAdmin(repository, 'root@b.co', NOW);
     await repository.save(newAdmin('taken@b.co'));
 
-    await expect(seedAdmin(repository, 'taken@b.co')).rejects.toThrow(AdminEmailAlreadyTakenError);
+    await expect(seedAdmin(repository, 'taken@b.co', NOW)).rejects.toThrow(
+      AdminEmailAlreadyTakenError,
+    );
   });
 });

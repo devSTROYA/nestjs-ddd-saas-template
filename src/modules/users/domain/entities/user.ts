@@ -2,7 +2,7 @@ import { AggregateRoot } from '@common/ddd';
 import type { Email } from '@common/primitives';
 import type { TenantId } from '@modules/tenants';
 import { UserCreatedEvent, UserRenamedEvent } from '../events/user.events.js';
-import type { UserId } from '../value-objects/user-id.js';
+import { UserId } from '../value-objects/user-id.js';
 import type { UserName } from '../value-objects/user-name.js';
 
 type Props = {
@@ -16,20 +16,26 @@ type CreateProps = {
   tenantId: TenantId;
   email: Email;
   name: UserName;
+  createdAt: Date;
 };
 
 export class User extends AggregateRoot<Props, UserId> {
-  static create(props: CreateProps, id: UserId): User {
-    const now = new Date();
+  static create(props: CreateProps): User {
+    const id = UserId.create();
     const user = new User(
-      { tenantId: props.tenantId, email: props.email, name: props.name, createdAt: now },
+      {
+        tenantId: props.tenantId,
+        email: props.email,
+        name: props.name,
+        createdAt: props.createdAt,
+      },
       id,
     );
     user.addEvent(
       new UserCreatedEvent({
-        aggregateId: id,
-        tenantId: props.tenantId,
-        occurredAt: now.toISOString(),
+        aggregateId: id.value,
+        tenantId: props.tenantId.value,
+        occurredAt: props.createdAt.toISOString(),
         email: props.email.value,
         userName: props.name.value,
       }),
@@ -57,13 +63,13 @@ export class User extends AggregateRoot<Props, UserId> {
     return this.props.createdAt;
   }
 
-  rename(name: UserName): void {
+  rename(name: UserName, now: Date): void {
     this.props.name = name;
     this.addEvent(
       new UserRenamedEvent({
-        aggregateId: this.id,
-        tenantId: this.tenantId,
-        occurredAt: new Date().toISOString(),
+        aggregateId: this.id.value,
+        tenantId: this.tenantId.value,
+        occurredAt: now.toISOString(),
         userName: name.value,
       }),
     );

@@ -1,13 +1,13 @@
-import { newUuidV7, parseUuidV7 } from '@common/primitives';
+import { newUuidV7, parseUuidV7, UuidV7Id } from '@common/primitives';
 
-declare const adminIdBrand: unique symbol;
+export class AdminId extends UuidV7Id {
+  declare private readonly adminIdBrand: true;
 
-export type AdminId = string & { readonly [adminIdBrand]: true };
+  static create(): AdminId {
+    return new AdminId(newUuidV7());
+  }
 
-export function toAdminId(value: string): AdminId {
-  return parseUuidV7(value) as AdminId;
-}
-
-export function newAdminId(): AdminId {
-  return newUuidV7() as AdminId;
+  static restore(value: string): AdminId {
+    return new AdminId(parseUuidV7(value));
+  }
 }

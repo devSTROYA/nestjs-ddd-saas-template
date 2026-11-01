@@ -5,20 +5,13 @@ import { CLOCK, type Clock } from '@common/clock';
 import { UNIT_OF_WORK, type UnitOfWork } from '@common/database';
 import { OTP_SERVICE, type OtpService } from '@common/otp';
 import type { Nullable } from '@common/types';
-import {
-  TENANT_REPOSITORY,
-  Tenant,
-  TenantName,
-  type TenantRepository,
-  newTenantId,
-} from '@modules/tenants';
-import { USER_REPOSITORY, User, UserName, type UserRepository, newUserId } from '@modules/users';
+import { TENANT_REPOSITORY, Tenant, TenantName, type TenantRepository } from '@modules/tenants';
+import { USER_REPOSITORY, User, UserName, type UserRepository } from '@modules/users';
 import {
   WORKSPACE_REPOSITORY,
   Workspace,
   WorkspaceName,
   type WorkspaceRepository,
-  newWorkspaceId,
 } from '@modules/workspaces';
 
 import { InvalidOtpError, InvitationNotFoundError } from '../../../domain/errors/domain.error.js';
@@ -64,28 +57,33 @@ export class AcceptInvitationHandler implements ICommandHandler<
   ): Promise<Nullable<AcceptInvitationResult>> {
     const invitation = await this.invitations.findByIdForUpdate(command.invitationId);
     if (!invitation) {
-      throw new InvitationNotFoundError(command.invitationId);
+      throw new InvitationNotFoundError(command.invitationId.value);
     }
 
-    const otpMatches = this.otpService.matches(invitation.id, command.otp, invitation.otpHash);
-    if (!invitation.accept(otpMatches, this.clock.now())) {
+    const otpMatches = this.otpService.matches(
+      invitation.id.value,
+      command.otp,
+      invitation.otpHash,
+    );
+    const now = this.clock.now();
+    if (!invitation.accept(otpMatches, now)) {
       await this.invitations.save(invitation);
       return null;
     }
 
-    const tenant = Tenant.create({ name: tenantName }, newTenantId());
-    const user = User.create(
-      { tenantId: tenant.id, email: invitation.email, name: userName },
-      newUserId(),
-    );
-    const workspace = Workspace.create(
-      {
-        tenantId: tenant.id,
-        name: WorkspaceName.create(tenantName.value),
-        ownerId: user.id,
-      },
-      newWorkspaceId(),
-    );
+    const tenant = Tenant.create({ name: tenantName, createdAt: now });
+    const user = User.create({
+      tenantId: tenant.id,
+      email: invitation.email,
+      name: userName,
+      createdAt: now,
+    });
+    const workspace = Workspace.create({
+      tenantId: tenant.id,
+      name: WorkspaceName.create(tenantName.value),
+      ownerId: user.id,
+      createdAt: now,
+    });
     await this.tenants.save(tenant);
     await this.users.save(user);
     await this.workspaces.save(workspace);

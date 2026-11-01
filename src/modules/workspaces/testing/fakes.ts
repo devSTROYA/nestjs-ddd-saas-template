@@ -1,14 +1,14 @@
+import { SystemClock } from '@common/clock';
 import type { UnitOfWork } from '@common/database';
 import { Email } from '@common/primitives';
 import type { Nullable } from '@common/types';
-import { type TenantId, newTenantId } from '@modules/tenants';
+import { TenantId } from '@modules/tenants';
 import {
   EmailAlreadyTakenError,
   User,
+  UserId,
   UserName,
-  type UserId,
   type UserRepository,
-  newUserId,
 } from '@modules/users';
 
 import {
@@ -25,15 +25,15 @@ import { LeaveWorkspaceHandler } from '../application/use-cases/leave-workspace/
 import { ListWorkspaceMembersHandler } from '../application/use-cases/list-workspace-members/list-workspace-members.handler.js';
 import { RemoveWorkspaceMemberHandler } from '../application/use-cases/remove-workspace-member/remove-workspace-member.handler.js';
 import { Workspace } from '../domain/entities/workspace.js';
-import { type WorkspaceId, newWorkspaceId } from '../domain/value-objects/workspace-id.js';
+import { WorkspaceId } from '../domain/value-objects/workspace-id.js';
 import { WorkspaceName } from '../domain/value-objects/workspace-name.js';
 
 export class FakeWorkspaces implements WorkspaceRepository {
   readonly saved = new Map<string, Workspace>();
 
   findById(tenantId: TenantId, id: WorkspaceId): Promise<Nullable<Workspace>> {
-    const found = this.saved.get(id);
-    return Promise.resolve(found?.tenantId === tenantId ? found : null);
+    const found = this.saved.get(id.value);
+    return Promise.resolve(found?.tenantId.equals(tenantId) ? found : null);
   }
 
   findByIdForUpdate(tenantId: TenantId, id: WorkspaceId): Promise<Nullable<Workspace>> {
@@ -41,7 +41,7 @@ export class FakeWorkspaces implements WorkspaceRepository {
   }
 
   save(workspace: Workspace): Promise<void> {
-    this.saved.set(workspace.id, workspace);
+    this.saved.set(workspace.id.value, workspace);
     return Promise.resolve();
   }
 }
@@ -50,8 +50,8 @@ export class FakeUsers implements UserRepository {
   readonly saved = new Map<string, User>();
 
   findById(tenantId: TenantId, id: UserId): Promise<Nullable<User>> {
-    const found = this.saved.get(id);
-    return Promise.resolve(found?.tenantId === tenantId ? found : null);
+    const found = this.saved.get(id.value);
+    return Promise.resolve(found?.tenantId.equals(tenantId) ? found : null);
   }
 
   findByEmail(email: Email): Promise<Nullable<User>> {
@@ -61,18 +61,18 @@ export class FakeUsers implements UserRepository {
 
   save(user: User): Promise<void> {
     const taken = [...this.saved.values()].some(
-      (other) => other.id !== user.id && other.email.equals(user.email),
+      (other) => !other.id.equals(user.id) && other.email.equals(user.email),
     );
     if (taken) {
       return Promise.reject(new EmailAlreadyTakenError(user.email.value));
     }
-    this.saved.set(user.id, user);
+    this.saved.set(user.id.value, user);
     return Promise.resolve();
   }
 
   delete(tenantId: TenantId, id: UserId): Promise<void> {
-    if (this.saved.get(id)?.tenantId === tenantId) {
-      this.saved.delete(id);
+    if (this.saved.get(id.value)?.tenantId.equals(tenantId)) {
+      this.saved.delete(id.value);
     }
     return Promise.resolve();
   }
@@ -124,7 +124,7 @@ export class FakeWorkspaceQuery implements WorkspaceQuery {
   private newestFirst(workspace: Workspace): WorkspaceMemberView[] {
     return workspace.members
       .flatMap((member) => {
-        const user = this.users.saved.get(member.userId);
+        const user = this.users.saved.get(member.userId.value);
         return user
           ? [
               {
@@ -145,15 +145,20 @@ export const fakeUnitOfWork: UnitOfWork = { run: (work) => work() };
 export function createWorkspaceKit() {
   const workspaces = new FakeWorkspaces();
   const users = new FakeUsers();
-  const tenantId = newTenantId();
-  const owner = User.create(
-    { tenantId, email: Email.create('owner@acme.co'), name: UserName.create('Owner') },
-    newUserId(),
-  );
-  const workspace = Workspace.create(
-    { tenantId, name: WorkspaceName.create('Acme'), ownerId: owner.id },
-    newWorkspaceId(),
-  );
+  const tenantId = TenantId.create();
+  const clock = new SystemClock();
+  const owner = User.create({
+    tenantId,
+    email: Email.create('owner@acme.co'),
+    name: UserName.create('Owner'),
+    createdAt: clock.now(),
+  });
+  const workspace = Workspace.create({
+    tenantId,
+    name: WorkspaceName.create('Acme'),
+    ownerId: owner.id,
+    createdAt: clock.now(),
+  });
   void users.save(owner);
   void workspaces.save(workspace);
 
@@ -163,10 +168,11 @@ export function createWorkspaceKit() {
     tenantId,
     owner,
     workspace,
-    add: new AddWorkspaceMemberHandler(workspaces, users, fakeUnitOfWork),
-    changeRole: new ChangeWorkspaceMemberRoleHandler(workspaces, fakeUnitOfWork),
-    remove: new RemoveWorkspaceMemberHandler(workspaces, users, fakeUnitOfWork),
-    leave: new LeaveWorkspaceHandler(workspaces, users, fakeUnitOfWork),
+    clock,
+    add: new AddWorkspaceMemberHandler(workspaces, users, fakeUnitOfWork, clock),
+    changeRole: new ChangeWorkspaceMemberRoleHandler(workspaces, fakeUnitOfWork, clock),
+    remove: new RemoveWorkspaceMemberHandler(workspaces, users, fakeUnitOfWork, clock),
+    leave: new LeaveWorkspaceHandler(workspaces, users, fakeUnitOfWork, clock),
     get: new GetWorkspaceHandler(new FakeWorkspaceQuery(workspaces, users)),
     list: new ListWorkspaceMembersHandler(new FakeWorkspaceQuery(workspaces, users)),
   };

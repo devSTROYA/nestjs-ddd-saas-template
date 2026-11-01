@@ -8,13 +8,13 @@ import type { Nullable } from '@common/types';
 import type { AdminRepository } from '../../application/ports/admin.repository.js';
 import { Admin } from '../../domain/entities/admin.js';
 import { AdminEmailAlreadyTakenError } from '../../domain/errors/domain.error.js';
-import { type AdminId, toAdminId } from '../../domain/value-objects/admin-id.js';
+import { AdminId } from '../../domain/value-objects/admin-id.js';
 import { type AdminRow, admins } from './admin.schema.js';
 
 function toAdmin(row: AdminRow): Admin {
   return Admin.restore(
     { email: Email.restore(row.email), createdAt: row.createdAt },
-    toAdminId(row.id),
+    AdminId.restore(row.id),
   );
 }
 
@@ -22,7 +22,7 @@ export class DrizzleAdminRepository implements AdminRepository {
   constructor(private readonly context: DatabaseContext) {}
 
   async findById(id: AdminId): Promise<Nullable<Admin>> {
-    const [row] = await this.context.client.select().from(admins).where(eq(admins.id, id));
+    const [row] = await this.context.client.select().from(admins).where(eq(admins.id, id.value));
     return row ? toAdmin(row) : null;
   }
 
@@ -39,7 +39,7 @@ export class DrizzleAdminRepository implements AdminRepository {
       try {
         await this.context.client
           .insert(admins)
-          .values({ id: admin.id, email: admin.email.value, createdAt: admin.createdAt })
+          .values({ id: admin.id.value, email: admin.email.value, createdAt: admin.createdAt })
           .onConflictDoUpdate({
             target: admins.id,
             set: { email: admin.email.value, updatedAt: new Date() },

@@ -13,14 +13,14 @@ export class EmailMailer implements Mailer {
       text: [
         'You have been invited to create a workspace.',
         '',
-        `Invitation ID: ${message.invitationId}`,
+        `Invitation ID: ${message.invitationId.value}`,
         `One-time code: ${message.otp}`,
         '',
         `Use both to accept the invitation before ${expires}.`,
       ].join('\n'),
       html:
         '<p>You have been invited to create a workspace.</p>' +
-        `<p>Invitation ID: <strong>${message.invitationId}</strong><br>` +
+        `<p>Invitation ID: <strong>${message.invitationId.value}</strong><br>` +
         `One-time code: <strong>${message.otp}</strong></p>` +
         `<p>Use both to accept the invitation before ${expires}.</p>`,
     });

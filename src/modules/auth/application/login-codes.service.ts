@@ -9,7 +9,7 @@ import type { TenantId } from '@modules/tenants';
 
 import { LoginChallenge } from '../domain/entities/login-challenge.js';
 import { LoginChallengeAlreadyPendingError } from '../domain/errors/domain.error.js';
-import { newLoginChallengeId } from '../domain/value-objects/ids.js';
+import { LoginChallengeId } from '../domain/value-objects/ids.js';
 import {
   LOGIN_CHALLENGE_REPOSITORY,
   type LoginChallengeRepository,
@@ -64,7 +64,7 @@ export class LoginCodes {
       return false;
     }
     const verified = challenge.verify(
-      this.otpService.matches(challenge.id, otp, challenge.otpHash),
+      this.otpService.matches(challenge.id.value, otp, challenge.otpHash),
       now,
     );
     await this.challenges.save(challenge);
@@ -80,14 +80,13 @@ export class LoginCodes {
   ): Promise<LoginChallenge> {
     const pending = await this.challenges.findPendingByEmail(email, tenantId);
     if (pending) {
-      pending.regenerate(this.otpService.hash(pending.id, otp), expiresAt);
+      pending.regenerate(this.otpService.hash(pending.id.value, otp), expiresAt, now);
       return pending;
     }
-    const id = newLoginChallengeId();
+    const id = LoginChallengeId.create();
     return LoginChallenge.create(
-      { tenantId, email, otpHash: this.otpService.hash(id, otp), expiresAt },
+      { tenantId, email, otpHash: this.otpService.hash(id.value, otp), expiresAt, createdAt: now },
       id,
-      now,
     );
   }
 }

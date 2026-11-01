@@ -1,6 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 
+import { CLOCK, type Clock } from '@common/clock';
 import { UNIT_OF_WORK, type UnitOfWork } from '@common/database';
 import { Email } from '@common/primitives';
 import {
@@ -9,7 +10,6 @@ import {
   User,
   UserName,
   type UserRepository,
-  newUserId,
 } from '@modules/users';
 
 import { WorkspaceNotFoundError } from '../../../domain/errors/domain.error.js';
@@ -32,6 +32,7 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
     @Inject(WORKSPACE_REPOSITORY) private readonly workspaces: WorkspaceRepository,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
     @Inject(UNIT_OF_WORK) private readonly unitOfWork: UnitOfWork,
+    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   async execute(command: AddWorkspaceMemberCommand): Promise<AddWorkspaceMemberResult> {
@@ -53,17 +54,20 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
     workspace.assertOwner(command.actorId);
 
     const existing = await this.users.findByEmail(email);
-    if (existing && existing.tenantId !== command.tenantId) {
+    if (existing && !existing.tenantId.equals(command.tenantId)) {
       throw new EmailAlreadyTakenError(email.value);
     }
+    const now = this.clock.now();
     const user =
       existing ??
-      User.create(
-        { tenantId: command.tenantId, email, name: UserName.create(command.name) },
-        newUserId(),
-      );
+      User.create({
+        tenantId: command.tenantId,
+        email,
+        name: UserName.create(command.name),
+        createdAt: now,
+      });
 
-    workspace.addMember(user.id, command.role);
+    workspace.addMember(user.id, command.role, now);
     if (!existing) {
       await this.users.save(user);
     }

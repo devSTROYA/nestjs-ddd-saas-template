@@ -1,13 +1,13 @@
-import { newUuidV7, parseUuidV7 } from '@common/primitives';
+import { newUuidV7, parseUuidV7, UuidV7Id } from '@common/primitives';
 
-declare const userIdBrand: unique symbol;
+export class UserId extends UuidV7Id {
+  declare private readonly userIdBrand: true;
 
-export type UserId = string & { readonly [userIdBrand]: true };
+  static create(): UserId {
+    return new UserId(newUuidV7());
+  }
 
-export function toUserId(value: string): UserId {
-  return parseUuidV7(value) as UserId;
-}
-
-export function newUserId(): UserId {
-  return newUuidV7() as UserId;
+  static restore(value: string): UserId {
+    return new UserId(parseUuidV7(value));
+  }
 }

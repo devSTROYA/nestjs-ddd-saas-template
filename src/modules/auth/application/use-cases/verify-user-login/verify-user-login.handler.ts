@@ -9,7 +9,7 @@ import type { Nullable } from '@common/types';
 import { USER_REPOSITORY, type UserRepository } from '@modules/users';
 
 import { InvalidCredentialsError } from '../../../domain/errors/domain.error.js';
-import { newTokenFamilyId } from '../../../domain/value-objects/ids.js';
+import { TokenFamilyId } from '../../../domain/value-objects/ids.js';
 import { PrincipalType } from '../../../domain/value-objects/principal.js';
 import { LoginCodes } from '../../login-codes.service.js';
 import { assertVerifyAllowed, recordVerifyFailure } from '../../rate-limits.js';
@@ -50,8 +50,8 @@ export class VerifyUserLoginHandler implements ICommandHandler<VerifyUserLoginCo
       return null;
     }
     return this.sessions.issue(
-      { type: PrincipalType.USER, id: user.id, tenantId: user.tenantId },
-      newTokenFamilyId(),
+      { type: PrincipalType.USER, id: user.id.value, tenantId: user.tenantId.value },
+      TokenFamilyId.create(),
       now,
     );
   }

@@ -3,8 +3,8 @@ import { and, eq, notInArray } from 'drizzle-orm';
 import type { DatabaseContext } from '@common/database';
 import { saveAggregate } from '@common/outbox';
 import type { Nullable } from '@common/types';
-import { type TenantId, toTenantId } from '@modules/tenants';
-import { toUserId } from '@modules/users';
+import { TenantId } from '@modules/tenants';
+import { UserId } from '@modules/users';
 
 import type { WorkspaceRepository } from '../../application/ports/workspace.repository.js';
 import { Workspace } from '../../domain/entities/workspace.js';
@@ -12,7 +12,7 @@ import {
   InvalidWorkspaceRoleError,
   WorkspaceIdConflictError,
 } from '../../domain/errors/domain.error.js';
-import { type WorkspaceId, toWorkspaceId } from '../../domain/value-objects/workspace-id.js';
+import { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspaceName } from '../../domain/value-objects/workspace-name.js';
 import { isWorkspaceRole } from '../../domain/value-objects/workspace-role.js';
 import { workspaceMembers, type WorkspaceMemberRow } from './workspace-member.schema.js';
@@ -21,20 +21,20 @@ import { workspaces, type WorkspaceRow } from './workspace.schema.js';
 function toWorkspace(row: WorkspaceRow, memberRows: readonly WorkspaceMemberRow[]): Workspace {
   return Workspace.restore(
     {
-      tenantId: toTenantId(row.tenantId),
+      tenantId: TenantId.restore(row.tenantId),
       name: WorkspaceName.restore(row.name),
       roles: new Map(
         memberRows.map((member) => {
           if (!isWorkspaceRole(member.role)) {
             throw new InvalidWorkspaceRoleError(member.role);
           }
-          return [toUserId(member.userId), member.role];
+          return [UserId.restore(member.userId).value, member.role];
         }),
       ),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     },
-    toWorkspaceId(row.id),
+    WorkspaceId.restore(row.id),
   );
 }
 
@@ -59,8 +59,8 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     const written = await client
       .insert(workspaces)
       .values({
-        id: workspace.id,
-        tenantId: workspace.tenantId,
+        id: workspace.id.value,
+        tenantId: workspace.tenantId.value,
         name,
         createdAt: workspace.createdAt,
         updatedAt: workspace.updatedAt,
@@ -68,27 +68,31 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
       .onConflictDoUpdate({
         target: workspaces.id,
         set: { name, updatedAt: workspace.updatedAt },
-        setWhere: eq(workspaces.tenantId, workspace.tenantId),
+        setWhere: eq(workspaces.tenantId, workspace.tenantId.value),
       })
       .returning({ id: workspaces.id });
     if (written.length === 0) {
-      throw new WorkspaceIdConflictError(workspace.id);
+      throw new WorkspaceIdConflictError(workspace.id.value);
     }
 
     const members = workspace.members;
     await client.delete(workspaceMembers).where(
       and(
-        eq(workspaceMembers.workspaceId, workspace.id),
+        eq(workspaceMembers.workspaceId, workspace.id.value),
         notInArray(
           workspaceMembers.userId,
-          members.map((member) => member.userId),
+          members.map((member) => member.userId.value),
         ),
       ),
     );
     for (const member of members) {
       await client
         .insert(workspaceMembers)
-        .values({ workspaceId: workspace.id, userId: member.userId, role: member.role })
+        .values({
+          workspaceId: workspace.id.value,
+          userId: member.userId.value,
+          role: member.role,
+        })
         .onConflictDoUpdate({
           target: [workspaceMembers.workspaceId, workspaceMembers.userId],
           set: { role: member.role, updatedAt: new Date() },
@@ -104,7 +108,7 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     const query = this.context.client
       .select()
       .from(workspaces)
-      .where(and(eq(workspaces.id, id), eq(workspaces.tenantId, tenantId)));
+      .where(and(eq(workspaces.id, id.value), eq(workspaces.tenantId, tenantId.value)));
     const [row] = await (lock ? query.for('update') : query);
     if (!row) {
       return null;

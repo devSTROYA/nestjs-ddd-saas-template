@@ -1,13 +1,13 @@
-import { newUuidV7, parseUuidV7 } from '@common/primitives';
+import { newUuidV7, parseUuidV7, UuidV7Id } from '@common/primitives';
 
-declare const invitationIdBrand: unique symbol;
+export class InvitationId extends UuidV7Id {
+  declare private readonly invitationIdBrand: true;
 
-export type InvitationId = string & { readonly [invitationIdBrand]: true };
+  static create(): InvitationId {
+    return new InvitationId(newUuidV7());
+  }
 
-export function toInvitationId(value: string): InvitationId {
-  return parseUuidV7(value) as InvitationId;
-}
-
-export function newInvitationId(): InvitationId {
-  return newUuidV7() as InvitationId;
+  static restore(value: string): InvitationId {
+    return new InvitationId(parseUuidV7(value));
+  }
 }

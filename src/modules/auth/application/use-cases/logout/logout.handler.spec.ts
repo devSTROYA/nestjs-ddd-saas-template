@@ -1,5 +1,5 @@
 import { Email } from '@common/primitives';
-import { Admin, newAdminId } from '@modules/admins';
+import { Admin } from '@modules/admins';
 
 import { InvalidRefreshTokenError } from '../../../domain/errors/domain.error.js';
 import { IP, OTP, createAuthKit } from '../../../testing/fakes.js';
@@ -10,7 +10,9 @@ import { LogoutCommand } from './logout.command.js';
 
 const loggedIn = async () => {
   const kit = createAuthKit();
-  await kit.admins.save(Admin.create({ email: Email.create('root@b.co') }, newAdminId()));
+  await kit.admins.save(
+    Admin.create({ email: Email.create('root@b.co'), createdAt: kit.clock.current }),
+  );
   await kit.requestLogin.execute(new RequestAdminLoginCommand('root@b.co'));
   const session = await kit.verifyLogin.execute(new VerifyAdminLoginCommand('root@b.co', OTP, IP));
   return { kit, session };

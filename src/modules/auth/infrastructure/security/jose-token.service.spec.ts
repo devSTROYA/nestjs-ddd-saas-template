@@ -1,7 +1,7 @@
 import { SignJWT } from 'jose';
 
-import { newAdminId } from '@modules/admins';
-import { newTenantId } from '@modules/tenants';
+import { AdminId } from '@modules/admins';
+import { TenantId } from '@modules/tenants';
 
 import { ACCESS_TOKEN_TTL_SECONDS } from '../../application/token-lifetimes.js';
 import { PrincipalType } from '../../domain/value-objects/principal.js';
@@ -9,7 +9,7 @@ import { JoseTokenService } from './jose-token.service.js';
 
 const SECRET = 's'.repeat(32);
 const NOW = new Date('2026-01-01T00:00:00Z');
-const PRINCIPAL = { type: PrincipalType.ADMIN, id: newAdminId() };
+const PRINCIPAL = { type: PrincipalType.ADMIN, id: AdminId.create().value };
 
 describe('JoseTokenService', () => {
   const service = new JoseTokenService(SECRET);
@@ -22,7 +22,11 @@ describe('JoseTokenService', () => {
   });
 
   it('carries the tenant of a user and rejects a user token without one', async () => {
-    const user = { type: PrincipalType.USER, id: newAdminId(), tenantId: newTenantId() };
+    const user = {
+      type: PrincipalType.USER,
+      id: AdminId.create().value,
+      tenantId: TenantId.create().value,
+    };
     const { token } = await service.issueAccessToken(user, NOW);
     const noTenant = await service.issueAccessToken({ type: PrincipalType.USER, id: user.id }, NOW);
 
