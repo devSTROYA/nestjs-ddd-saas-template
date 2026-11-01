@@ -27,7 +27,14 @@ describe('AppController (e2e)', () => {
       .overrideProvider(ThrottlerStorage)
       .useValue(new ThrottlerStorageService())
       .overrideProvider(PARAMS_PROVIDER_TOKEN)
-      .useValue(loggerParams({ level: 'info', quietPath: '/v1/health', stream: logStream }))
+      .useValue(
+        loggerParams({
+          level: 'info',
+          quietPath: '/v1/health',
+          nodeEnv: 'test',
+          stream: logStream,
+        }),
+      )
       .compile();
 
     app = moduleFixture.createNestApplication<NestFastifyApplication>(

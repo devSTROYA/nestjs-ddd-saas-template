@@ -37,6 +37,7 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module.js';
         loggerParams({
           level: config.get('LOG_LEVEL', { infer: true }),
           quietPath: `/${API_PREFIX}/health`,
+          nodeEnv: config.get('NODE_ENV', { infer: true }),
         }),
     }),
     CqrsModule.forRoot(),

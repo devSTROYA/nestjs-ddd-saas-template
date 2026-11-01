@@ -201,7 +201,10 @@ changes, update this file in the same change.
   Fastify's `genReqId` and stores it on the raw request, where pino-http reuses it, so the header,
   the error body `requestId` and every log line's `reqId` (including Nest `Logger` calls during
   the request) are identical. `main.ts` uses it for the app; the outbox worker, seed and migrate
-  scripts stay on Nest's default logger.
+  scripts stay on Nest's default logger. Only `NODE_ENV=development` switches to human-readable
+  output via `pino-pretty` (single line, colorized, no severity field); production and test stay
+  JSON. `pino-pretty` is a devDependency, so images that prune dev deps must not run with
+  `NODE_ENV=development`.
 - **Ids in the URL are validated in the handler** with `toInvitationId`, so a malformed id answers
   `422 ID_INVALID` instead of reaching the database.
 - **Controllers stay thin:** parse and validate, dispatch a command on the `CommandBus` (injected

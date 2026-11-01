@@ -15,6 +15,7 @@ import type { Nullable } from '@common/types';
 
 import {
   MAX_OUTBOX_ATTEMPTS,
+  MAX_OUTBOX_BACKOFF_MS,
   MAX_OUTBOX_BATCHES_PER_RUN,
   MAX_OUTBOX_ERROR_LENGTH,
   OUTBOX_BATCH_SIZE,
@@ -34,6 +35,7 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
   private running: Promise<void> = Promise.resolve();
   private active = false;
   private stopping = false;
+  private failures = 0;
 
   constructor(
     @Inject(DATABASE_CONTEXT) private readonly context: DatabaseContext,
@@ -103,7 +105,8 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
     if (!this.active) {
       return;
     }
-    const interval = this.config.get('OUTBOX_POLL_INTERVAL_MS', { infer: true });
+    const base = this.config.get('OUTBOX_POLL_INTERVAL_MS', { infer: true });
+    const interval = Math.min(base * 2 ** this.failures, Math.max(base, MAX_OUTBOX_BACKOFF_MS));
     this.timer = setTimeout(() => {
       this.running = this.tick();
     }, interval);
@@ -112,11 +115,24 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
   private async tick(): Promise<void> {
     try {
       await this.drainUntilIdle();
+      if (this.failures > 0) {
+        this.logger.log(`Outbox relay recovered after ${this.failures} failed batches`);
+      }
+      this.failures = 0;
     } catch (error) {
-      this.logger.error(`Outbox batch failed: ${describe(error)}`);
+      this.logBatchFailure(error);
+      this.failures += 1;
     } finally {
       this.schedule();
     }
+  }
+
+  private logBatchFailure(error: unknown): void {
+    if (this.failures === 0) {
+      this.logger.error(`Outbox batch failed, retrying with backoff: ${describe(error)}`);
+      return;
+    }
+    this.logger.debug(`Outbox batch still failing: ${describe(error)}`);
   }
 
   private async deliver(row: OutboxRow): Promise<boolean> {

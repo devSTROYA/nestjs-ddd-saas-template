@@ -6,6 +6,7 @@ import type { DestinationStream, LevelWithSilent } from 'pino';
 const SERVER_ERROR_MIN = 500;
 const CLIENT_ERROR_MIN = 400;
 const MESSAGE_KEY = 'message';
+const DEVELOPMENT_ENV = 'development';
 
 const REDACTED_PATHS = [
   'req.headers.authorization',
@@ -44,14 +45,32 @@ type LoggerOptions = {
   level: LevelWithSilent;
   // INFO: requests under this path are not access-logged (health probes)
   quietPath: string;
+  nodeEnv: string;
   stream?: DestinationStream;
 };
 
-export function loggerParams({ level, quietPath, stream }: LoggerOptions): Params {
+// INFO: pino-pretty is a devDependency, so only NODE_ENV=development may select it. pino allows
+// formatters.level with a single transport target, but pretty needs the numeric `level`, so the
+// severity formatter is dropped there. An explicit stream (tests) always stays JSON.
+const PRETTY_TRANSPORT = {
+  target: 'pino-pretty',
+  options: {
+    colorize: true,
+    singleLine: true,
+    translateTime: 'SYS:HH:MM:ss.l',
+    messageKey: MESSAGE_KEY,
+    ignore: 'pid,hostname',
+  },
+};
+
+export function loggerParams({ level, quietPath, nodeEnv, stream }: LoggerOptions): Params {
+  const pretty = nodeEnv === DEVELOPMENT_ENV && stream === undefined;
   const options = {
     level,
     messageKey: MESSAGE_KEY,
-    formatters: { level: (label: string) => ({ severity: severityOf(label) }) },
+    ...(pretty
+      ? { transport: PRETTY_TRANSPORT }
+      : { formatters: { level: (label: string) => ({ severity: severityOf(label) }) } }),
     redact: REDACTED_PATHS,
     // INFO: puts `reqId` (not the whole req object) on every line logged during the request
     quietReqLogger: true,
