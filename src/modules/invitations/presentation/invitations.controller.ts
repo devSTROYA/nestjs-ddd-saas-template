@@ -2,7 +2,7 @@ import { Body, Controller, Inject, Param, Post } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 
 import { Throttle } from '@common/rate-limit';
-import { ZodValidationPipe } from '@common/validation';
+import { UuidV7ParamPipe, ZodValidationPipe } from '@common/validation';
 import {
   CurrentPrincipal,
   type Principal,
@@ -48,7 +48,7 @@ export class InvitationsController {
   @Throttle(ACCEPT_PER_IP)
   @Post(':id/accept')
   accept(
-    @Param('id') id: string,
+    @Param('id', new UuidV7ParamPipe('id')) id: string,
     @Body(new ZodValidationPipe(acceptInvitationBodySchema)) body: AcceptInvitationBody,
   ): Promise<AcceptInvitationResult> {
     return this.commandBus.execute<AcceptInvitationCommand, AcceptInvitationResult>(

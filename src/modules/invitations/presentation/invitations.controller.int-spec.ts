@@ -92,10 +92,12 @@ describe('InvitationsController', () => {
     });
   });
 
-  it('answers 422 ID_INVALID for a malformed invitation id', async () => {
+  it('answers 422 INPUT_INVALID naming the malformed invitation id', async () => {
     const response = await accept('not-an-id', { ...VALID_BODY, otp }).expect(422);
 
-    expect(response.body).toEqual({ error: { code: 'ID_INVALID' } });
+    expect(response.body).toEqual({
+      error: { code: 'INPUT_INVALID', fields: [{ path: 'id', code: 'invalid_format' }] },
+    });
   });
 
   it('answers 404 for an unknown invitation', async () => {

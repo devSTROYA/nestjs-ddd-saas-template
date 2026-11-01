@@ -44,7 +44,7 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
     },
     errors: [
       ...AUTH_ERRORS,
-      PrimitiveErrorCodes.ID_INVALID,
+      ValidationErrorCodes.INPUT_INVALID,
       WorkspaceErrorCodes.NOT_FOUND,
       RateLimitErrorCodes.EXCEEDED,
     ],
@@ -65,7 +65,6 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
     errors: [
       ...AUTH_ERRORS,
       ValidationErrorCodes.INPUT_INVALID,
-      PrimitiveErrorCodes.ID_INVALID,
       WorkspaceErrorCodes.NOT_FOUND,
       RateLimitErrorCodes.EXCEEDED,
     ],
@@ -87,7 +86,6 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
     errors: [
       ...AUTH_ERRORS,
       ValidationErrorCodes.INPUT_INVALID,
-      PrimitiveErrorCodes.ID_INVALID,
       PrimitiveErrorCodes.EMAIL_INVALID,
       UserErrorCodes.NAME_EMPTY,
       UserErrorCodes.NAME_TOO_LONG,
@@ -110,7 +108,6 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
     errors: [
       ...AUTH_ERRORS,
       ValidationErrorCodes.INPUT_INVALID,
-      PrimitiveErrorCodes.ID_INVALID,
       WorkspaceErrorCodes.NOT_FOUND,
       WorkspaceErrorCodes.OWNER_REQUIRED,
       WorkspaceErrorCodes.MEMBER_NOT_FOUND,
@@ -129,7 +126,7 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
     response: { status: HttpStatus.NO_CONTENT, description: 'Member removed' },
     errors: [
       ...AUTH_ERRORS,
-      PrimitiveErrorCodes.ID_INVALID,
+      ValidationErrorCodes.INPUT_INVALID,
       WorkspaceErrorCodes.NOT_FOUND,
       WorkspaceErrorCodes.OWNER_REQUIRED,
       WorkspaceErrorCodes.MEMBER_NOT_FOUND,
@@ -148,7 +145,7 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
     response: { status: HttpStatus.NO_CONTENT, description: 'Left the workspace' },
     errors: [
       ...AUTH_ERRORS,
-      PrimitiveErrorCodes.ID_INVALID,
+      ValidationErrorCodes.INPUT_INVALID,
       WorkspaceErrorCodes.NOT_FOUND,
       WorkspaceErrorCodes.MEMBER_NOT_FOUND,
       WorkspaceErrorCodes.LAST_OWNER_REQUIRED,

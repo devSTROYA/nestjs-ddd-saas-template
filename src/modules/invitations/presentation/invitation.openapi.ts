@@ -59,7 +59,6 @@ export const invitationRouteDocs: readonly RouteDoc[] = [
     },
     errors: [
       ValidationErrorCodes.INPUT_INVALID,
-      PrimitiveErrorCodes.ID_INVALID,
       InvitationErrorCodes.NOT_FOUND,
       InvitationErrorCodes.NOT_PENDING,
       InvitationErrorCodes.EXPIRED,

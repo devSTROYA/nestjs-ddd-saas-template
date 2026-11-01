@@ -280,14 +280,25 @@ describe('WorkspacesController', () => {
     expect(rows).toHaveLength(1);
   });
 
-  it('answers ID_INVALID for a malformed workspace id', async () => {
-    await registerTenant('owner@acme.co');
+  it('answers 422 INPUT_INVALID naming the malformed path id', async () => {
+    const { workspaceId } = await registerTenant('owner@acme.co');
     const ownerToken = await login('owner@acme.co');
 
-    const response = await call('get', '/v1/workspaces/nope', ownerToken);
+    const badWorkspace = await call('get', '/v1/workspaces/nope', ownerToken);
+    const badMember = await call(
+      'delete',
+      `/v1/workspaces/${workspaceId}/members/nope`,
+      ownerToken,
+    );
 
-    expect(response.status).toBeGreaterThanOrEqual(400);
-    expect(response.body).toEqual({ error: { code: 'ID_INVALID' } });
+    expect(badWorkspace.status).toBe(422);
+    expect(badWorkspace.body).toEqual({
+      error: { code: 'INPUT_INVALID', fields: [{ path: 'workspaceId', code: 'invalid_format' }] },
+    });
+    expect(badMember.status).toBe(422);
+    expect(badMember.body).toEqual({
+      error: { code: 'INPUT_INVALID', fields: [{ path: 'userId', code: 'invalid_format' }] },
+    });
   });
 
   it('keeps one owner when two owners demote each other at the same time', async () => {

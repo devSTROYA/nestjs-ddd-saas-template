@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 
-import { ZodValidationPipe } from '@common/validation';
+import { UuidV7ParamPipe, ZodValidationPipe } from '@common/validation';
 import {
   CurrentPrincipal,
   type Principal,
@@ -68,7 +68,7 @@ export class WorkspacesController {
   @Get(':workspaceId')
   get(
     @CurrentPrincipal() principal: Principal,
-    @Param('workspaceId') workspaceId: string,
+    @Param('workspaceId', new UuidV7ParamPipe('workspaceId')) workspaceId: string,
   ): Promise<WorkspaceView> {
     const actor = actorOf(principal);
     return this.queryBus.execute<GetWorkspaceQuery, WorkspaceView>(
@@ -79,7 +79,7 @@ export class WorkspacesController {
   @Get(':workspaceId/members')
   listMembers(
     @CurrentPrincipal() principal: Principal,
-    @Param('workspaceId') workspaceId: string,
+    @Param('workspaceId', new UuidV7ParamPipe('workspaceId')) workspaceId: string,
     @Query(new ZodValidationPipe(listWorkspaceMembersQuerySchema))
     params: ListWorkspaceMembersQueryParams,
   ): Promise<ListWorkspaceMembersResult> {
@@ -98,7 +98,7 @@ export class WorkspacesController {
   @Post(':workspaceId/members')
   addMember(
     @CurrentPrincipal() principal: Principal,
-    @Param('workspaceId') workspaceId: string,
+    @Param('workspaceId', new UuidV7ParamPipe('workspaceId')) workspaceId: string,
     @Body(new ZodValidationPipe(addWorkspaceMemberBodySchema)) body: AddWorkspaceMemberBody,
   ): Promise<AddWorkspaceMemberResult> {
     const actor = actorOf(principal);
@@ -118,8 +118,8 @@ export class WorkspacesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async changeRole(
     @CurrentPrincipal() principal: Principal,
-    @Param('workspaceId') workspaceId: string,
-    @Param('userId') userId: string,
+    @Param('workspaceId', new UuidV7ParamPipe('workspaceId')) workspaceId: string,
+    @Param('userId', new UuidV7ParamPipe('userId')) userId: string,
     @Body(new ZodValidationPipe(changeWorkspaceMemberRoleBodySchema))
     body: ChangeWorkspaceMemberRoleBody,
   ): Promise<void> {
@@ -139,8 +139,8 @@ export class WorkspacesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async removeMember(
     @CurrentPrincipal() principal: Principal,
-    @Param('workspaceId') workspaceId: string,
-    @Param('userId') userId: string,
+    @Param('workspaceId', new UuidV7ParamPipe('workspaceId')) workspaceId: string,
+    @Param('userId', new UuidV7ParamPipe('userId')) userId: string,
   ): Promise<void> {
     const actor = actorOf(principal);
     await this.commandBus.execute<RemoveWorkspaceMemberCommand, void>(
@@ -152,7 +152,7 @@ export class WorkspacesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async leave(
     @CurrentPrincipal() principal: Principal,
-    @Param('workspaceId') workspaceId: string,
+    @Param('workspaceId', new UuidV7ParamPipe('workspaceId')) workspaceId: string,
   ): Promise<void> {
     const actor = actorOf(principal);
     await this.commandBus.execute<LeaveWorkspaceCommand, void>(
