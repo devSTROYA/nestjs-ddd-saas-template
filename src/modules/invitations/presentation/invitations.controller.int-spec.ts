@@ -16,7 +16,7 @@ import { FakeMailer } from '../testing/fakes.js';
 const ADMIN_ID = newAdminId();
 const VALID_BODY = { tenantName: 'Acme', userName: 'Uz' };
 
-describe('InvitationController', () => {
+describe('InvitationsController', () => {
   const pool = new Pool({ connectionString: inject('databaseUrl') });
   const mailer = new FakeMailer();
   let app: NestFastifyApplication;

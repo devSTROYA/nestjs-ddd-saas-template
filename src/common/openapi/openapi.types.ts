@@ -16,6 +16,7 @@ export type RouteDoc = {
   summary: string;
   auth?: 'bearer';
   pathParams?: Readonly<Record<string, PathParamDoc>>;
+  query?: z.ZodObject;
   body?: z.ZodType;
   response: { status: number; description: string; schema?: z.ZodType };
   errors: readonly string[];

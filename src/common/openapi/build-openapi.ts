@@ -41,13 +41,20 @@ function successResponse(route: RouteDoc): JsonObject {
 }
 
 function operation(route: RouteDoc, errorStatus: ErrorStatus): JsonObject {
-  const parameters = Object.entries(route.pathParams ?? {}).map(([name, param]) => ({
+  const pathParameters = Object.entries(route.pathParams ?? {}).map(([name, param]) => ({
     name,
     in: 'path',
     required: true,
     description: param.description,
     schema: toJsonSchema(param.schema),
   }));
+  const queryParameters = Object.entries(route.query?.shape ?? {}).map(([name, schema]) => ({
+    name,
+    in: 'query',
+    required: !schema.isOptional(),
+    schema: toJsonSchema(schema),
+  }));
+  const parameters = [...pathParameters, ...queryParameters];
 
   return {
     tags: [route.tag],

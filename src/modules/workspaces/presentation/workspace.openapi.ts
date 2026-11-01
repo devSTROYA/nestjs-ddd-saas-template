@@ -13,36 +13,71 @@ import {
   addWorkspaceMemberBodySchema,
   addWorkspaceMemberResponseSchema,
   changeWorkspaceMemberRoleBodySchema,
+  listWorkspaceMembersQuerySchema,
+  listWorkspaceMembersResponseSchema,
   workspaceResponseSchema,
 } from './workspace.schema.js';
 
 const TAG = 'Workspace';
 const AUTH_ERRORS = [AuthErrorCodes.UNAUTHENTICATED, AuthErrorCodes.FORBIDDEN] as const;
-const USER_ID_PARAM = {
+const WORKSPACE_ID_PARAM = {
+  workspaceId: { description: 'Workspace id (UUID v7)', schema: z.uuid({ version: 'v7' }) },
+};
+const MEMBER_PATH_PARAMS = {
+  ...WORKSPACE_ID_PARAM,
   userId: { description: 'User id (UUID v7)', schema: z.uuid({ version: 'v7' }) },
 };
 
 export const workspaceRouteDocs: readonly RouteDoc[] = [
   {
     method: 'get',
-    path: '/workspace',
+    path: '/workspaces/{workspaceId}',
     tag: TAG,
-    summary: 'The workspace of the tenant of the caller, with its members and the caller role',
+    summary:
+      'A workspace of the tenant of the caller, with the caller role, the member count and the newest members',
     auth: 'bearer',
+    pathParams: WORKSPACE_ID_PARAM,
     response: {
       status: HttpStatus.OK,
       description: 'The workspace',
       schema: workspaceResponseSchema,
     },
-    errors: [...AUTH_ERRORS, WorkspaceErrorCodes.NOT_FOUND, RateLimitErrorCodes.EXCEEDED],
+    errors: [
+      ...AUTH_ERRORS,
+      PrimitiveErrorCodes.ID_INVALID,
+      WorkspaceErrorCodes.NOT_FOUND,
+      RateLimitErrorCodes.EXCEEDED,
+    ],
+  },
+  {
+    method: 'get',
+    path: '/workspaces/{workspaceId}/members',
+    tag: TAG,
+    summary: 'The members of the workspace, newest first, one page at a time',
+    auth: 'bearer',
+    pathParams: WORKSPACE_ID_PARAM,
+    query: listWorkspaceMembersQuerySchema,
+    response: {
+      status: HttpStatus.OK,
+      description: 'A page of members',
+      schema: listWorkspaceMembersResponseSchema,
+    },
+    errors: [
+      ...AUTH_ERRORS,
+      ValidationErrorCodes.INPUT_INVALID,
+      PrimitiveErrorCodes.ID_INVALID,
+      WorkspaceErrorCodes.NOT_FOUND,
+      RateLimitErrorCodes.EXCEEDED,
+    ],
   },
   {
     method: 'post',
-    path: '/workspace/members',
+    path: '/workspaces/{workspaceId}/members',
     tag: TAG,
     summary:
       'Add a member (owners only). They become a member at once; an email that is not a user yet becomes one',
     auth: 'bearer',
+    pathParams: WORKSPACE_ID_PARAM,
     body: addWorkspaceMemberBodySchema,
     response: {
       status: HttpStatus.CREATED,
@@ -52,6 +87,7 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
     errors: [
       ...AUTH_ERRORS,
       ValidationErrorCodes.INPUT_INVALID,
+      PrimitiveErrorCodes.ID_INVALID,
       PrimitiveErrorCodes.EMAIL_INVALID,
       UserErrorCodes.NAME_EMPTY,
       UserErrorCodes.NAME_TOO_LONG,
@@ -64,11 +100,11 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
   },
   {
     method: 'patch',
-    path: '/workspace/members/{userId}',
+    path: '/workspaces/{workspaceId}/members/{userId}',
     tag: TAG,
     summary: 'Change the role of a member (owners only). The last owner cannot be demoted',
     auth: 'bearer',
-    pathParams: USER_ID_PARAM,
+    pathParams: MEMBER_PATH_PARAMS,
     body: changeWorkspaceMemberRoleBodySchema,
     response: { status: HttpStatus.NO_CONTENT, description: 'Role changed' },
     errors: [
@@ -84,12 +120,12 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
   },
   {
     method: 'delete',
-    path: '/workspace/members/{userId}',
+    path: '/workspaces/{workspaceId}/members/{userId}',
     tag: TAG,
     summary:
       'Remove a member (owners only) and delete their user account, ending their access. The last owner cannot be removed',
     auth: 'bearer',
-    pathParams: USER_ID_PARAM,
+    pathParams: MEMBER_PATH_PARAMS,
     response: { status: HttpStatus.NO_CONTENT, description: 'Member removed' },
     errors: [
       ...AUTH_ERRORS,
@@ -103,14 +139,16 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
   },
   {
     method: 'post',
-    path: '/workspace/leave',
+    path: '/workspaces/{workspaceId}/leave',
     tag: TAG,
     summary:
       'Leave the workspace and delete your own user account, ending your access. The last owner cannot leave',
     auth: 'bearer',
+    pathParams: WORKSPACE_ID_PARAM,
     response: { status: HttpStatus.NO_CONTENT, description: 'Left the workspace' },
     errors: [
       ...AUTH_ERRORS,
+      PrimitiveErrorCodes.ID_INVALID,
       WorkspaceErrorCodes.NOT_FOUND,
       WorkspaceErrorCodes.MEMBER_NOT_FOUND,
       WorkspaceErrorCodes.LAST_OWNER_REQUIRED,

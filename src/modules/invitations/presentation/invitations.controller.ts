@@ -30,7 +30,7 @@ import {
 } from './invite-tenant.schema.js';
 
 @Controller('invitations')
-export class InvitationController {
+export class InvitationsController {
   constructor(@Inject(CommandBus) private readonly commandBus: CommandBus) {}
 
   @Post()

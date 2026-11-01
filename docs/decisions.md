@@ -99,24 +99,29 @@ changes, update this file in the same change.
 - **Workspaces** (`src/modules/workspaces`). Accepting an invitation also creates the tenant's
   workspace (named after the tenant) with the new user as its owner, in the same transaction. A
   tenant has exactly one workspace for now (`uq_workspaces_tenant_id`; drop that index to allow
-  several), so the API addresses it as `/v1/workspace` and takes the tenant from the access token.
+  several). The API is `/v1/workspaces/:workspaceId/...` and takes the tenant from the access token
+  only; a workspace id of another tenant or an unknown id is `404 WORKSPACE_NOT_FOUND`
+  (`findById(tenantId, id)` never finds it).
   - `Workspace` is an aggregate holding its members (`user -> role`); roles are `owner` and `admin`
     (`WorkspaceRole`). `workspace_members` (pk `workspace_id, user_id`) cascades with the workspace;
     the repository makes the stored members equal to the aggregate's and locks the workspace row
     (`FOR UPDATE`) for every change, so the invariants hold under concurrency.
   - **At least one owner always exists:** demoting, removing or leaving as the last owner is
     `409 WORKSPACE_LAST_OWNER_REQUIRED`. An owner can make others owners.
-  - **There is no invitation to a workspace.** An owner adds someone (`POST /workspace/members`
+  - **There is no invitation to a workspace.** An owner adds someone (`POST /workspaces/:workspaceId/members`
     with `email`, `name`, `role`) and they are a member at once. An email that is not a user yet
     becomes a user of that tenant (`name` is used only then) and logs in with a one-time code; an
     email of another tenant's user is `409 USER_EMAIL_TAKEN`. No email is sent when adding.
-  - Only owners add members, change roles (`PATCH /workspace/members/:userId`) and remove members
+  - Only owners add members, change roles (`PATCH /workspaces/:workspaceId/members/:userId`) and remove members
     (`DELETE ...`); `403 WORKSPACE_OWNER_REQUIRED` otherwise. **Removing a member, or leaving,
     deletes the user** (same transaction): a tenant has one workspace, and login and refresh both
     need the user row, so access ends at once (an access token stays valid up to 15 minutes, and
-    `GET /workspace` answers 404 to a non-member). Any member can leave
-    (`POST /workspace/leave`). `GET /workspace` returns the members (ids and roles) and the caller's
-    role. All routes need a `user` principal; admins get 403.
+    `GET /workspaces/:workspaceId` answers 404 to a non-member). Any member can leave
+    (`POST /workspaces/:workspaceId/leave`). `GET /workspaces/:workspaceId` returns the caller's
+    role, `memberCount` and a preview of the 10 newest members (`created_at DESC, user_id DESC`);
+    `GET /workspaces/:workspaceId/members?page=&limit=` lists all of them with offset pagination
+    (`page` default 1, `limit` default 20, max 100; `{ items, page, limit, total }`), both members
+    only (404 otherwise). All routes need a `user` principal; admins get 403.
   - Migration 0010 backfills a workspace per existing tenant that has users and makes every
     existing user an owner (those users were all created as tenant owners); a tenant without users
     gets none. Migration 0009 stops with a readable error if an email is shared by two tenants.
@@ -549,7 +554,7 @@ Starting points, to be tuned with Cloud Run metrics (CPU, memory, latency, insta
 - `User.create`, `Tenant.create`, `Admin.create` and `Workspace.create` call `new Date()` themselves.
 - `TenantsModule` has no module-level test yet (deferred).
 - Not built yet: what the `admin` workspace role may do beyond being a member (only owners manage
-  members), rename the workspace, member emails and names in `GET /workspace` (it lists user ids),
+  members), rename the workspace, member lists with search or sorting,
   a welcome email when someone is added to a workspace, purging expired `login_challenges`,
   `refresh_tokens` and `rate_limits` rows, structured logging, CORS (needs the frontend origin),
   and a frontend link in the invitation email (it carries the invitation id and the code only).

@@ -14,7 +14,7 @@ import { AcceptInvitationHandler } from './application/use-cases/accept-invitati
 import { InviteTenantHandler } from './application/use-cases/invite-tenant/invite-tenant.handler.js';
 import { EmailMailer } from './infrastructure/mail/email-mailer.js';
 import { DrizzleInvitationRepository } from './infrastructure/persistence/drizzle-invitation.repository.js';
-import { InvitationController } from './presentation/invitation.controller.js';
+import { InvitationsController } from './presentation/invitations.controller.js';
 
 @Module({
   imports: [
@@ -26,7 +26,7 @@ import { InvitationController } from './presentation/invitation.controller.js';
     UsersModule,
     WorkspacesModule,
   ],
-  controllers: [InvitationController],
+  controllers: [InvitationsController],
   providers: [
     {
       provide: INVITATION_REPOSITORY,

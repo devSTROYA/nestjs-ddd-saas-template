@@ -54,7 +54,7 @@ describe('DrizzleWorkspaceRepository', () => {
     workspace.addMember(admin, WorkspaceRole.ADMIN);
     await repository.save(workspace);
 
-    const found = await repository.findByTenantId(tenantId);
+    const found = await repository.findById(tenantId, workspace.id);
 
     expect(found?.id).toBe(workspace.id);
     expect(found?.name.value).toBe('Acme');
@@ -68,8 +68,14 @@ describe('DrizzleWorkspaceRepository', () => {
     expect(found?.members).toHaveLength(2);
   });
 
-  it('returns null for a tenant without a workspace', async () => {
-    expect(await repository.findByTenantId(newTenantId())).toBeNull();
+  it('returns null for an unknown workspace and for a workspace of another tenant', async () => {
+    const tenantId = await insertTenant();
+    const workspace = newWorkspace(tenantId, await insertUser(tenantId, 'o@a.co'));
+    await repository.save(workspace);
+
+    expect(await repository.findById(tenantId, newWorkspaceId())).toBeNull();
+    expect(await repository.findById(newTenantId(), workspace.id)).toBeNull();
+    expect(await repository.findByIdForUpdate(newTenantId(), workspace.id)).toBeNull();
   });
 
   it('persists role changes and removals so the stored members match the aggregate', async () => {
@@ -86,7 +92,7 @@ describe('DrizzleWorkspaceRepository', () => {
     workspace.removeMember(third);
     await repository.save(workspace);
 
-    const found = await repository.findByTenantId(tenantId);
+    const found = await repository.findById(tenantId, workspace.id);
     expect(found?.roleOf(second)).toBe(WorkspaceRole.OWNER);
     expect(found?.roleOf(third)).toBeNull();
     expect(found?.members).toHaveLength(2);
@@ -122,7 +128,7 @@ describe('DrizzleWorkspaceRepository', () => {
 
     await expect(repository.save(hijack)).rejects.toThrow(WorkspaceIdConflictError);
 
-    const found = await repository.findByTenantId(tenantId);
+    const found = await repository.findById(tenantId, workspace.id);
     expect(found?.name.value).toBe('Acme');
     expect(found?.members).toEqual([{ userId: owner, role: WorkspaceRole.OWNER }]);
   });
@@ -130,9 +136,10 @@ describe('DrizzleWorkspaceRepository', () => {
   it('locks the workspace row inside a transaction', async () => {
     const tenantId = await insertTenant();
     const owner = await insertUser(tenantId, 'o@a.co');
-    await repository.save(newWorkspace(tenantId, owner));
+    const workspace = newWorkspace(tenantId, owner);
+    await repository.save(workspace);
 
-    const found = await context.run(() => repository.findByTenantIdForUpdate(tenantId));
+    const found = await context.run(() => repository.findByIdForUpdate(tenantId, workspace.id));
 
     expect(found?.tenantId).toBe(tenantId);
   });
@@ -140,15 +147,16 @@ describe('DrizzleWorkspaceRepository', () => {
   it('rolls back a save made inside a failed transaction', async () => {
     const tenantId = await insertTenant();
     const owner = await insertUser(tenantId, 'o@a.co');
+    const workspace = newWorkspace(tenantId, owner);
 
     await expect(
       context.run(async () => {
-        await repository.save(newWorkspace(tenantId, owner));
+        await repository.save(workspace);
         throw new Error('boom');
       }),
     ).rejects.toThrow('boom');
 
-    expect(await repository.findByTenantId(tenantId)).toBeNull();
+    expect(await repository.findById(tenantId, workspace.id)).toBeNull();
     const { rows } = await pool.query('SELECT 1 FROM outbox');
     expect(rows).toHaveLength(0);
   });

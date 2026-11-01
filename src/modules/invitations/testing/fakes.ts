@@ -4,7 +4,7 @@ import type { Clock } from '@common/clock';
 import type { Nullable } from '@common/types';
 import type { Tenant, TenantId, TenantRepository } from '@modules/tenants';
 import type { User, UserId, UserRepository } from '@modules/users';
-import type { Workspace, WorkspaceRepository } from '@modules/workspaces';
+import type { Workspace, WorkspaceId, WorkspaceRepository } from '@modules/workspaces';
 
 import type { InvitationRepository } from '../application/ports/invitation.repository.js';
 import type { Mailer } from '../application/ports/mailer.js';
@@ -81,13 +81,13 @@ export class FakeUsers implements UserRepository {
 export class FakeWorkspaces implements WorkspaceRepository {
   readonly saved = new Map<string, Workspace>();
 
-  findByTenantId(tenantId: TenantId): Promise<Nullable<Workspace>> {
-    const found = [...this.saved.values()].find((workspace) => workspace.tenantId === tenantId);
-    return Promise.resolve(found ?? null);
+  findById(tenantId: TenantId, id: WorkspaceId): Promise<Nullable<Workspace>> {
+    const found = this.saved.get(id);
+    return Promise.resolve(found?.tenantId === tenantId ? found : null);
   }
 
-  findByTenantIdForUpdate(tenantId: TenantId): Promise<Nullable<Workspace>> {
-    return this.findByTenantId(tenantId);
+  findByIdForUpdate(tenantId: TenantId, id: WorkspaceId): Promise<Nullable<Workspace>> {
+    return this.findById(tenantId, id);
   }
 
   save(workspace: Workspace): Promise<void> {

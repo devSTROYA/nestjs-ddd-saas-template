@@ -1,6 +1,9 @@
 import { Email, InvalidEmailError } from '@common/primitives';
-import { newTenantId } from '@modules/tenants';
-import { EmailAlreadyTakenError, User, UserName, newUserId } from '@modules/users';
+import { type TenantId, newTenantId } from '@modules/tenants';
+import { EmailAlreadyTakenError, User, UserName, type UserId, newUserId } from '@modules/users';
+
+import { WORKSPACE_VIEW_MEMBER_LIMIT } from '../ports/workspace.query.js';
+import { type WorkspaceId, newWorkspaceId } from '../../domain/value-objects/workspace-id.js';
 
 import {
   LastWorkspaceOwnerRequiredError,
@@ -15,6 +18,7 @@ import { AddWorkspaceMemberCommand } from './add-workspace-member/add-workspace-
 import { ChangeWorkspaceMemberRoleCommand } from './change-workspace-member-role/change-workspace-member-role.command.js';
 import { GetWorkspaceQuery } from './get-workspace/get-workspace.query.js';
 import { LeaveWorkspaceCommand } from './leave-workspace/leave-workspace.command.js';
+import { ListWorkspaceMembersQuery } from './list-workspace-members/list-workspace-members.query.js';
 import { RemoveWorkspaceMemberCommand } from './remove-workspace-member/remove-workspace-member.command.js';
 
 const addMember = (
@@ -22,7 +26,26 @@ const addMember = (
   email: string,
   role: WorkspaceRole = WorkspaceRole.ADMIN,
   actor = kit.owner.id,
-) => kit.add.execute(new AddWorkspaceMemberCommand(actor, kit.tenantId, email, 'New Person', role));
+) =>
+  kit.add.execute(
+    new AddWorkspaceMemberCommand(actor, kit.tenantId, kit.workspace.id, email, 'New Person', role),
+  );
+
+const addMembers = async (kit: WorkspaceKit, count: number): Promise<UserId[]> => {
+  const ids: UserId[] = [];
+  for (let index = 0; index < count; index++) {
+    ids.push((await addMember(kit, `member${index}@acme.co`)).userId);
+  }
+  return ids;
+};
+
+const getView = (kit: WorkspaceKit, actor: UserId) =>
+  kit.get.execute(new GetWorkspaceQuery(actor, kit.tenantId, kit.workspace.id));
+
+const list = (kit: WorkspaceKit, actor: UserId, page: number, limit: number) =>
+  kit.list.execute(
+    new ListWorkspaceMembersQuery(actor, kit.tenantId, kit.workspace.id, page, limit),
+  );
 
 describe('AddWorkspaceMemberHandler', () => {
   it('makes a new email a user of the tenant and a member at once', async () => {
@@ -97,17 +120,19 @@ describe('AddWorkspaceMemberHandler', () => {
     const kit = createWorkspaceKit();
 
     await expect(addMember(kit, 'nope')).rejects.toThrow(InvalidEmailError);
-    await expect(
+    const add = (tenantId: TenantId, workspaceId: WorkspaceId) =>
       kit.add.execute(
         new AddWorkspaceMemberCommand(
           kit.owner.id,
-          newTenantId(),
+          tenantId,
+          workspaceId,
           'a@b.co',
           'x',
           WorkspaceRole.ADMIN,
         ),
-      ),
-    ).rejects.toThrow(WorkspaceNotFoundError);
+      );
+    await expect(add(newTenantId(), kit.workspace.id)).rejects.toThrow(WorkspaceNotFoundError);
+    await expect(add(kit.tenantId, newWorkspaceId())).rejects.toThrow(WorkspaceNotFoundError);
   });
 });
 
@@ -117,7 +142,13 @@ describe('ChangeWorkspaceMemberRoleHandler', () => {
     const { userId } = await addMember(kit, 'new@acme.co');
 
     await kit.changeRole.execute(
-      new ChangeWorkspaceMemberRoleCommand(kit.owner.id, kit.tenantId, userId, WorkspaceRole.OWNER),
+      new ChangeWorkspaceMemberRoleCommand(
+        kit.owner.id,
+        kit.tenantId,
+        kit.workspace.id,
+        userId,
+        WorkspaceRole.OWNER,
+      ),
     );
 
     expect(kit.workspace.roleOf(userId)).toBe(WorkspaceRole.OWNER);
@@ -128,7 +159,7 @@ describe('ChangeWorkspaceMemberRoleHandler', () => {
     const { userId } = await addMember(kit, 'new@acme.co');
     const change = (actor: typeof userId, target: typeof userId, role: WorkspaceRole) =>
       kit.changeRole.execute(
-        new ChangeWorkspaceMemberRoleCommand(actor, kit.tenantId, target, role),
+        new ChangeWorkspaceMemberRoleCommand(actor, kit.tenantId, kit.workspace.id, target, role),
       );
 
     await expect(change(userId, userId, WorkspaceRole.OWNER)).rejects.toThrow(
@@ -148,7 +179,9 @@ describe('RemoveWorkspaceMemberHandler', () => {
     const kit = createWorkspaceKit();
     const { userId } = await addMember(kit, 'new@acme.co');
     const remove = (actor: typeof userId, target: typeof userId) =>
-      kit.remove.execute(new RemoveWorkspaceMemberCommand(actor, kit.tenantId, target));
+      kit.remove.execute(
+        new RemoveWorkspaceMemberCommand(actor, kit.tenantId, kit.workspace.id, target),
+      );
 
     await expect(remove(userId, kit.owner.id)).rejects.toThrow(WorkspaceOwnerRequiredError);
     await expect(remove(kit.owner.id, kit.owner.id)).rejects.toThrow(
@@ -167,7 +200,7 @@ describe('LeaveWorkspaceHandler', () => {
     const kit = createWorkspaceKit();
     const { userId } = await addMember(kit, 'new@acme.co');
     const leave = (actor: typeof userId) =>
-      kit.leave.execute(new LeaveWorkspaceCommand(actor, kit.tenantId));
+      kit.leave.execute(new LeaveWorkspaceCommand(actor, kit.tenantId, kit.workspace.id));
 
     await expect(leave(kit.owner.id)).rejects.toThrow(LastWorkspaceOwnerRequiredError);
     await leave(userId);
@@ -181,7 +214,9 @@ describe('LeaveWorkspaceHandler', () => {
     const kit = createWorkspaceKit();
     await addMember(kit, 'second@acme.co', WorkspaceRole.OWNER);
 
-    await kit.leave.execute(new LeaveWorkspaceCommand(kit.owner.id, kit.tenantId));
+    await kit.leave.execute(
+      new LeaveWorkspaceCommand(kit.owner.id, kit.tenantId, kit.workspace.id),
+    );
 
     expect(kit.workspace.roleOf(kit.owner.id)).toBeNull();
   });
@@ -192,27 +227,79 @@ describe('GetWorkspaceHandler', () => {
     const kit = createWorkspaceKit();
     const { userId } = await addMember(kit, 'new@acme.co');
 
-    const view = await kit.get.execute(new GetWorkspaceQuery(userId, kit.tenantId));
+    const view = await getView(kit, userId);
 
     expect(view).toEqual({
       id: kit.workspace.id,
       name: 'Acme',
       role: WorkspaceRole.ADMIN,
+      memberCount: 2,
       members: [
-        { userId: kit.owner.id, role: WorkspaceRole.OWNER },
-        { userId, role: WorkspaceRole.ADMIN },
+        { userId, name: 'New Person', email: 'new@acme.co', role: WorkspaceRole.ADMIN },
+        {
+          userId: kit.owner.id,
+          name: 'Owner',
+          email: 'owner@acme.co',
+          role: WorkspaceRole.OWNER,
+        },
       ],
     });
   });
 
-  it('fails for a caller who is not a member and for an unknown workspace', async () => {
+  it('previews only the newest members but counts all of them', async () => {
+    const kit = createWorkspaceKit();
+    const added = await addMembers(kit, WORKSPACE_VIEW_MEMBER_LIMIT + 2);
+
+    const view = await getView(kit, kit.owner.id);
+
+    expect(view.memberCount).toBe(WORKSPACE_VIEW_MEMBER_LIMIT + 3);
+    expect(view.members.map((member) => member.userId)).toEqual(
+      added.slice(-WORKSPACE_VIEW_MEMBER_LIMIT).reverse(),
+    );
+  });
+
+  it('fails for a caller who is not a member, an unknown workspace and a workspace of another tenant', async () => {
     const kit = createWorkspaceKit();
 
-    await expect(kit.get.execute(new GetWorkspaceQuery(newUserId(), kit.tenantId))).rejects.toThrow(
-      WorkspaceNotFoundError,
-    );
+    await expect(getView(kit, newUserId())).rejects.toThrow(WorkspaceNotFoundError);
     await expect(
-      kit.get.execute(new GetWorkspaceQuery(kit.owner.id, newTenantId())),
+      kit.get.execute(new GetWorkspaceQuery(kit.owner.id, kit.tenantId, newWorkspaceId())),
+    ).rejects.toThrow(WorkspaceNotFoundError);
+    await expect(
+      kit.get.execute(new GetWorkspaceQuery(kit.owner.id, newTenantId(), kit.workspace.id)),
+    ).rejects.toThrow(WorkspaceNotFoundError);
+  });
+});
+
+describe('ListWorkspaceMembersHandler', () => {
+  it('pages the members newest first with the total', async () => {
+    const kit = createWorkspaceKit();
+    const added = await addMembers(kit, 4);
+    const newestFirst = [...added.reverse(), kit.owner.id];
+
+    const first = await list(kit, kit.owner.id, 1, 2);
+    const second = await list(kit, kit.owner.id, 2, 2);
+    const last = await list(kit, kit.owner.id, 3, 2);
+
+    expect(first).toMatchObject({ page: 1, limit: 2, total: 5 });
+    expect(first.items.map((member) => member.userId)).toEqual(newestFirst.slice(0, 2));
+    expect(second.items.map((member) => member.userId)).toEqual(newestFirst.slice(2, 4));
+    expect(last.items.map((member) => member.userId)).toEqual(newestFirst.slice(4));
+  });
+
+  it('fails for a caller who is not a member, an unknown workspace and a workspace of another tenant', async () => {
+    const kit = createWorkspaceKit();
+
+    await expect(list(kit, newUserId(), 1, 20)).rejects.toThrow(WorkspaceNotFoundError);
+    await expect(
+      kit.list.execute(
+        new ListWorkspaceMembersQuery(kit.owner.id, kit.tenantId, newWorkspaceId(), 1, 20),
+      ),
+    ).rejects.toThrow(WorkspaceNotFoundError);
+    await expect(
+      kit.list.execute(
+        new ListWorkspaceMembersQuery(kit.owner.id, newTenantId(), kit.workspace.id, 1, 20),
+      ),
     ).rejects.toThrow(WorkspaceNotFoundError);
   });
 });

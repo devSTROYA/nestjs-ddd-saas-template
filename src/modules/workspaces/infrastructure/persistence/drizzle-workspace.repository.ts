@@ -12,7 +12,7 @@ import {
   InvalidWorkspaceRoleError,
   WorkspaceIdConflictError,
 } from '../../domain/errors/domain.error.js';
-import { toWorkspaceId } from '../../domain/value-objects/workspace-id.js';
+import { type WorkspaceId, toWorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspaceName } from '../../domain/value-objects/workspace-name.js';
 import { isWorkspaceRole } from '../../domain/value-objects/workspace-role.js';
 import { workspaceMembers, type WorkspaceMemberRow } from './workspace-member.schema.js';
@@ -41,12 +41,12 @@ function toWorkspace(row: WorkspaceRow, memberRows: readonly WorkspaceMemberRow[
 export class DrizzleWorkspaceRepository implements WorkspaceRepository {
   constructor(private readonly context: DatabaseContext) {}
 
-  findByTenantId(tenantId: TenantId): Promise<Nullable<Workspace>> {
-    return this.find(tenantId, false);
+  findById(tenantId: TenantId, id: WorkspaceId): Promise<Nullable<Workspace>> {
+    return this.find(tenantId, id, false);
   }
 
-  findByTenantIdForUpdate(tenantId: TenantId): Promise<Nullable<Workspace>> {
-    return this.find(tenantId, true);
+  findByIdForUpdate(tenantId: TenantId, id: WorkspaceId): Promise<Nullable<Workspace>> {
+    return this.find(tenantId, id, true);
   }
 
   save(workspace: Workspace): Promise<void> {
@@ -96,11 +96,15 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     }
   }
 
-  private async find(tenantId: TenantId, lock: boolean): Promise<Nullable<Workspace>> {
+  private async find(
+    tenantId: TenantId,
+    id: WorkspaceId,
+    lock: boolean,
+  ): Promise<Nullable<Workspace>> {
     const query = this.context.client
       .select()
       .from(workspaces)
-      .where(eq(workspaces.tenantId, tenantId));
+      .where(and(eq(workspaces.id, id), eq(workspaces.tenantId, tenantId)));
     const [row] = await (lock ? query.for('update') : query);
     if (!row) {
       return null;

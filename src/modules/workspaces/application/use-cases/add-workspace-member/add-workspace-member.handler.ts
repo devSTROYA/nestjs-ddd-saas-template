@@ -43,7 +43,10 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
     command: AddWorkspaceMemberCommand,
     email: Email,
   ): Promise<AddWorkspaceMemberResult> {
-    const workspace = await this.workspaces.findByTenantIdForUpdate(command.tenantId);
+    const workspace = await this.workspaces.findByIdForUpdate(
+      command.tenantId,
+      command.workspaceId,
+    );
     if (!workspace) {
       throw new WorkspaceNotFoundError();
     }

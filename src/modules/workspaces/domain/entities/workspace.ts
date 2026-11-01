@@ -20,7 +20,7 @@ import type { WorkspaceId } from '../value-objects/workspace-id.js';
 import type { WorkspaceName } from '../value-objects/workspace-name.js';
 import { WorkspaceRole } from '../value-objects/workspace-role.js';
 
-export type WorkspaceMember = {
+type WorkspaceMember = {
   userId: UserId;
   role: WorkspaceRole;
 };

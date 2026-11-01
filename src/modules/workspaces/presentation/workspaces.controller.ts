@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 
@@ -23,22 +24,27 @@ import {
 import { type TenantId, toTenantId } from '@modules/tenants';
 import { type UserId, toUserId } from '@modules/users';
 
+import type { WorkspaceView } from '../application/ports/workspace.query.js';
 import {
   AddWorkspaceMemberCommand,
   type AddWorkspaceMemberResult,
 } from '../application/use-cases/add-workspace-member/add-workspace-member.command.js';
 import { ChangeWorkspaceMemberRoleCommand } from '../application/use-cases/change-workspace-member-role/change-workspace-member-role.command.js';
-import {
-  GetWorkspaceQuery,
-  type WorkspaceView,
-} from '../application/use-cases/get-workspace/get-workspace.query.js';
+import { GetWorkspaceQuery } from '../application/use-cases/get-workspace/get-workspace.query.js';
 import { LeaveWorkspaceCommand } from '../application/use-cases/leave-workspace/leave-workspace.command.js';
+import {
+  ListWorkspaceMembersQuery,
+  type ListWorkspaceMembersResult,
+} from '../application/use-cases/list-workspace-members/list-workspace-members.query.js';
 import { RemoveWorkspaceMemberCommand } from '../application/use-cases/remove-workspace-member/remove-workspace-member.command.js';
+import { toWorkspaceId } from '../domain/value-objects/workspace-id.js';
 import {
   type AddWorkspaceMemberBody,
   type ChangeWorkspaceMemberRoleBody,
+  type ListWorkspaceMembersQueryParams,
   addWorkspaceMemberBodySchema,
   changeWorkspaceMemberRoleBodySchema,
+  listWorkspaceMembersQuerySchema,
 } from './workspace.schema.js';
 
 type Actor = {
@@ -54,37 +60,68 @@ function actorOf(principal: Principal): Actor {
   return { userId: toUserId(principal.id), tenantId: toTenantId(principal.tenantId) };
 }
 
-@Controller('workspace')
+@Controller('workspaces')
 @RequirePrincipal(PrincipalType.USER)
-export class WorkspaceController {
+export class WorkspacesController {
   constructor(
     @Inject(CommandBus) private readonly commandBus: CommandBus,
     @Inject(QueryBus) private readonly queryBus: QueryBus,
   ) {}
 
-  @Get()
-  get(@CurrentPrincipal() principal: Principal): Promise<WorkspaceView> {
+  @Get(':workspaceId')
+  get(
+    @CurrentPrincipal() principal: Principal,
+    @Param('workspaceId') workspaceId: string,
+  ): Promise<WorkspaceView> {
     const actor = actorOf(principal);
     return this.queryBus.execute<GetWorkspaceQuery, WorkspaceView>(
-      new GetWorkspaceQuery(actor.userId, actor.tenantId),
+      new GetWorkspaceQuery(actor.userId, actor.tenantId, toWorkspaceId(workspaceId)),
     );
   }
 
-  @Post('members')
+  @Get(':workspaceId/members')
+  listMembers(
+    @CurrentPrincipal() principal: Principal,
+    @Param('workspaceId') workspaceId: string,
+    @Query(new ZodValidationPipe(listWorkspaceMembersQuerySchema))
+    params: ListWorkspaceMembersQueryParams,
+  ): Promise<ListWorkspaceMembersResult> {
+    const actor = actorOf(principal);
+    return this.queryBus.execute<ListWorkspaceMembersQuery, ListWorkspaceMembersResult>(
+      new ListWorkspaceMembersQuery(
+        actor.userId,
+        actor.tenantId,
+        toWorkspaceId(workspaceId),
+        params.page,
+        params.limit,
+      ),
+    );
+  }
+
+  @Post(':workspaceId/members')
   addMember(
     @CurrentPrincipal() principal: Principal,
+    @Param('workspaceId') workspaceId: string,
     @Body(new ZodValidationPipe(addWorkspaceMemberBodySchema)) body: AddWorkspaceMemberBody,
   ): Promise<AddWorkspaceMemberResult> {
     const actor = actorOf(principal);
     return this.commandBus.execute<AddWorkspaceMemberCommand, AddWorkspaceMemberResult>(
-      new AddWorkspaceMemberCommand(actor.userId, actor.tenantId, body.email, body.name, body.role),
+      new AddWorkspaceMemberCommand(
+        actor.userId,
+        actor.tenantId,
+        toWorkspaceId(workspaceId),
+        body.email,
+        body.name,
+        body.role,
+      ),
     );
   }
 
-  @Patch('members/:userId')
+  @Patch(':workspaceId/members/:userId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async changeRole(
     @CurrentPrincipal() principal: Principal,
+    @Param('workspaceId') workspaceId: string,
     @Param('userId') userId: string,
     @Body(new ZodValidationPipe(changeWorkspaceMemberRoleBodySchema))
     body: ChangeWorkspaceMemberRoleBody,
@@ -94,30 +131,40 @@ export class WorkspaceController {
       new ChangeWorkspaceMemberRoleCommand(
         actor.userId,
         actor.tenantId,
+        toWorkspaceId(workspaceId),
         toUserId(userId),
         body.role,
       ),
     );
   }
 
-  @Delete('members/:userId')
+  @Delete(':workspaceId/members/:userId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async removeMember(
     @CurrentPrincipal() principal: Principal,
+    @Param('workspaceId') workspaceId: string,
     @Param('userId') userId: string,
   ): Promise<void> {
     const actor = actorOf(principal);
     await this.commandBus.execute<RemoveWorkspaceMemberCommand, void>(
-      new RemoveWorkspaceMemberCommand(actor.userId, actor.tenantId, toUserId(userId)),
+      new RemoveWorkspaceMemberCommand(
+        actor.userId,
+        actor.tenantId,
+        toWorkspaceId(workspaceId),
+        toUserId(userId),
+      ),
     );
   }
 
-  @Post('leave')
+  @Post(':workspaceId/leave')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async leave(@CurrentPrincipal() principal: Principal): Promise<void> {
+  async leave(
+    @CurrentPrincipal() principal: Principal,
+    @Param('workspaceId') workspaceId: string,
+  ): Promise<void> {
     const actor = actorOf(principal);
     await this.commandBus.execute<LeaveWorkspaceCommand, void>(
-      new LeaveWorkspaceCommand(actor.userId, actor.tenantId),
+      new LeaveWorkspaceCommand(actor.userId, actor.tenantId, toWorkspaceId(workspaceId)),
     );
   }
 }

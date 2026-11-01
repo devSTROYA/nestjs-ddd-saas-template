@@ -49,6 +49,19 @@ describe('buildOpenApiDocument', () => {
     ]);
   });
 
+  it('builds query parameters after the path ones, required unless they have a default', () => {
+    const query = z.object({
+      search: z.string(),
+      page: z.coerce.number().int().min(1).default(1),
+    });
+
+    expect(at(build([{ ...route, query }]), 'paths', PATH, 'post', 'parameters')).toMatchObject([
+      { name: 'id', in: 'path' },
+      { name: 'search', in: 'query', required: true, schema: { type: 'string' } },
+      { name: 'page', in: 'query', required: false, schema: { type: 'integer', default: 1 } },
+    ]);
+  });
+
   it('builds the request body and the success response from the zod schemas', () => {
     const document = build();
 

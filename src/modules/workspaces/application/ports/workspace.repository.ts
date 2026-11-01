@@ -2,11 +2,12 @@ import type { Nullable } from '@common/types';
 import type { TenantId } from '@modules/tenants';
 
 import type { Workspace } from '../../domain/entities/workspace.js';
+import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 
-// INFO: A tenant has exactly one workspace for now, so it is looked up by tenant.
+// INFO: A workspace of another tenant is never found, so its existence does not leak.
 export interface WorkspaceRepository {
-  findByTenantId(tenantId: TenantId): Promise<Nullable<Workspace>>;
-  findByTenantIdForUpdate(tenantId: TenantId): Promise<Nullable<Workspace>>;
+  findById(tenantId: TenantId, id: WorkspaceId): Promise<Nullable<Workspace>>;
+  findByIdForUpdate(tenantId: TenantId, id: WorkspaceId): Promise<Nullable<Workspace>>;
   save(workspace: Workspace): Promise<void>;
 }
 
