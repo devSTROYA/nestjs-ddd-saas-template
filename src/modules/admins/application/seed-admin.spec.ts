@@ -61,7 +61,7 @@ describe('seedAdmin', () => {
   it('fails when the new email already belongs to another admin', async () => {
     const admins = new FakeAdmins();
     await seedAdmin(admins, 'root@b.co');
-    await admins.save(Admin.create({ id: newAdminId(), email: Email.create('taken@b.co') }));
+    await admins.save(Admin.create({ email: Email.create('taken@b.co') }, newAdminId()));
 
     await expect(seedAdmin(admins, 'taken@b.co')).rejects.toThrow(AdminEmailAlreadyTakenError);
   });

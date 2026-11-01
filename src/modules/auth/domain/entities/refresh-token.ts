@@ -26,17 +26,25 @@ type RefreshTokenProps = {
   createdAt: Date;
 };
 
+type IssueRefreshTokenProps = {
+  familyId: TokenFamilyId;
+  principal: Principal;
+  tokenHash: string;
+  expiresAt: Date;
+};
+
+type RestoreRefreshTokenProps = {
+  familyId: TokenFamilyId;
+  principal: Principal;
+  tokenHash: string;
+  expiresAt: Date;
+  usedAt: Nullable<Date>;
+  revokedAt: Nullable<Date>;
+  createdAt: Date;
+};
+
 export class RefreshToken extends AggregateRoot<RefreshTokenProps, RefreshTokenId> {
-  static issue(
-    props: {
-      id: RefreshTokenId;
-      familyId: TokenFamilyId;
-      principal: Principal;
-      tokenHash: string;
-      expiresAt: Date;
-    },
-    now: Date,
-  ): RefreshToken {
+  static issue(props: IssueRefreshTokenProps, id: RefreshTokenId, now: Date): RefreshToken {
     const token = new RefreshToken(
       {
         familyId: props.familyId,
@@ -47,11 +55,11 @@ export class RefreshToken extends AggregateRoot<RefreshTokenProps, RefreshTokenI
         revokedAt: null,
         createdAt: now,
       },
-      props.id,
+      id,
     );
     token.addEvent(
       new RefreshTokenIssuedEvent(
-        props.id,
+        id,
         props.principal.tenantId ?? null,
         now.toISOString(),
         props.familyId,
@@ -61,16 +69,7 @@ export class RefreshToken extends AggregateRoot<RefreshTokenProps, RefreshTokenI
     return token;
   }
 
-  static restore(props: {
-    id: RefreshTokenId;
-    familyId: TokenFamilyId;
-    principal: Principal;
-    tokenHash: string;
-    expiresAt: Date;
-    usedAt: Nullable<Date>;
-    revokedAt: Nullable<Date>;
-    createdAt: Date;
-  }): RefreshToken {
+  static restore(props: RestoreRefreshTokenProps, id: RefreshTokenId): RefreshToken {
     return new RefreshToken(
       {
         familyId: props.familyId,
@@ -81,7 +80,7 @@ export class RefreshToken extends AggregateRoot<RefreshTokenProps, RefreshTokenI
         revokedAt: props.revokedAt,
         createdAt: props.createdAt,
       },
-      props.id,
+      id,
     );
   }
 

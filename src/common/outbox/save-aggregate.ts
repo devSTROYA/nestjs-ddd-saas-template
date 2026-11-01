@@ -3,7 +3,7 @@ import type { DomainEvent } from '@common/ddd';
 
 import { outbox } from './outbox.schema.js';
 
-// Queues events for the relay. Call it inside the same transaction as the write that caused them.
+// INFO: Queues events for the relay; call it inside the same transaction as the write that caused them.
 export async function appendEvents(
   context: DatabaseContext,
   events: readonly DomainEvent[],
@@ -23,8 +23,6 @@ export async function appendEvents(
   );
 }
 
-// Writes the aggregate and its pending events in one transaction: it joins the use case's unit of
-// work, or opens its own for a single-aggregate save. Events are published later by the relay.
 export function saveAggregate(
   context: DatabaseContext,
   aggregate: { pullEvents(): DomainEvent[] },

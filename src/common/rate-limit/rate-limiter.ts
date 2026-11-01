@@ -12,12 +12,10 @@ export type RateLimitRule = {
 
 export interface RateLimiter {
   consume(rule: RateLimitRule, subject: string): Promise<void>;
-  // Fails when the subject has already used up the rule, without counting a hit.
   assertBelow(rule: RateLimitRule, subject: string): Promise<void>;
 }
 
 export interface PeekableThrottlerStorage extends ThrottlerStorage {
-  // The hits in the current window (0 when there is none) and the seconds left in it.
   peek(key: string): Promise<{ hits: number; secondsLeft: number }>;
 }
 

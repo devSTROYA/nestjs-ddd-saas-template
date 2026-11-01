@@ -6,7 +6,7 @@ const roleSchema = z.enum([WorkspaceRole.OWNER, WorkspaceRole.ADMIN]);
 
 export const addWorkspaceMemberBodySchema = z.object({
   email: z.string(),
-  // Used only when the email is not a user yet.
+  // INFO: Used only when the email is not a user yet.
   name: z.string(),
   role: roleSchema,
 });
@@ -24,5 +24,3 @@ export const workspaceResponseSchema = z.object({
 
 export type AddWorkspaceMemberBody = z.infer<typeof addWorkspaceMemberBodySchema>;
 export type ChangeWorkspaceMemberRoleBody = z.infer<typeof changeWorkspaceMemberRoleBodySchema>;
-export type AddWorkspaceMemberResponse = z.infer<typeof addWorkspaceMemberResponseSchema>;
-export type WorkspaceResponse = z.infer<typeof workspaceResponseSchema>;

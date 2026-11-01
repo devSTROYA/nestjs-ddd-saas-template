@@ -23,14 +23,10 @@ import {
 import { type OutboxRow, outbox } from './outbox.schema.js';
 import type { OutboxConsumer, StoredEvent } from './outbox-consumer.js';
 
-export type DrainResult = { delivered: number; failed: number };
+type DrainResult = { delivered: number; failed: number };
 
-// Publishes committed events: reads unprocessed outbox rows and hands them to the consumers.
-// It runs in one of two ways: a polling loop (`start`, or on bootstrap when OUTBOX_RELAY_ENABLED)
-// or a scheduled run (`drainAll`). Serverless web instances must not poll: set
-// OUTBOX_RELAY_ENABLED=false there and run `dist/outbox-worker.js` instead (see docs/decisions.md).
-// shortcut: the row locks are held while consumers run and a failed row is retried on every tick
-// (no backoff). Fine for a logger; claim rows first and add backoff before adding slow consumers.
+// TODO: Row locks are held while consumers run and failed rows retry every tick with no backoff;
+// claim rows first and add backoff before adding slow consumers.
 @Injectable()
 export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShutdown {
   private readonly logger = new Logger(OutboxRelay.name);
@@ -70,14 +66,11 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
     this.schedule();
   }
 
-  // One scheduled run: delivers until nothing is left, a batch had a failure, or shutdown starts.
-  // A failed event is attempted once per run, so its retry cadence is how often the run is scheduled.
   drainAll(): Promise<void> {
     this.running = this.drainUntilIdle();
     return this.running;
   }
 
-  // Delivers one batch.
   drain(): Promise<DrainResult> {
     return this.context.run(async () => {
       const rows = await this.context.client

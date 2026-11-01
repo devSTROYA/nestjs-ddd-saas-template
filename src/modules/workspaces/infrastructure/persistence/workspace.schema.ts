@@ -26,7 +26,7 @@ export const workspaces = pgTable(
       columns: [table.tenantId],
       foreignColumns: [tenants.id],
     }).onDelete('restrict'),
-    // One workspace per tenant for now; drop this index to allow several.
+    // INFO: One workspace per tenant for now; drop this index to allow several.
     uniqueIndex('uq_workspaces_tenant_id').on(table.tenantId),
   ],
 );

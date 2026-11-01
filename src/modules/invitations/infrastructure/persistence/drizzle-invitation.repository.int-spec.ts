@@ -28,12 +28,12 @@ const repository = new DrizzleInvitationRepository(context);
 const newInvitation = (email = 'a@b.co') =>
   Invitation.create(
     {
-      id: newInvitationId(),
       email: Email.create(email),
       invitedBy: ADMIN_ID,
       otpHash: 'hash',
       expiresAt: IN_15_MIN,
     },
+    newInvitationId(),
     NOW,
   );
 
@@ -156,12 +156,12 @@ describe('DrizzleInvitationRepository', () => {
   it('requires the inviting admin to exist', async () => {
     const orphan = Invitation.create(
       {
-        id: newInvitationId(),
         email: Email.create('a@b.co'),
         invitedBy: newAdminId(),
         otpHash: 'hash',
         expiresAt: IN_15_MIN,
       },
+      newInvitationId(),
       NOW,
     );
 

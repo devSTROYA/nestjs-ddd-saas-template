@@ -9,7 +9,7 @@ export type StoredEvent = {
   payload: unknown;
 };
 
-// Delivery is at-least-once: a consumer must tolerate the same event id arriving twice.
+// INFO: Delivery is at-least-once, so a consumer must tolerate the same event id arriving twice.
 export interface OutboxConsumer {
   handle(event: StoredEvent): Promise<void>;
 }

@@ -35,12 +35,7 @@ const insertUser = async (tenantId: TenantId, email: string): Promise<UserId> =>
 };
 
 const newWorkspace = (tenantId: TenantId, ownerId: UserId) =>
-  Workspace.create({
-    id: newWorkspaceId(),
-    tenantId,
-    name: WorkspaceName.create('Acme'),
-    ownerId,
-  });
+  Workspace.create({ tenantId, name: WorkspaceName.create('Acme'), ownerId }, newWorkspaceId());
 
 beforeEach(async () => {
   await pool.query('TRUNCATE TABLE outbox, workspace_members, workspaces, users, tenants CASCADE');
@@ -114,13 +109,16 @@ describe('DrizzleWorkspaceRepository', () => {
     await repository.save(workspace);
     const otherTenantId = await insertTenant();
     const intruder = await insertUser(otherTenantId, 'i@b.co');
-    const hijack = Workspace.restore({
-      id: workspace.id,
-      tenantId: otherTenantId,
-      name: WorkspaceName.create('Hijack'),
-      members: [{ userId: intruder, role: WorkspaceRole.OWNER }],
-      createdAt: workspace.createdAt,
-    });
+    const hijack = Workspace.restore(
+      {
+        tenantId: otherTenantId,
+        name: WorkspaceName.create('Hijack'),
+        members: [{ userId: intruder, role: WorkspaceRole.OWNER }],
+        createdAt: workspace.createdAt,
+        updatedAt: workspace.updatedAt,
+      },
+      workspace.id,
+    );
 
     await expect(repository.save(hijack)).rejects.toThrow(WorkspaceIdConflictError);
 

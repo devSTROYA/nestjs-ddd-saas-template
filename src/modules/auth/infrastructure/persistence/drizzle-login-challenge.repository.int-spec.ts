@@ -24,7 +24,8 @@ const repository = new DrizzleLoginChallengeRepository(context);
 
 const newChallenge = (tenantId: Nullable<TenantId> = null) =>
   LoginChallenge.create(
-    { id: newLoginChallengeId(), tenantId, email: EMAIL, otpHash: 'hash', expiresAt: IN_15_MIN },
+    { tenantId, email: EMAIL, otpHash: 'hash', expiresAt: IN_15_MIN },
+    newLoginChallengeId(),
     NOW,
   );
 

@@ -4,7 +4,7 @@ import type { NodePgDatabase, NodePgQueryResultHKT } from 'drizzle-orm/node-post
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 
 export type Database = NodePgDatabase;
-export type DatabaseClient = PgDatabase<NodePgQueryResultHKT>;
+type DatabaseClient = PgDatabase<NodePgQueryResultHKT>;
 
 export const DATABASE = Symbol('DATABASE');
 export const DATABASE_CONTEXT = Symbol('DATABASE_CONTEXT');

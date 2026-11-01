@@ -19,18 +19,21 @@ import { workspaceMembers, type WorkspaceMemberRow } from './workspace-member.sc
 import { workspaces, type WorkspaceRow } from './workspace.schema.js';
 
 function toWorkspace(row: WorkspaceRow, memberRows: readonly WorkspaceMemberRow[]): Workspace {
-  return Workspace.restore({
-    id: toWorkspaceId(row.id),
-    tenantId: toTenantId(row.tenantId),
-    name: WorkspaceName.restore(row.name),
-    members: memberRows.map((member) => {
-      if (!isWorkspaceRole(member.role)) {
-        throw new InvalidWorkspaceRoleError(member.role);
-      }
-      return { userId: toUserId(member.userId), role: member.role };
-    }),
-    createdAt: row.createdAt,
-  });
+  return Workspace.restore(
+    {
+      tenantId: toTenantId(row.tenantId),
+      name: WorkspaceName.restore(row.name),
+      members: memberRows.map((member) => {
+        if (!isWorkspaceRole(member.role)) {
+          throw new InvalidWorkspaceRoleError(member.role);
+        }
+        return { userId: toUserId(member.userId), role: member.role };
+      }),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    },
+    toWorkspaceId(row.id),
+  );
 }
 
 export class DrizzleWorkspaceRepository implements WorkspaceRepository {
@@ -44,7 +47,6 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     return this.find(tenantId, true);
   }
 
-  // Members are part of the aggregate: the stored set is made equal to the in-memory one.
   save(workspace: Workspace): Promise<void> {
     return saveAggregate(this.context, workspace, () => this.write(workspace));
   }
@@ -59,10 +61,11 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
         tenantId: workspace.tenantId,
         name,
         createdAt: workspace.createdAt,
+        updatedAt: workspace.updatedAt,
       })
       .onConflictDoUpdate({
         target: workspaces.id,
-        set: { name, updatedAt: new Date() },
+        set: { name, updatedAt: workspace.updatedAt },
         setWhere: eq(workspaces.tenantId, workspace.tenantId),
       })
       .returning({ id: workspaces.id });

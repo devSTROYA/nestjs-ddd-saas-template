@@ -21,7 +21,6 @@ export const loginChallenges = pgTable(
   'login_challenges',
   {
     id: uuid('id').notNull(),
-    // Null for admin logins, the tenant of the user otherwise.
     tenantId: uuid('tenant_id'),
     email: varchar('email', { length: 320 }).notNull(),
     otpHash: varchar('otp_hash', { length: 128 }).notNull(),

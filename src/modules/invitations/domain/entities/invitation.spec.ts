@@ -18,12 +18,12 @@ const AFTER_EXPIRY = new Date(IN_10_MIN.getTime() + 1);
 const newInvitation = (): Invitation =>
   Invitation.create(
     {
-      id: newInvitationId(),
       email: Email.create('a@b.co'),
       invitedBy: newAdminId(),
       otpHash: 'hash',
       expiresAt: IN_10_MIN,
     },
+    newInvitationId(),
     NOW,
   );
 
@@ -113,16 +113,18 @@ describe('Invitation', () => {
     expect(() => accepted.revoke()).toThrow(InvitationNotPendingError);
     expect(accepted.pullEvents()).toEqual([]);
 
-    const restored = Invitation.restore({
-      id: newInvitationId(),
-      email: Email.create('a@b.co'),
-      invitedBy: newAdminId(),
-      otpHash: 'hash',
-      expiresAt: IN_10_MIN,
-      attempts: 0,
-      status: InvitationStatus.PENDING,
-      createdAt: NOW,
-    });
+    const restored = Invitation.restore(
+      {
+        email: Email.create('a@b.co'),
+        invitedBy: newAdminId(),
+        otpHash: 'hash',
+        expiresAt: IN_10_MIN,
+        attempts: 0,
+        status: InvitationStatus.PENDING,
+        createdAt: NOW,
+      },
+      newInvitationId(),
+    );
     expect(restored.pullEvents()).toEqual([]);
   });
 

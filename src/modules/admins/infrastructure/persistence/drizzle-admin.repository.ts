@@ -12,11 +12,10 @@ import { type AdminId, toAdminId } from '../../domain/value-objects/admin-id.js'
 import { type AdminRow, admins } from './admin.schema.js';
 
 function toAdmin(row: AdminRow): Admin {
-  return Admin.restore({
-    id: toAdminId(row.id),
-    email: Email.restore(row.email),
-    createdAt: row.createdAt,
-  });
+  return Admin.restore(
+    { email: Email.restore(row.email), createdAt: row.createdAt },
+    toAdminId(row.id),
+  );
 }
 
 export class DrizzleAdminRepository implements AdminRepository {

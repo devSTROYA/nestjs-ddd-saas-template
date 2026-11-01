@@ -27,7 +27,7 @@ const verify = (kit: AuthKit, otp: string, email = 'root@b.co', ip = IP) =>
 
 const withPendingLogin = async () => {
   const kit = createAuthKit();
-  const admin = Admin.create({ id: newAdminId(), email: Email.create('root@b.co') });
+  const admin = Admin.create({ email: Email.create('root@b.co') }, newAdminId());
   await kit.admins.save(admin);
   await kit.requestLogin.execute(new RequestAdminLoginCommand('root@b.co'));
   return { kit, admin };
@@ -94,7 +94,6 @@ describe('VerifyAdminLoginHandler', () => {
 
     await expect(verify(kit, OTP, 'root@b.co', OTHER_IP)).rejects.toThrow(RateLimitExceededError);
     expect(kit.refreshTokens.saved.size).toBe(0);
-    // The guesses also locked the pending code, so the admin asks for a new one.
     await kit.requestLogin.execute(new RequestAdminLoginCommand('root@b.co'));
     await expect(verify(kit, OTP)).resolves.toBeDefined();
   });

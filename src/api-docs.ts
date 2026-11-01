@@ -12,13 +12,13 @@ import {
 
 import { apiDocument } from './openapi.js';
 
-export const DOCS_PATH = '/docs';
-export const DOCS_JSON_PATH = `${DOCS_PATH}/openapi.json`;
-export const DOCS_JSON_FILENAME = 'openapi.json';
-export const DOCS_THEME = 'kepler';
-export const ACCENT_QUERY_PARAM = 'accent';
+const DOCS_PATH = '/docs';
+const DOCS_JSON_PATH = `${DOCS_PATH}/openapi.json`;
+const DOCS_JSON_FILENAME = 'openapi.json';
+const DOCS_THEME = 'kepler';
+const ACCENT_QUERY_PARAM = 'accent';
 
-// Scalar has no option for the "Show Schema" toggle of the response example card.
+// INFO: Scalar has no option for the "Show Schema" toggle of the response example card.
 const HIDE_SHOW_SCHEMA_CSS = '.response-card .scalar-card-checkbox { display: none; }';
 
 type DocsHandler = (request: IncomingMessage, response: ServerResponse) => void;

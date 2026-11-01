@@ -16,12 +16,10 @@ import { Workspace } from './workspace.js';
 const OWNER = newUserId();
 
 const newWorkspace = (): Workspace =>
-  Workspace.create({
-    id: newWorkspaceId(),
-    tenantId: newTenantId(),
-    name: WorkspaceName.create('Acme'),
-    ownerId: OWNER,
-  });
+  Workspace.create(
+    { tenantId: newTenantId(), name: WorkspaceName.create('Acme'), ownerId: OWNER },
+    newWorkspaceId(),
+  );
 
 describe('Workspace', () => {
   it('starts with its creator as the only owner', () => {
@@ -30,15 +28,41 @@ describe('Workspace', () => {
 
   it('restores its members without validation', () => {
     const member = { userId: newUserId(), role: WorkspaceRole.ADMIN };
-    const workspace = Workspace.restore({
-      id: newWorkspaceId(),
-      tenantId: newTenantId(),
-      name: WorkspaceName.restore('Acme'),
-      members: [member],
-      createdAt: new Date('2026-01-01T00:00:00Z'),
-    });
+    const workspace = Workspace.restore(
+      {
+        tenantId: newTenantId(),
+        name: WorkspaceName.restore('Acme'),
+        members: [member],
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-02T00:00:00Z'),
+      },
+      newWorkspaceId(),
+    );
 
     expect(workspace.members).toEqual([member]);
+  });
+
+  it('moves updatedAt forward on every mutation and leaves createdAt alone', () => {
+    vi.useFakeTimers({ now: new Date('2026-01-01T00:00:00Z') });
+    try {
+      const workspace = newWorkspace();
+      const createdAt = workspace.createdAt;
+      expect(workspace.updatedAt).toEqual(createdAt);
+
+      vi.setSystemTime(new Date('2026-01-02T00:00:00Z'));
+      workspace.rename(WorkspaceName.create('Renamed'));
+      expect(workspace.updatedAt).toEqual(new Date('2026-01-02T00:00:00Z'));
+
+      vi.setSystemTime(new Date('2026-01-03T00:00:00Z'));
+      const member = newUserId();
+      workspace.addMember(member, WorkspaceRole.ADMIN);
+      workspace.changeRole(member, WorkspaceRole.OWNER);
+      workspace.removeMember(member);
+      expect(workspace.updatedAt).toEqual(new Date('2026-01-03T00:00:00Z'));
+      expect(workspace.createdAt).toEqual(createdAt);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('adds a member with a role, once', () => {
@@ -142,13 +166,16 @@ describe('Workspace', () => {
     expect(() => workspace.removeMember(OWNER)).toThrow(LastWorkspaceOwnerRequiredError);
     expect(workspace.pullEvents()).toEqual([]);
 
-    const restored = Workspace.restore({
-      id: newWorkspaceId(),
-      tenantId: newTenantId(),
-      name: WorkspaceName.restore('Acme'),
-      members: [],
-      createdAt: new Date(),
-    });
+    const restored = Workspace.restore(
+      {
+        tenantId: newTenantId(),
+        name: WorkspaceName.restore('Acme'),
+        members: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      newWorkspaceId(),
+    );
     expect(restored.pullEvents()).toEqual([]);
   });
 

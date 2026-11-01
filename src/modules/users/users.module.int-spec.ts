@@ -44,12 +44,10 @@ describe('UsersModule', () => {
     const tenantId = newTenantId();
     await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'Wired')", [tenantId]);
     const repository = moduleRef.get<UserRepository>(USER_REPOSITORY);
-    const user = User.create({
-      id: newUserId(),
-      tenantId,
-      email: Email.create('wired@b.co'),
-      name: UserName.create('Uz'),
-    });
+    const user = User.create(
+      { tenantId, email: Email.create('wired@b.co'), name: UserName.create('Uz') },
+      newUserId(),
+    );
 
     await repository.save(user);
 

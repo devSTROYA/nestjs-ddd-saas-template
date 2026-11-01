@@ -2,7 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 
 import { DomainError } from '../errors/domain-error.js';
 
-export const MailErrorCodes = {
+const MailErrorCodes = {
   DELIVERY_FAILED: 'MAIL_DELIVERY_FAILED',
 } as const;
 

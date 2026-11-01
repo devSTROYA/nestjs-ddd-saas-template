@@ -17,7 +17,7 @@ const refresh = (kit: AuthKit, refreshToken: string) =>
 
 const loggedIn = async () => {
   const kit = createAuthKit();
-  const admin = Admin.create({ id: newAdminId(), email: Email.create('root@b.co') });
+  const admin = Admin.create({ email: Email.create('root@b.co') }, newAdminId());
   await kit.admins.save(admin);
   await kit.requestLogin.execute(new RequestAdminLoginCommand('root@b.co'));
   const session = await kit.verifyLogin.execute(new VerifyAdminLoginCommand('root@b.co', OTP, IP));
@@ -27,12 +27,14 @@ const loggedIn = async () => {
 describe('RefreshTokensHandler for tenant users', () => {
   it('rotates a user session, keeping the tenant, and revokes it once the user is gone', async () => {
     const kit = createAuthKit();
-    const user = User.create({
-      id: newUserId(),
-      tenantId: newTenantId(),
-      email: Email.create('owner@acme.co'),
-      name: UserName.create('Owner'),
-    });
+    const user = User.create(
+      {
+        tenantId: newTenantId(),
+        email: Email.create('owner@acme.co'),
+        name: UserName.create('Owner'),
+      },
+      newUserId(),
+    );
     await kit.users.save(user);
     await kit.requestUserLogin.execute(new RequestUserLoginCommand('owner@acme.co'));
     const session = await kit.verifyUserLogin.execute(

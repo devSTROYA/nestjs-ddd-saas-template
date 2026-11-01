@@ -11,12 +11,12 @@ const IN_15_MIN = new Date(NOW.getTime() + 15 * 60_000);
 const newChallenge = (): LoginChallenge =>
   LoginChallenge.create(
     {
-      id: newLoginChallengeId(),
       tenantId: null,
       email: Email.create('root@b.co'),
       otpHash: 'hash',
       expiresAt: IN_15_MIN,
     },
+    newLoginChallengeId(),
     NOW,
   );
 
@@ -137,16 +137,18 @@ describe('LoginChallenge', () => {
   });
 
   it('raises no event on restore', () => {
-    const challenge = LoginChallenge.restore({
-      id: newLoginChallengeId(),
-      tenantId: null,
-      email: Email.create('root@b.co'),
-      otpHash: 'hash',
-      expiresAt: IN_15_MIN,
-      attempts: 0,
-      status: LoginChallengeStatus.PENDING,
-      createdAt: NOW,
-    });
+    const challenge = LoginChallenge.restore(
+      {
+        tenantId: null,
+        email: Email.create('root@b.co'),
+        otpHash: 'hash',
+        expiresAt: IN_15_MIN,
+        attempts: 0,
+        status: LoginChallengeStatus.PENDING,
+        createdAt: NOW,
+      },
+      newLoginChallengeId(),
+    );
 
     expect(challenge.pullEvents()).toEqual([]);
   });

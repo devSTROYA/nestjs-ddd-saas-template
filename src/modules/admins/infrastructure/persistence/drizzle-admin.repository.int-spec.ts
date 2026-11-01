@@ -25,7 +25,7 @@ const outboxNames = async (aggregateId: string): Promise<string[]> => {
 };
 
 const newAdmin = (email = 'root@b.co') =>
-  Admin.create({ id: newAdminId(), email: Email.create(email) });
+  Admin.create({ email: Email.create(email) }, newAdminId());
 
 beforeEach(async () => {
   await pool.query('TRUNCATE TABLE admins, outbox CASCADE');

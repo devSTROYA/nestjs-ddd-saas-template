@@ -9,16 +9,25 @@ type AdminProps = {
   createdAt: Date;
 };
 
+type CreateAdminProps = {
+  email: Email;
+};
+
+type RestoreAdminProps = {
+  email: Email;
+  createdAt: Date;
+};
+
 export class Admin extends AggregateRoot<AdminProps, AdminId> {
-  static create(props: { id: AdminId; email: Email }): Admin {
+  static create(props: CreateAdminProps, id: AdminId): Admin {
     const now = new Date();
-    const admin = new Admin({ email: props.email, createdAt: now }, props.id);
-    admin.addEvent(new AdminCreatedEvent(props.id, null, now.toISOString(), props.email.value));
+    const admin = new Admin({ email: props.email, createdAt: now }, id);
+    admin.addEvent(new AdminCreatedEvent(id, null, now.toISOString(), props.email.value));
     return admin;
   }
 
-  static restore(props: { id: AdminId; email: Email; createdAt: Date }): Admin {
-    return new Admin({ email: props.email, createdAt: props.createdAt }, props.id);
+  static restore(props: RestoreAdminProps, id: AdminId): Admin {
+    return new Admin({ email: props.email, createdAt: props.createdAt }, id);
   }
 
   get email(): Email {

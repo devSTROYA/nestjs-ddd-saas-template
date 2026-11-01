@@ -14,13 +14,15 @@ import { UserName } from '../../domain/value-objects/user-name.js';
 import { type UserRow, users } from './user.schema.js';
 
 function toUser(row: UserRow): User {
-  return User.restore({
-    id: toUserId(row.id),
-    tenantId: toTenantId(row.tenantId),
-    email: Email.restore(row.email),
-    name: UserName.restore(row.name),
-    createdAt: row.createdAt,
-  });
+  return User.restore(
+    {
+      tenantId: toTenantId(row.tenantId),
+      email: Email.restore(row.email),
+      name: UserName.restore(row.name),
+      createdAt: row.createdAt,
+    },
+    toUserId(row.id),
+  );
 }
 
 export class DrizzleUserRepository implements UserRepository {

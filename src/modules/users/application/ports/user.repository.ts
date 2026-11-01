@@ -6,7 +6,7 @@ import type { UserId } from '../../domain/value-objects/user-id.js';
 
 export interface UserRepository {
   findById(tenantId: TenantId, id: UserId): Promise<Nullable<User>>;
-  // Emails are unique across all tenants, so no tenant is needed to look one up.
+  // INFO: Emails are unique across all tenants, so no tenant is needed to look one up.
   findByEmail(email: Email): Promise<Nullable<User>>;
   save(user: User): Promise<void>;
   delete(tenantId: TenantId, id: UserId): Promise<void>;

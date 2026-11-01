@@ -8,7 +8,7 @@ export const InvitationEventNames = {
   OTP_REGENERATED: 'invitation.otp_regenerated',
 } as const;
 
-// Invitations are platform-level: tenantId is always null.
+// INFO: Invitations are platform-level, so tenantId is always null.
 export class InvitationCreatedEvent extends DomainEvent {
   readonly name = InvitationEventNames.CREATED;
 

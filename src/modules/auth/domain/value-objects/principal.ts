@@ -12,6 +12,5 @@ export function isPrincipalType(value: string): value is PrincipalType {
 export type Principal = {
   type: PrincipalType;
   id: string;
-  // Only users belong to a tenant; admins are platform operators.
   tenantId?: string;
 };

@@ -64,10 +64,8 @@ export function buildModeCss(
 
 export function buildDocsThemeCss(accent: AccentColor = DEFAULT_ACCENT): string {
   return [
-    // Scalar forces dark colors on the request example card and everything inside it with
-    // `!important` rules in its own cascade layers, including a literal background on the card.
-    // For important declarations the earliest layer wins, so these live in a layer declared
-    // before Scalar's.
+    // INFO: Scalar forces dark colors with `!important` in its own layers; the earliest layer wins,
+    // so these live in a layer declared before Scalar's.
     `@layer ${LIGHT_CARD_LAYER} {\n${buildModeCss(LIGHT_CARD_SELECTOR, LatteColor, lightRoles, accent, true)}\n${LIGHT_CARD} {\n  background-color: var(--scalar-background-2) !important;\n}\n}`,
     buildModeCss('.light-mode', LatteColor, lightRoles, accent),
     buildModeCss('.dark-mode', MochaColor, darkRoles, accent),

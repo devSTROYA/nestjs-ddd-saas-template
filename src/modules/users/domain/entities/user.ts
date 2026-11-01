@@ -12,16 +12,29 @@ type UserProps = {
   createdAt: Date;
 };
 
+type CreateUserProps = {
+  tenantId: TenantId;
+  email: Email;
+  name: UserName;
+};
+
+type RestoreUserProps = {
+  tenantId: TenantId;
+  email: Email;
+  name: UserName;
+  createdAt: Date;
+};
+
 export class User extends AggregateRoot<UserProps, UserId> {
-  static create(props: { id: UserId; tenantId: TenantId; email: Email; name: UserName }): User {
+  static create(props: CreateUserProps, id: UserId): User {
     const now = new Date();
     const user = new User(
       { tenantId: props.tenantId, email: props.email, name: props.name, createdAt: now },
-      props.id,
+      id,
     );
     user.addEvent(
       new UserCreatedEvent(
-        props.id,
+        id,
         props.tenantId,
         now.toISOString(),
         props.email.value,
@@ -31,13 +44,7 @@ export class User extends AggregateRoot<UserProps, UserId> {
     return user;
   }
 
-  static restore(props: {
-    id: UserId;
-    tenantId: TenantId;
-    email: Email;
-    name: UserName;
-    createdAt: Date;
-  }): User {
+  static restore(props: RestoreUserProps, id: UserId): User {
     return new User(
       {
         tenantId: props.tenantId,
@@ -45,7 +52,7 @@ export class User extends AggregateRoot<UserProps, UserId> {
         name: props.name,
         createdAt: props.createdAt,
       },
-      props.id,
+      id,
     );
   }
 

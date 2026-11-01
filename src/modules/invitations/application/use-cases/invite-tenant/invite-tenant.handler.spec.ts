@@ -82,12 +82,14 @@ describe('InviteTenantHandler', () => {
   it('rejects an email that already belongs to a registered user, without a mail', async () => {
     const { handler, invitations, users, mailer } = setup();
     await users.save(
-      User.create({
-        id: newUserId(),
-        tenantId: newTenantId(),
-        email: Email.create('owner@tenant.co'),
-        name: UserName.create('Owner'),
-      }),
+      User.create(
+        {
+          tenantId: newTenantId(),
+          email: Email.create('owner@tenant.co'),
+          name: UserName.create('Owner'),
+        },
+        newUserId(),
+      ),
     );
 
     await expect(

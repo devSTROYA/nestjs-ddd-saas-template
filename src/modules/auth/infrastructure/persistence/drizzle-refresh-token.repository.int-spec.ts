@@ -26,7 +26,8 @@ const repository = new DrizzleRefreshTokenRepository(context);
 
 const issue = (tokenHash: string, familyId: TokenFamilyId = newTokenFamilyId()) =>
   RefreshToken.issue(
-    { id: newRefreshTokenId(), familyId, principal: PRINCIPAL, tokenHash, expiresAt: IN_A_DAY },
+    { familyId, principal: PRINCIPAL, tokenHash, expiresAt: IN_A_DAY },
+    newRefreshTokenId(),
     NOW,
   );
 

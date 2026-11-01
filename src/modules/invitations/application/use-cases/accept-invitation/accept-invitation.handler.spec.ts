@@ -37,12 +37,12 @@ const setup = async (expiresAt = IN_A_DAY) => {
   await invitations.save(
     Invitation.create(
       {
-        id,
         email: Email.create('owner@acme.co'),
         invitedBy: newAdminId(),
         otpHash: fakeOtpService.hash(id, OTP),
         expiresAt,
       },
+      id,
       NOW,
     ),
   );

@@ -64,12 +64,12 @@ export class InviteTenantHandler implements ICommandHandler<InviteTenantCommand,
     const id = newInvitationId();
     return Invitation.create(
       {
-        id,
         email,
         invitedBy: command.adminId,
         otpHash: this.otpService.hash(id, otp),
         expiresAt,
       },
+      id,
       now,
     );
   }

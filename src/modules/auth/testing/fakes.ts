@@ -136,16 +136,18 @@ export class FakeRefreshTokens implements RefreshTokenRepository {
       if (token.familyId === familyId && token.revokedAt === null) {
         this.saved.set(
           token.id,
-          RefreshToken.restore({
-            id: token.id,
-            familyId: token.familyId,
-            principal: token.principal,
-            tokenHash: token.tokenHash,
-            expiresAt: token.expiresAt,
-            usedAt: token.usedAt,
-            revokedAt: now,
-            createdAt: token.createdAt,
-          }),
+          RefreshToken.restore(
+            {
+              familyId: token.familyId,
+              principal: token.principal,
+              tokenHash: token.tokenHash,
+              expiresAt: token.expiresAt,
+              usedAt: token.usedAt,
+              revokedAt: now,
+              createdAt: token.createdAt,
+            },
+            token.id,
+          ),
         );
       }
     }

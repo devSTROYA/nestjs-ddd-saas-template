@@ -9,18 +9,25 @@ type TenantProps = {
   createdAt: Date;
 };
 
+type CreateTenantProps = {
+  name: TenantName;
+};
+
+type RestoreTenantProps = {
+  name: TenantName;
+  createdAt: Date;
+};
+
 export class Tenant extends AggregateRoot<TenantProps, TenantId> {
-  static create(props: { id: TenantId; name: TenantName }): Tenant {
+  static create(props: CreateTenantProps, id: TenantId): Tenant {
     const now = new Date();
-    const tenant = new Tenant({ name: props.name, createdAt: now }, props.id);
-    tenant.addEvent(
-      new TenantCreatedEvent(props.id, props.id, now.toISOString(), props.name.value),
-    );
+    const tenant = new Tenant({ name: props.name, createdAt: now }, id);
+    tenant.addEvent(new TenantCreatedEvent(id, id, now.toISOString(), props.name.value));
     return tenant;
   }
 
-  static restore(props: { id: TenantId; name: TenantName; createdAt: Date }): Tenant {
-    return new Tenant({ name: props.name, createdAt: props.createdAt }, props.id);
+  static restore(props: RestoreTenantProps, id: TenantId): Tenant {
+    return new Tenant({ name: props.name, createdAt: props.createdAt }, id);
   }
 
   get name(): TenantName {

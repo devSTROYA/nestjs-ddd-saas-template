@@ -13,7 +13,7 @@ function toJsonSchema(schema: z.ZodType): JsonObject {
   return result;
 }
 
-// Error responses have no body schema; the description lists the error codes of that status.
+// INFO: Error responses have no body schema; the description lists the error codes of that status.
 function errorResponses(route: RouteDoc, errorStatus: ErrorStatus): JsonObject {
   const codesByStatus = new Map<number, string[]>();
   for (const code of route.errors) {

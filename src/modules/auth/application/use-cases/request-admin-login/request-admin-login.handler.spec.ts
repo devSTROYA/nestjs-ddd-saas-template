@@ -17,7 +17,7 @@ const request = (kit: AuthKit, email = 'root@b.co') =>
 
 const withAdmin = async (): Promise<AuthKit> => {
   const kit = createAuthKit();
-  await kit.admins.save(Admin.create({ id: newAdminId(), email: Email.create('root@b.co') }));
+  await kit.admins.save(Admin.create({ email: Email.create('root@b.co') }, newAdminId()));
   return kit;
 };
 

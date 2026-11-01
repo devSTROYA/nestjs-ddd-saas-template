@@ -52,7 +52,6 @@ export class FakeUsers implements UserRepository {
     return Promise.resolve(found ?? null);
   }
 
-  // Like the real repository: emails are unique across all tenants.
   save(user: User): Promise<void> {
     const taken = [...this.saved.values()].some(
       (other) => other.id !== user.id && other.email.equals(user.email),
@@ -78,18 +77,14 @@ export function createWorkspaceKit() {
   const workspaces = new FakeWorkspaces();
   const users = new FakeUsers();
   const tenantId = newTenantId();
-  const owner = User.create({
-    id: newUserId(),
-    tenantId,
-    email: Email.create('owner@acme.co'),
-    name: UserName.create('Owner'),
-  });
-  const workspace = Workspace.create({
-    id: newWorkspaceId(),
-    tenantId,
-    name: WorkspaceName.create('Acme'),
-    ownerId: owner.id,
-  });
+  const owner = User.create(
+    { tenantId, email: Email.create('owner@acme.co'), name: UserName.create('Owner') },
+    newUserId(),
+  );
+  const workspace = Workspace.create(
+    { tenantId, name: WorkspaceName.create('Acme'), ownerId: owner.id },
+    newWorkspaceId(),
+  );
   void users.save(owner);
   void workspaces.save(workspace);
 

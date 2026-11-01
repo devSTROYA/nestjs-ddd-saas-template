@@ -15,7 +15,7 @@ const context = new DatabaseContext(drizzle(pool));
 const repository = new DrizzleTenantRepository(context);
 
 const newTenant = (name = 'Acme') =>
-  Tenant.create({ id: newTenantId(), name: TenantName.create(name) });
+  Tenant.create({ name: TenantName.create(name) }, newTenantId());
 
 beforeEach(async () => {
   await pool.query('TRUNCATE TABLE tenants, outbox CASCADE');

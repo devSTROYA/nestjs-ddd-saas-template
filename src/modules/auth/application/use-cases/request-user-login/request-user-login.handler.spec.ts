@@ -16,12 +16,10 @@ const request = (kit: AuthKit, email = 'owner@acme.co') =>
 const withUser = async (): Promise<AuthKit> => {
   const kit = createAuthKit();
   await kit.users.save(
-    User.create({
-      id: newUserId(),
-      tenantId: TENANT_ID,
-      email: Email.create('owner@acme.co'),
-      name: UserName.create('Owner'),
-    }),
+    User.create(
+      { tenantId: TENANT_ID, email: Email.create('owner@acme.co'), name: UserName.create('Owner') },
+      newUserId(),
+    ),
   );
   return kit;
 };

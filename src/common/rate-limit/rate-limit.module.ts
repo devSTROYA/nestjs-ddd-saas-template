@@ -21,8 +21,7 @@ export const DEFAULT_RATE_LIMIT = { limit: 120, ttl: 60_000 } as const;
   ],
   providers: [
     {
-      // Its own storage instance, not the one in ThrottlerModule: tests replace that one, and the
-      // limiter needs `peek`, which the Throttler storage interface does not have.
+      // INFO: Own storage instance, not ThrottlerModule's: tests replace that one and `peek` is needed.
       provide: RATE_LIMITER,
       inject: [DATABASE],
       useFactory: (database: Database): StorageRateLimiter =>

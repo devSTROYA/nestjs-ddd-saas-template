@@ -17,7 +17,6 @@ import {
 import { LOGIN_MAILER, type LoginMailer } from './ports/login-mailer.js';
 import { LOGIN_OTP_TTL_MS } from './token-lifetimes.js';
 
-// The one-time login code shared by admins (tenantId null) and tenant users.
 @Injectable()
 export class LoginCodes {
   private readonly logger = new Logger(LoginCodes.name);
@@ -29,7 +28,7 @@ export class LoginCodes {
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
-  // Never reveals whether a code was already pending, and a failed delivery is only logged.
+  // INFO: Never reveals whether a code was already pending, and a failed delivery is only logged.
   async send(email: Email, tenantId: Nullable<TenantId>): Promise<void> {
     const now = this.clock.now();
     const expiresAt = new Date(now.getTime() + LOGIN_OTP_TTL_MS);
@@ -53,7 +52,7 @@ export class LoginCodes {
     }
   }
 
-  // Must run inside a transaction: the challenge row is locked while the attempt is counted.
+  // INFO: Must run inside a transaction: the challenge row is locked while the attempt is counted.
   async consume(
     email: Email,
     tenantId: Nullable<TenantId>,
@@ -86,7 +85,8 @@ export class LoginCodes {
     }
     const id = newLoginChallengeId();
     return LoginChallenge.create(
-      { id, tenantId, email, otpHash: this.otpService.hash(id, otp), expiresAt },
+      { tenantId, email, otpHash: this.otpService.hash(id, otp), expiresAt },
+      id,
       now,
     );
   }

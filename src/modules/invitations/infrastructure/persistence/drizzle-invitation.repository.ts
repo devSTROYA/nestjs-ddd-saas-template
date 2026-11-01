@@ -24,16 +24,18 @@ function toInvitation(row: InvitationRow): Invitation {
   if (!isInvitationStatus(row.status)) {
     throw new InvalidInvitationStatusError(row.status);
   }
-  return Invitation.restore({
-    id: toInvitationId(row.id),
-    email: Email.restore(row.email),
-    invitedBy: toAdminId(row.invitedBy),
-    otpHash: row.otpHash,
-    expiresAt: row.expiresAt,
-    attempts: row.attempts,
-    status: row.status,
-    createdAt: row.createdAt,
-  });
+  return Invitation.restore(
+    {
+      email: Email.restore(row.email),
+      invitedBy: toAdminId(row.invitedBy),
+      otpHash: row.otpHash,
+      expiresAt: row.expiresAt,
+      attempts: row.attempts,
+      status: row.status,
+      createdAt: row.createdAt,
+    },
+    toInvitationId(row.id),
+  );
 }
 
 export class DrizzleInvitationRepository implements InvitationRepository {
@@ -78,7 +80,7 @@ export class DrizzleInvitationRepository implements InvitationRepository {
       status: invitation.status,
     };
     try {
-      // Only a pending row may change, so a resend cannot revive an invitation accepted meanwhile.
+      // INFO: Only a pending row may change, so a resend cannot revive an accepted invitation.
       const written = await this.context.client
         .insert(invitations)
         .values({

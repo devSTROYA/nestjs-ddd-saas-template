@@ -8,7 +8,7 @@ export const ValidationErrorCodes = {
 
 export type ValidationErrorCode = (typeof ValidationErrorCodes)[keyof typeof ValidationErrorCodes];
 
-export type InvalidField = {
+type InvalidField = {
   path: string;
   code: string;
 };

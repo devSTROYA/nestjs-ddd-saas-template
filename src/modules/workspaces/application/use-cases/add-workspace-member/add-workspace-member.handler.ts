@@ -22,8 +22,7 @@ import {
   type AddWorkspaceMemberResult,
 } from './add-workspace-member.command.js';
 
-// Whoever an owner adds becomes a member at once, with no invitation or acceptance. An email that
-// is not a user yet becomes a user of the workspace's tenant and logs in with a one-time code.
+// INFO: The added person is a member at once; an unknown email becomes a user of the workspace's tenant.
 @CommandHandler(AddWorkspaceMemberCommand)
 export class AddWorkspaceMemberHandler implements ICommandHandler<
   AddWorkspaceMemberCommand,
@@ -56,12 +55,10 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
     }
     const user =
       existing ??
-      User.create({
-        id: newUserId(),
-        tenantId: command.tenantId,
-        email,
-        name: UserName.create(command.name),
-      });
+      User.create(
+        { tenantId: command.tenantId, email, name: UserName.create(command.name) },
+        newUserId(),
+      );
 
     workspace.addMember(user.id, command.role);
     if (!existing) {

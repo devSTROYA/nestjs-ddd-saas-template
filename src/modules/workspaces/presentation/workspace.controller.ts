@@ -46,7 +46,7 @@ type Actor = {
   tenantId: TenantId;
 };
 
-// The tenant always comes from the access token, never from the request.
+// INFO: The tenant always comes from the access token, never from the request.
 function actorOf(principal: Principal): Actor {
   if (!principal.tenantId) {
     throw new UnauthenticatedError();

@@ -4,7 +4,6 @@ import type { TenantId } from '@modules/tenants';
 
 import type { LoginChallenge } from '../../domain/entities/login-challenge.js';
 
-// `tenantId` is null for admin logins.
 export interface LoginChallengeRepository {
   findPendingByEmail(email: Email, tenantId: Nullable<TenantId>): Promise<Nullable<LoginChallenge>>;
   findPendingByEmailForUpdate(

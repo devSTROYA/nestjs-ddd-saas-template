@@ -24,17 +24,25 @@ type LoginChallengeProps = {
   createdAt: Date;
 };
 
+type CreateLoginChallengeProps = {
+  tenantId: Nullable<TenantId>;
+  email: Email;
+  otpHash: string;
+  expiresAt: Date;
+};
+
+type RestoreLoginChallengeProps = {
+  tenantId: Nullable<TenantId>;
+  email: Email;
+  otpHash: string;
+  expiresAt: Date;
+  attempts: number;
+  status: LoginChallengeStatus;
+  createdAt: Date;
+};
+
 export class LoginChallenge extends AggregateRoot<LoginChallengeProps, LoginChallengeId> {
-  static create(
-    props: {
-      id: LoginChallengeId;
-      tenantId: Nullable<TenantId>;
-      email: Email;
-      otpHash: string;
-      expiresAt: Date;
-    },
-    now: Date,
-  ): LoginChallenge {
+  static create(props: CreateLoginChallengeProps, id: LoginChallengeId, now: Date): LoginChallenge {
     const challenge = new LoginChallenge(
       {
         tenantId: props.tenantId,
@@ -45,11 +53,11 @@ export class LoginChallenge extends AggregateRoot<LoginChallengeProps, LoginChal
         status: LoginChallengeStatus.PENDING,
         createdAt: now,
       },
-      props.id,
+      id,
     );
     challenge.addEvent(
       new LoginChallengeCreatedEvent(
-        props.id,
+        id,
         props.tenantId,
         now.toISOString(),
         props.expiresAt.toISOString(),
@@ -58,16 +66,7 @@ export class LoginChallenge extends AggregateRoot<LoginChallengeProps, LoginChal
     return challenge;
   }
 
-  static restore(props: {
-    id: LoginChallengeId;
-    tenantId: Nullable<TenantId>;
-    email: Email;
-    otpHash: string;
-    expiresAt: Date;
-    attempts: number;
-    status: LoginChallengeStatus;
-    createdAt: Date;
-  }): LoginChallenge {
+  static restore(props: RestoreLoginChallengeProps, id: LoginChallengeId): LoginChallenge {
     return new LoginChallenge(
       {
         tenantId: props.tenantId,
@@ -78,7 +77,7 @@ export class LoginChallenge extends AggregateRoot<LoginChallengeProps, LoginChal
         status: props.status,
         createdAt: props.createdAt,
       },
-      props.id,
+      id,
     );
   }
 

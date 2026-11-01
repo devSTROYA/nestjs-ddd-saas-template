@@ -1,8 +1,7 @@
 import { newUuidV7 } from '@common/primitives';
 import type { Nullable } from '@common/types';
 
-// Subclasses add primitive fields only (ids as strings, dates as ISO strings): the whole event is
-// serialised to the outbox. Never put secrets or hashes in an event.
+// INFO: Events are serialised to the outbox, so add primitive fields only and never secrets or hashes.
 export abstract class DomainEvent {
   abstract readonly name: string;
   readonly id: string = newUuidV7();

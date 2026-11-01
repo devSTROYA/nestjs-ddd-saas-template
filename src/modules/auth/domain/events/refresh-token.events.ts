@@ -7,7 +7,7 @@ export const RefreshTokenEventNames = {
   FAMILY_REVOKED: 'refresh_token.family_revoked',
 } as const;
 
-// Raised by the repository, not an aggregate: revoking a family updates many rows without loading them.
+// INFO: Raised by the repository, not an aggregate: revoking a family updates rows without loading them.
 export class RefreshTokenFamilyRevokedEvent extends DomainEvent {
   readonly name = RefreshTokenEventNames.FAMILY_REVOKED;
 

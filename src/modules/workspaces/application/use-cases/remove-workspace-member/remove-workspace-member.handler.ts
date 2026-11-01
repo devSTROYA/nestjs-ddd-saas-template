@@ -22,8 +22,7 @@ export class RemoveWorkspaceMemberHandler implements ICommandHandler<
     @Inject(UNIT_OF_WORK) private readonly unitOfWork: UnitOfWork,
   ) {}
 
-  // The user goes with the membership: a tenant has one workspace, so leaving it ends all access
-  // (login and refresh both need the user row).
+  // INFO: The user goes with the membership: a tenant has one workspace, so leaving it ends all access.
   execute(command: RemoveWorkspaceMemberCommand): Promise<void> {
     return this.unitOfWork.run(async () => {
       const workspace = await this.workspaces.findByTenantIdForUpdate(command.tenantId);

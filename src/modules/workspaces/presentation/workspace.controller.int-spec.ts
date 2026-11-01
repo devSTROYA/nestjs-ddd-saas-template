@@ -60,7 +60,6 @@ describe('WorkspaceController', () => {
     return (response.body as TokenBody).accessToken;
   };
 
-  // Registers the owner the way production does: invite by an admin, accept with the emailed code.
   const registerTenant = async (
     email: string,
   ): Promise<{ workspaceId: string; userId: string }> => {

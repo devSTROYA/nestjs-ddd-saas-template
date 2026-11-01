@@ -22,7 +22,6 @@ export const workspaceMembers = pgTable(
   },
   (table) => [
     primaryKey({ name: 'pk_workspace_members', columns: [table.workspaceId, table.userId] }),
-    // Members belong to the workspace aggregate, so they go with it.
     foreignKey({
       name: 'fk_workspace_members_workspace_id',
       columns: [table.workspaceId],

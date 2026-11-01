@@ -30,15 +30,25 @@ type WorkspaceProps = {
   name: WorkspaceName;
   roles: Map<UserId, WorkspaceRole>;
   createdAt: Date;
+  updatedAt: Date;
+};
+
+type CreateWorkspaceProps = {
+  tenantId: TenantId;
+  name: WorkspaceName;
+  ownerId: UserId;
+};
+
+type RestoreWorkspaceProps = {
+  tenantId: TenantId;
+  name: WorkspaceName;
+  members: readonly WorkspaceMember[];
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export class Workspace extends AggregateRoot<WorkspaceProps, WorkspaceId> {
-  static create(props: {
-    id: WorkspaceId;
-    tenantId: TenantId;
-    name: WorkspaceName;
-    ownerId: UserId;
-  }): Workspace {
+  static create(props: CreateWorkspaceProps, id: WorkspaceId): Workspace {
     const now = new Date();
     const workspace = new Workspace(
       {
@@ -46,12 +56,13 @@ export class Workspace extends AggregateRoot<WorkspaceProps, WorkspaceId> {
         name: props.name,
         roles: new Map([[props.ownerId, WorkspaceRole.OWNER]]),
         createdAt: now,
+        updatedAt: now,
       },
-      props.id,
+      id,
     );
     workspace.addEvent(
       new WorkspaceCreatedEvent(
-        props.id,
+        id,
         props.tenantId,
         now.toISOString(),
         props.ownerId,
@@ -61,21 +72,16 @@ export class Workspace extends AggregateRoot<WorkspaceProps, WorkspaceId> {
     return workspace;
   }
 
-  static restore(props: {
-    id: WorkspaceId;
-    tenantId: TenantId;
-    name: WorkspaceName;
-    members: readonly WorkspaceMember[];
-    createdAt: Date;
-  }): Workspace {
+  static restore(props: RestoreWorkspaceProps, id: WorkspaceId): Workspace {
     return new Workspace(
       {
         tenantId: props.tenantId,
         name: props.name,
         roles: new Map(props.members.map((member) => [member.userId, member.role])),
         createdAt: props.createdAt,
+        updatedAt: props.updatedAt,
       },
-      props.id,
+      id,
     );
   }
 
@@ -91,6 +97,10 @@ export class Workspace extends AggregateRoot<WorkspaceProps, WorkspaceId> {
     return this.props.createdAt;
   }
 
+  get updatedAt(): Date {
+    return this.props.updatedAt;
+  }
+
   get members(): WorkspaceMember[] {
     return [...this.props.roles].map(([userId, role]) => ({ userId, role }));
   }
@@ -101,8 +111,9 @@ export class Workspace extends AggregateRoot<WorkspaceProps, WorkspaceId> {
 
   rename(name: WorkspaceName): void {
     this.props.name = name;
+    const now = this.touch();
     this.addEvent(
-      new WorkspaceRenamedEvent(this.id, this.props.tenantId, new Date().toISOString(), name.value),
+      new WorkspaceRenamedEvent(this.id, this.props.tenantId, now.toISOString(), name.value),
     );
   }
 
@@ -117,14 +128,9 @@ export class Workspace extends AggregateRoot<WorkspaceProps, WorkspaceId> {
       throw new WorkspaceMemberAlreadyExistsError(userId);
     }
     this.props.roles.set(userId, role);
+    const now = this.touch();
     this.addEvent(
-      new WorkspaceMemberAddedEvent(
-        this.id,
-        this.props.tenantId,
-        new Date().toISOString(),
-        userId,
-        role,
-      ),
+      new WorkspaceMemberAddedEvent(this.id, this.props.tenantId, now.toISOString(), userId, role),
     );
   }
 
@@ -137,11 +143,12 @@ export class Workspace extends AggregateRoot<WorkspaceProps, WorkspaceId> {
       this.assertAnotherOwnerExists(userId);
     }
     this.props.roles.set(userId, role);
+    const now = this.touch();
     this.addEvent(
       new WorkspaceMemberRoleChangedEvent(
         this.id,
         this.props.tenantId,
-        new Date().toISOString(),
+        now.toISOString(),
         userId,
         current,
         role,
@@ -158,14 +165,16 @@ export class Workspace extends AggregateRoot<WorkspaceProps, WorkspaceId> {
       this.assertAnotherOwnerExists(userId);
     }
     this.props.roles.delete(userId);
+    const now = this.touch();
     this.addEvent(
-      new WorkspaceMemberRemovedEvent(
-        this.id,
-        this.props.tenantId,
-        new Date().toISOString(),
-        userId,
-      ),
+      new WorkspaceMemberRemovedEvent(this.id, this.props.tenantId, now.toISOString(), userId),
     );
+  }
+
+  private touch(): Date {
+    const now = new Date();
+    this.props.updatedAt = now;
+    return now;
   }
 
   private assertAnotherOwnerExists(except: UserId): void {

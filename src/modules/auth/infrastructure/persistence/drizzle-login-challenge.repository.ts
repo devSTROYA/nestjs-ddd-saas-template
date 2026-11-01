@@ -23,16 +23,18 @@ function toChallenge(row: LoginChallengeRow): LoginChallenge {
   if (!isLoginChallengeStatus(row.status)) {
     throw new InvalidLoginChallengeStatusError(row.status);
   }
-  return LoginChallenge.restore({
-    id: toLoginChallengeId(row.id),
-    tenantId: row.tenantId ? toTenantId(row.tenantId) : null,
-    email: Email.restore(row.email),
-    otpHash: row.otpHash,
-    expiresAt: row.expiresAt,
-    attempts: row.attempts,
-    status: row.status,
-    createdAt: row.createdAt,
-  });
+  return LoginChallenge.restore(
+    {
+      tenantId: row.tenantId ? toTenantId(row.tenantId) : null,
+      email: Email.restore(row.email),
+      otpHash: row.otpHash,
+      expiresAt: row.expiresAt,
+      attempts: row.attempts,
+      status: row.status,
+      createdAt: row.createdAt,
+    },
+    toLoginChallengeId(row.id),
+  );
 }
 
 export class DrizzleLoginChallengeRepository implements LoginChallengeRepository {
@@ -70,7 +72,7 @@ export class DrizzleLoginChallengeRepository implements LoginChallengeRepository
         status: challenge.status,
       };
       try {
-        // Only a pending row may change, so a resend cannot revive a challenge consumed meanwhile.
+        // INFO: Only a pending row may change, so a resend cannot revive a consumed challenge.
         const written = await this.context.client
           .insert(loginChallenges)
           .values({

@@ -8,9 +8,8 @@ export const LOGIN_CODE_PER_EMAIL: RateLimitRule = {
   windowMs: HOUR_MS,
 };
 
-// Requesting a new code resets the per-challenge attempt lock, so wrong codes are also capped per
-// email. Only failures count, and the tight rule is per email and IP: a stranger exhausts their own
-// budget, not the owner's. The ceiling per email alone bounds a distributed guesser.
+// INFO: A new code resets the per-challenge lock, so failures are also capped per email; the tight
+// rule is per email and IP so a stranger cannot exhaust the owner's budget.
 export const LOGIN_VERIFY_FAILURES_PER_EMAIL_IP: RateLimitRule = {
   name: 'login-verify-failures-email-ip',
   limit: 10,

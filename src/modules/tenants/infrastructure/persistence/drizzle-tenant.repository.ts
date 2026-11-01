@@ -11,11 +11,10 @@ import { TenantName } from '../../domain/value-objects/tenant-name.js';
 import { type TenantRow, tenants } from './tenant.schema.js';
 
 function toTenant(row: TenantRow): Tenant {
-  return Tenant.restore({
-    id: toTenantId(row.id),
-    name: TenantName.restore(row.name),
-    createdAt: row.createdAt,
-  });
+  return Tenant.restore(
+    { name: TenantName.restore(row.name), createdAt: row.createdAt },
+    toTenantId(row.id),
+  );
 }
 
 export class DrizzleTenantRepository implements TenantRepository {

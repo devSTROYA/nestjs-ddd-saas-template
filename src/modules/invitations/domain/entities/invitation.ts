@@ -29,17 +29,25 @@ type InvitationProps = {
   createdAt: Date;
 };
 
+type CreateInvitationProps = {
+  email: Email;
+  invitedBy: AdminId;
+  otpHash: string;
+  expiresAt: Date;
+};
+
+type RestoreInvitationProps = {
+  email: Email;
+  invitedBy: AdminId;
+  otpHash: string;
+  expiresAt: Date;
+  attempts: number;
+  status: InvitationStatus;
+  createdAt: Date;
+};
+
 export class Invitation extends AggregateRoot<InvitationProps, InvitationId> {
-  static create(
-    props: {
-      id: InvitationId;
-      email: Email;
-      invitedBy: AdminId;
-      otpHash: string;
-      expiresAt: Date;
-    },
-    now: Date,
-  ): Invitation {
+  static create(props: CreateInvitationProps, id: InvitationId, now: Date): Invitation {
     const invitation = new Invitation(
       {
         email: props.email,
@@ -50,11 +58,11 @@ export class Invitation extends AggregateRoot<InvitationProps, InvitationId> {
         status: InvitationStatus.PENDING,
         createdAt: now,
       },
-      props.id,
+      id,
     );
     invitation.addEvent(
       new InvitationCreatedEvent(
-        props.id,
+        id,
         now.toISOString(),
         props.email.value,
         props.invitedBy,
@@ -64,16 +72,7 @@ export class Invitation extends AggregateRoot<InvitationProps, InvitationId> {
     return invitation;
   }
 
-  static restore(props: {
-    id: InvitationId;
-    email: Email;
-    invitedBy: AdminId;
-    otpHash: string;
-    expiresAt: Date;
-    attempts: number;
-    status: InvitationStatus;
-    createdAt: Date;
-  }): Invitation {
+  static restore(props: RestoreInvitationProps, id: InvitationId): Invitation {
     return new Invitation(
       {
         email: props.email,
@@ -84,7 +83,7 @@ export class Invitation extends AggregateRoot<InvitationProps, InvitationId> {
         status: props.status,
         createdAt: props.createdAt,
       },
-      props.id,
+      id,
     );
   }
 
@@ -116,7 +115,7 @@ export class Invitation extends AggregateRoot<InvitationProps, InvitationId> {
     return this.props.createdAt;
   }
 
-  // A wrong OTP does not throw: the caller must persist the attempt before raising InvalidOtpError.
+  // INFO: A wrong OTP does not throw; the caller persists the attempt before raising InvalidOtpError.
   accept(otpMatches: boolean, now: Date): boolean {
     this.assertPending();
     if (now >= this.props.expiresAt) {

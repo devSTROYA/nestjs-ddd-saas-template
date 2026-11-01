@@ -73,19 +73,19 @@ export class AcceptInvitationHandler implements ICommandHandler<
       return null;
     }
 
-    const tenant = Tenant.create({ id: newTenantId(), name: tenantName });
-    const user = User.create({
-      id: newUserId(),
-      tenantId: tenant.id,
-      email: invitation.email,
-      name: userName,
-    });
-    const workspace = Workspace.create({
-      id: newWorkspaceId(),
-      tenantId: tenant.id,
-      name: WorkspaceName.create(tenantName.value),
-      ownerId: user.id,
-    });
+    const tenant = Tenant.create({ name: tenantName }, newTenantId());
+    const user = User.create(
+      { tenantId: tenant.id, email: invitation.email, name: userName },
+      newUserId(),
+    );
+    const workspace = Workspace.create(
+      {
+        tenantId: tenant.id,
+        name: WorkspaceName.create(tenantName.value),
+        ownerId: user.id,
+      },
+      newWorkspaceId(),
+    );
     await this.tenants.save(tenant);
     await this.users.save(user);
     await this.workspaces.save(workspace);

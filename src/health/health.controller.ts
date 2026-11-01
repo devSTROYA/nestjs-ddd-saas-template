@@ -7,7 +7,7 @@ import { Public } from '@modules/auth';
 
 import { NotReadyError } from './health.error.js';
 
-export type HealthResponse = {
+type HealthResponse = {
   status: 'ok';
 };
 

@@ -24,7 +24,6 @@ const pools: Pool[] = [];
 const databases: string[] = [];
 const folders: string[] = [];
 
-// A copy of the migrations folder that stops after the given migration.
 const migrationsUpTo = async (lastIdx: number): Promise<string> => {
   const folder = await mkdtemp(join(tmpdir(), 'boilerplate-migrations-'));
   folders.push(folder);
@@ -40,7 +39,6 @@ const migrationsUpTo = async (lastIdx: number): Promise<string> => {
   return folder;
 };
 
-// A new empty database migrated up to migration `lastIdx`, to be filled with "existing" data.
 const databaseAt = async (lastIdx: number): Promise<Pool> => {
   const name = `migration_${newUuidV7().replaceAll('-', '')}`;
   await admin.query(`CREATE DATABASE ${name}`);

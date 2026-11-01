@@ -9,22 +9,18 @@ import { User } from './user.js';
 const TENANT_ID = newTenantId();
 
 const newUser = (): User =>
-  User.create({
-    id: newUserId(),
-    tenantId: TENANT_ID,
-    email: Email.create('a@b.c'),
-    name: UserName.create('Uz'),
-  });
+  User.create(
+    { tenantId: TENANT_ID, email: Email.create('a@b.c'), name: UserName.create('Uz') },
+    newUserId(),
+  );
 
 describe('User', () => {
   it('creates with the given id, tenant, email and name', () => {
     const id = newUserId();
-    const user = User.create({
+    const user = User.create(
+      { tenantId: TENANT_ID, email: Email.create('a@b.c'), name: UserName.create('Uz') },
       id,
-      tenantId: TENANT_ID,
-      email: Email.create('a@b.c'),
-      name: UserName.create('Uz'),
-    });
+    );
     expect(user.id).toBe(id);
     expect(user.tenantId).toBe(TENANT_ID);
     expect(user.email.value).toBe('a@b.c');
@@ -57,25 +53,29 @@ describe('User', () => {
   });
 
   it('raises no event on restore', () => {
-    const user = User.restore({
-      id: newUserId(),
-      tenantId: TENANT_ID,
-      email: Email.restore('a@b.c'),
-      name: UserName.restore('Uz'),
-      createdAt: new Date(),
-    });
+    const user = User.restore(
+      {
+        tenantId: TENANT_ID,
+        email: Email.restore('a@b.c'),
+        name: UserName.restore('Uz'),
+        createdAt: new Date(),
+      },
+      newUserId(),
+    );
     expect(user.pullEvents()).toEqual([]);
   });
 
   it('restores without re-validation', () => {
     const createdAt = new Date('2026-01-01T00:00:00Z');
-    const user = User.restore({
-      id: newUserId(),
-      tenantId: TENANT_ID,
-      email: Email.restore('a@b.c'),
-      name: UserName.restore('Uz'),
-      createdAt,
-    });
+    const user = User.restore(
+      {
+        tenantId: TENANT_ID,
+        email: Email.restore('a@b.c'),
+        name: UserName.restore('Uz'),
+        createdAt,
+      },
+      newUserId(),
+    );
     expect(user.createdAt).toBe(createdAt);
   });
 });

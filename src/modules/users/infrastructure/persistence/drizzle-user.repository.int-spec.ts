@@ -21,12 +21,14 @@ const context = new DatabaseContext(drizzle(pool));
 const repository = new DrizzleUserRepository(context);
 
 const newUser = (overrides: { tenantId?: typeof TENANT_A; email?: string } = {}) =>
-  User.create({
-    id: newUserId(),
-    tenantId: overrides.tenantId ?? TENANT_A,
-    email: Email.create(overrides.email ?? 'a@b.co'),
-    name: UserName.create('Uz'),
-  });
+  User.create(
+    {
+      tenantId: overrides.tenantId ?? TENANT_A,
+      email: Email.create(overrides.email ?? 'a@b.co'),
+      name: UserName.create('Uz'),
+    },
+    newUserId(),
+  );
 
 beforeEach(async () => {
   await pool.query('TRUNCATE TABLE users, tenants, outbox CASCADE');
@@ -119,12 +121,10 @@ describe('DrizzleUserRepository', () => {
   it('refuses to overwrite a user that belongs to another tenant', async () => {
     const original = newUser();
     await repository.save(original);
-    const intruder = User.create({
-      id: original.id,
-      tenantId: TENANT_B,
-      email: Email.create('evil@b.co'),
-      name: UserName.create('Evil'),
-    });
+    const intruder = User.create(
+      { tenantId: TENANT_B, email: Email.create('evil@b.co'), name: UserName.create('Evil') },
+      original.id,
+    );
 
     await expect(repository.save(intruder)).rejects.toThrow(UserIdConflictError);
     expect((await repository.findById(TENANT_A, original.id))?.name.value).toBe('Uz');

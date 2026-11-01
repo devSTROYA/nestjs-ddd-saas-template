@@ -2,9 +2,9 @@ import type { z } from 'zod';
 
 export type JsonObject = Record<string, unknown>;
 
-export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
+type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
-export type PathParamDoc = {
+type PathParamDoc = {
   description: string;
   schema: z.ZodType;
 };

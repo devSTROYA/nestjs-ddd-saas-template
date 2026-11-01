@@ -20,20 +20,22 @@ function toToken(row: RefreshTokenRow): RefreshToken {
   if (!isPrincipalType(row.principalType)) {
     throw new InvalidPrincipalTypeError(row.principalType);
   }
-  return RefreshToken.restore({
-    id: toRefreshTokenId(row.id),
-    familyId: toTokenFamilyId(row.familyId),
-    principal: {
-      type: row.principalType,
-      id: row.principalId,
-      ...(row.tenantId ? { tenantId: row.tenantId } : {}),
+  return RefreshToken.restore(
+    {
+      familyId: toTokenFamilyId(row.familyId),
+      principal: {
+        type: row.principalType,
+        id: row.principalId,
+        ...(row.tenantId ? { tenantId: row.tenantId } : {}),
+      },
+      tokenHash: row.tokenHash,
+      expiresAt: row.expiresAt,
+      usedAt: row.usedAt,
+      revokedAt: row.revokedAt,
+      createdAt: row.createdAt,
     },
-    tokenHash: row.tokenHash,
-    expiresAt: row.expiresAt,
-    usedAt: row.usedAt,
-    revokedAt: row.revokedAt,
-    createdAt: row.createdAt,
-  });
+    toRefreshTokenId(row.id),
+  );
 }
 
 export class DrizzleRefreshTokenRepository implements RefreshTokenRepository {

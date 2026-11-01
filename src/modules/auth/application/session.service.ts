@@ -30,12 +30,12 @@ export class SessionService {
     await this.refreshTokens.save(
       RefreshToken.issue(
         {
-          id: newRefreshTokenId(),
           familyId,
           principal,
           tokenHash: this.codec.hash(refreshToken),
           expiresAt: new Date(now.getTime() + REFRESH_TOKEN_TTL_MS),
         },
+        newRefreshTokenId(),
         now,
       ),
     );

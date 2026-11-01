@@ -60,7 +60,7 @@ export class PostgresThrottlerStorage implements ThrottlerStorage {
     }
   }
 
-  // Fails open like `increment`: an unreachable database reads as "no hits".
+  // INFO: Fails open like `increment`: an unreachable database reads as "no hits".
   async peek(key: string): Promise<{ hits: number; secondsLeft: number }> {
     try {
       const { rows } = await this.database.execute<{ hits: number; seconds_left: number }>(sql`

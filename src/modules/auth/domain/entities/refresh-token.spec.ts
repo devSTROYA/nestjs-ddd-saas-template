@@ -11,12 +11,12 @@ const IN_A_DAY = new Date(NOW.getTime() + 24 * 60 * 60 * 1000);
 const issue = (): RefreshToken =>
   RefreshToken.issue(
     {
-      id: newRefreshTokenId(),
       familyId: newTokenFamilyId(),
       principal: { type: PrincipalType.ADMIN, id: newAdminId() },
       tokenHash: 'hash',
       expiresAt: IN_A_DAY,
     },
+    newRefreshTokenId(),
     NOW,
   );
 
@@ -36,11 +36,10 @@ describe('RefreshToken', () => {
   });
 
   it('reports reuse for a revoked token', () => {
-    const token = RefreshToken.restore({
-      ...issueProps(),
-      usedAt: null,
-      revokedAt: NOW,
-    });
+    const token = RefreshToken.restore(
+      { ...issueProps(), usedAt: null, revokedAt: NOW },
+      newRefreshTokenId(),
+    );
 
     expect(token.rotate(NOW)).toBe(RotationOutcome.REUSED);
   });
@@ -92,7 +91,10 @@ describe('RefreshToken', () => {
   });
 
   it('raises no event on restore', () => {
-    const token = RefreshToken.restore({ ...issueProps(), usedAt: null, revokedAt: null });
+    const token = RefreshToken.restore(
+      { ...issueProps(), usedAt: null, revokedAt: null },
+      newRefreshTokenId(),
+    );
 
     expect(token.pullEvents()).toEqual([]);
   });
@@ -100,7 +102,6 @@ describe('RefreshToken', () => {
 
 function issueProps() {
   return {
-    id: newRefreshTokenId(),
     familyId: newTokenFamilyId(),
     principal: { type: PrincipalType.ADMIN, id: newAdminId() },
     tokenHash: 'hash',

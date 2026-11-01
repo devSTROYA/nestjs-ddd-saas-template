@@ -73,12 +73,14 @@ describe('AddWorkspaceMemberHandler', () => {
   it('refuses an email that belongs to a user of another tenant', async () => {
     const kit = createWorkspaceKit();
     await kit.users.save(
-      User.create({
-        id: newUserId(),
-        tenantId: newTenantId(),
-        email: Email.create('other@beta.co'),
-        name: UserName.create('Other'),
-      }),
+      User.create(
+        {
+          tenantId: newTenantId(),
+          email: Email.create('other@beta.co'),
+          name: UserName.create('Other'),
+        },
+        newUserId(),
+      ),
     );
 
     await expect(addMember(kit, 'other@beta.co')).rejects.toThrow(EmailAlreadyTakenError);
