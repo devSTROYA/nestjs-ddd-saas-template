@@ -127,12 +127,17 @@ changes, update this file in the same change.
   several). The API is `/v1/workspaces/:workspaceId/...` and takes the tenant from the access token
   only; a workspace id of another tenant or an unknown id is `404 WORKSPACE_NOT_FOUND`
   (`findById(tenantId, id)` never finds it).
-  - `Workspace` is an aggregate holding its members (`user -> role`); roles are `owner` and `admin`
-    (`WorkspaceRole`). `workspace_members` (pk `workspace_id, user_id`) cascades with the workspace;
-    the repository makes the stored members equal to the aggregate's and locks the workspace row
-    (`FOR UPDATE`) for every change, so the invariants hold under concurrency.
+  - `Workspace` and `WorkspaceMember` are separate aggregates, each with its own repository:
+    `WorkspaceRepository` never touches members, and a workspace can hold many members without
+    loading them all. Roles are `owner` and `admin` (`WorkspaceRole`). `workspace_members` has its
+    own UUID v7 `id` and `tenant_id`, is unique on `workspace_id, user_id`, and cascades with the
+    workspace. Routes still identify a member by user id. Member events use the member id as
+    `aggregateId` and carry `workspaceId`. A member change does not touch `workspaces.updated_at`.
   - **At least one owner always exists:** demoting, removing or leaving as the last owner is
-    `409 WORKSPACE_LAST_OWNER_REQUIRED`. An owner can make others owners.
+    `409 WORKSPACE_LAST_OWNER_REQUIRED`. An owner can make others owners. This rule spans members,
+    so the handler passes `countOwners` into `changeRole` and `remove`. **Every handler that changes
+    members must first lock the workspace row** (`findByIdForUpdate`); that lock is what keeps the
+    count true under concurrency, nothing in the database enforces it.
   - **There is no invitation to a workspace.** An owner adds someone (`POST /workspaces/:workspaceId/members`
     with `email`, `name`, `role`) and they are a member at once. An email that is not a user yet
     becomes a user of that tenant (`name` is used only then) and logs in with a one-time code; an
@@ -143,14 +148,16 @@ changes, update this file in the same change.
     need the user row, so access ends at once (an access token stays valid up to 15 minutes, and
     `GET /workspaces/:workspaceId` answers 404 to a non-member). Any member can leave
     (`POST /workspaces/:workspaceId/leave`). `GET /workspaces/:workspaceId` returns the caller's
-    role, `memberCount` and a preview of the 10 newest members (`created_at DESC, user_id DESC`);
-    `GET /workspaces/:workspaceId/members?page=&limit=` lists all of them with offset pagination
-    (`page` default 1, `limit` default 20, max 100; `{ items, page, limit, total }`), both members
-    only (404 otherwise). All routes need a `user` principal; admins get 403.
+    role, `memberCount` and a preview of the 10 newest members (`created_at DESC, user_id DESC`),
+    from `WorkspaceQuery`; `GET /workspaces/:workspaceId/members?page=&limit=` lists all of them with
+    offset pagination (`page` default 1, `limit` default 20, max 100;
+    `{ items, page, limit, total }`), from `WorkspaceMemberQuery`, both members only (404 otherwise).
+    All routes need a `user` principal; admins get 403.
   - Migration 0010 backfills a workspace per existing tenant that has users and makes every
     existing user an owner (those users were all created as tenant owners); a tenant without users
-    gets none. Migration 0009 stops with a readable error if an email is shared by two tenants.
-    Both were edited after being written (before any deployment) to be safe on existing data, and
+    gets none. Migration 0012 gives existing members an id and their workspace's tenant id. Migration
+    0009 stops with a readable error if an email is shared by two tenants.
+    Migrations 0009 and 0010 were edited after being written (before any deployment) to be safe on existing data, and
     `test/integration/migrations.int-spec.ts` runs them on pre-filled databases.
 - **Admins are a separate module and table** so `users.tenant_id` never needs to be nullable.
 - **The seed admin has a fixed id (`SEED_ADMIN_ID`).** `pnpm db:seed` is idempotent and reads

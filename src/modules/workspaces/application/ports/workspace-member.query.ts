@@ -1,0 +1,30 @@
+import type { Nullable } from '@common/types';
+import type { TenantId } from '@modules/tenants';
+import type { UserId } from '@modules/users';
+
+import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
+import type { WorkspaceRole } from '../../domain/value-objects/workspace-role.js';
+
+export type WorkspaceMemberView = {
+  userId: UserId;
+  name: string;
+  email: string;
+  role: WorkspaceRole;
+};
+
+type ListWorkspaceMembersParams = {
+  tenantId: TenantId;
+  workspaceId: WorkspaceId;
+  actorId: UserId;
+  page: number;
+  limit: number;
+};
+
+export interface WorkspaceMemberQuery {
+  // INFO: Answers null when the workspace is not found for the tenant or the actor is not a member, so a non-member learns nothing.
+  list(
+    params: ListWorkspaceMembersParams,
+  ): Promise<Nullable<{ items: WorkspaceMemberView[]; total: number }>>;
+}
+
+export const WORKSPACE_MEMBER_QUERY = Symbol('WORKSPACE_MEMBER_QUERY');

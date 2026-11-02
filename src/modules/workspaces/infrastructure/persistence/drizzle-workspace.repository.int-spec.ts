@@ -11,7 +11,6 @@ import { WorkspaceIdConflictError } from '../../domain/errors/domain.error.js';
 import { WorkspaceEventNames } from '../../domain/events/workspace.events.js';
 import { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspaceName } from '../../domain/value-objects/workspace-name.js';
-import { WorkspaceRole } from '../../domain/value-objects/workspace-role.js';
 import { DrizzleWorkspaceRepository } from './drizzle-workspace.repository.js';
 
 const pool = new Pool({ connectionString: inject('databaseUrl') });
@@ -24,21 +23,11 @@ const insertTenant = async (): Promise<TenantId> => {
   return id;
 };
 
-const insertUser = async (tenantId: TenantId, email: string): Promise<UserId> => {
-  const id = UserId.create();
-  await pool.query("INSERT INTO users (id, tenant_id, email, name) VALUES ($1, $2, $3, 'U')", [
-    id.value,
-    tenantId.value,
-    email,
-  ]);
-  return id;
-};
-
-const newWorkspace = (tenantId: TenantId, ownerId: UserId) =>
+const newWorkspace = (tenantId: TenantId) =>
   Workspace.create({
     tenantId,
     name: WorkspaceName.create('Acme'),
-    ownerId,
+    ownerId: UserId.create(),
     createdAt: new Date(),
   });
 
@@ -51,12 +40,9 @@ afterAll(async () => {
 });
 
 describe('DrizzleWorkspaceRepository', () => {
-  it('saves a workspace with its members and reads it back by tenant', async () => {
+  it('saves a workspace and reads it back by tenant', async () => {
     const tenantId = await insertTenant();
-    const owner = await insertUser(tenantId, 'o@a.co');
-    const admin = await insertUser(tenantId, 'a@a.co');
-    const workspace = newWorkspace(tenantId, owner);
-    workspace.addMember(admin, WorkspaceRole.ADMIN, new Date());
+    const workspace = newWorkspace(tenantId);
     await repository.save(workspace);
 
     const found = await repository.findById(tenantId, workspace.id);
@@ -64,18 +50,11 @@ describe('DrizzleWorkspaceRepository', () => {
     expect(found?.id).toEqual(workspace.id);
     expect(found?.name.value).toBe('Acme');
     expect(found?.createdAt).toEqual(workspace.createdAt);
-    expect(found?.members).toEqual(
-      expect.arrayContaining([
-        { userId: owner, role: WorkspaceRole.OWNER },
-        { userId: admin, role: WorkspaceRole.ADMIN },
-      ]),
-    );
-    expect(found?.members).toHaveLength(2);
   });
 
   it('returns null for an unknown workspace and for a workspace of another tenant', async () => {
     const tenantId = await insertTenant();
-    const workspace = newWorkspace(tenantId, await insertUser(tenantId, 'o@a.co'));
+    const workspace = newWorkspace(tenantId);
     await repository.save(workspace);
 
     expect(await repository.findById(tenantId, WorkspaceId.create())).toBeNull();
@@ -83,48 +62,35 @@ describe('DrizzleWorkspaceRepository', () => {
     expect(await repository.findByIdForUpdate(TenantId.create(), workspace.id)).toBeNull();
   });
 
-  it('persists role changes and removals so the stored members match the aggregate', async () => {
+  it('persists a rename', async () => {
     const tenantId = await insertTenant();
-    const owner = await insertUser(tenantId, 'o@a.co');
-    const second = await insertUser(tenantId, 's@a.co');
-    const third = await insertUser(tenantId, 't@a.co');
-    const workspace = newWorkspace(tenantId, owner);
-    workspace.addMember(second, WorkspaceRole.ADMIN, new Date());
-    workspace.addMember(third, WorkspaceRole.ADMIN, new Date());
+    const workspace = newWorkspace(tenantId);
     await repository.save(workspace);
 
-    workspace.changeRole(second, WorkspaceRole.OWNER, new Date());
-    workspace.removeMember(third, new Date());
+    workspace.rename(WorkspaceName.create('Beta'), new Date());
     await repository.save(workspace);
 
     const found = await repository.findById(tenantId, workspace.id);
-    expect(found?.roleOf(second)).toBe(WorkspaceRole.OWNER);
-    expect(found?.roleOf(third)).toBeNull();
-    expect(found?.members).toHaveLength(2);
+    expect(found?.name.value).toBe('Beta');
   });
 
   it('allows only one workspace per tenant', async () => {
     const tenantId = await insertTenant();
-    const owner = await insertUser(tenantId, 'o@a.co');
-    await repository.save(newWorkspace(tenantId, owner));
+    await repository.save(newWorkspace(tenantId));
 
-    await expect(repository.save(newWorkspace(tenantId, owner))).rejects.toMatchObject({
+    await expect(repository.save(newWorkspace(tenantId))).rejects.toMatchObject({
       cause: { code: '23505' },
     });
   });
 
-  it('refuses to overwrite a workspace of another tenant, members included', async () => {
+  it('refuses to overwrite a workspace of another tenant', async () => {
     const tenantId = await insertTenant();
-    const owner = await insertUser(tenantId, 'o@a.co');
-    const workspace = newWorkspace(tenantId, owner);
+    const workspace = newWorkspace(tenantId);
     await repository.save(workspace);
-    const otherTenantId = await insertTenant();
-    const intruder = await insertUser(otherTenantId, 'i@b.co');
     const hijack = Workspace.restore(
       {
-        tenantId: otherTenantId,
+        tenantId: await insertTenant(),
         name: WorkspaceName.create('Hijack'),
-        roles: new Map([[intruder.value, WorkspaceRole.OWNER]]),
         createdAt: workspace.createdAt,
         updatedAt: workspace.updatedAt,
       },
@@ -135,13 +101,11 @@ describe('DrizzleWorkspaceRepository', () => {
 
     const found = await repository.findById(tenantId, workspace.id);
     expect(found?.name.value).toBe('Acme');
-    expect(found?.members).toEqual([{ userId: owner, role: WorkspaceRole.OWNER }]);
   });
 
   it('locks the workspace row inside a transaction', async () => {
     const tenantId = await insertTenant();
-    const owner = await insertUser(tenantId, 'o@a.co');
-    const workspace = newWorkspace(tenantId, owner);
+    const workspace = newWorkspace(tenantId);
     await repository.save(workspace);
 
     const found = await context.run(() => repository.findByIdForUpdate(tenantId, workspace.id));
@@ -151,8 +115,7 @@ describe('DrizzleWorkspaceRepository', () => {
 
   it('rolls back a save made inside a failed transaction', async () => {
     const tenantId = await insertTenant();
-    const owner = await insertUser(tenantId, 'o@a.co');
-    const workspace = newWorkspace(tenantId, owner);
+    const workspace = newWorkspace(tenantId);
 
     await expect(
       context.run(async () => {
@@ -168,28 +131,18 @@ describe('DrizzleWorkspaceRepository', () => {
 
   it('writes the pending events to the outbox with the workspace', async () => {
     const tenantId = await insertTenant();
-    const owner = await insertUser(tenantId, 'o@a.co');
-    const workspace = newWorkspace(tenantId, owner);
-    workspace.addMember(await insertUser(tenantId, 'a@a.co'), WorkspaceRole.ADMIN, new Date());
+    const workspace = newWorkspace(tenantId);
     await repository.save(workspace);
 
     const { rows } = await pool.query<{ name: string; aggregate_id: string; tenant_id: string }>(
       'SELECT name, aggregate_id, tenant_id FROM outbox',
     );
-    expect(rows).toHaveLength(2);
-    expect(rows).toEqual(
-      expect.arrayContaining([
-        {
-          name: WorkspaceEventNames.CREATED,
-          aggregate_id: workspace.id.value,
-          tenant_id: tenantId.value,
-        },
-        {
-          name: WorkspaceEventNames.MEMBER_ADDED,
-          aggregate_id: workspace.id.value,
-          tenant_id: tenantId.value,
-        },
-      ]),
-    );
+    expect(rows).toEqual([
+      {
+        name: WorkspaceEventNames.CREATED,
+        aggregate_id: workspace.id.value,
+        tenant_id: tenantId.value,
+      },
+    ]);
   });
 });

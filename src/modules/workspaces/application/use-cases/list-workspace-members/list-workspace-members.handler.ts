@@ -6,7 +6,10 @@ import { UserId } from '@modules/users';
 
 import { WorkspaceNotFoundError } from '../../../domain/errors/domain.error.js';
 import { WorkspaceId } from '../../../domain/value-objects/workspace-id.js';
-import { WORKSPACE_QUERY, type WorkspaceQuery } from '../../ports/workspace.query.js';
+import {
+  WORKSPACE_MEMBER_QUERY,
+  type WorkspaceMemberQuery,
+} from '../../ports/workspace-member.query.js';
 import {
   ListWorkspaceMembersQuery,
   type ListWorkspaceMembersResult,
@@ -17,10 +20,10 @@ export class ListWorkspaceMembersHandler implements IQueryHandler<
   ListWorkspaceMembersQuery,
   ListWorkspaceMembersResult
 > {
-  constructor(@Inject(WORKSPACE_QUERY) private readonly workspaces: WorkspaceQuery) {}
+  constructor(@Inject(WORKSPACE_MEMBER_QUERY) private readonly members: WorkspaceMemberQuery) {}
 
   async execute(query: ListWorkspaceMembersQuery): Promise<ListWorkspaceMembersResult> {
-    const found = await this.workspaces.listMembers({
+    const found = await this.members.list({
       tenantId: TenantId.restore(query.tenantId),
       workspaceId: WorkspaceId.restore(query.workspaceId),
       actorId: UserId.restore(query.actorId),

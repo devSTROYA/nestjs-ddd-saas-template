@@ -10,6 +10,7 @@ export const WorkspaceErrorCodes = {
   LAST_OWNER_REQUIRED: 'WORKSPACE_LAST_OWNER_REQUIRED',
   ROLE_INVALID: 'WORKSPACE_ROLE_INVALID',
   ID_CONFLICT: 'WORKSPACE_ID_CONFLICT',
+  MEMBER_ID_CONFLICT: 'WORKSPACE_MEMBER_ID_CONFLICT',
 } as const;
 
 export type WorkspaceErrorCode = (typeof WorkspaceErrorCodes)[keyof typeof WorkspaceErrorCodes];
@@ -70,6 +71,15 @@ export class WorkspaceIdConflictError extends DomainError {
     super(
       WorkspaceErrorCodes.ID_CONFLICT,
       `Workspace id already belongs to another tenant: ${workspaceId}`,
+    );
+  }
+}
+
+export class WorkspaceMemberIdConflictError extends DomainError {
+  constructor(memberId: string) {
+    super(
+      WorkspaceErrorCodes.MEMBER_ID_CONFLICT,
+      `Workspace member id already belongs to another tenant: ${memberId}`,
     );
   }
 }

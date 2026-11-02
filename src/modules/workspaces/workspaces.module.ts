@@ -5,6 +5,8 @@ import { DATABASE_CONTEXT, DatabaseModule, type DatabaseContext } from '@common/
 
 import { TenantsModule } from '../tenants/tenants.module.js';
 import { UsersModule } from '../users/users.module.js';
+import { WORKSPACE_MEMBER_QUERY } from './application/ports/workspace-member.query.js';
+import { WORKSPACE_MEMBER_REPOSITORY } from './application/ports/workspace-member.repository.js';
 import { WORKSPACE_QUERY } from './application/ports/workspace.query.js';
 import { WORKSPACE_REPOSITORY } from './application/ports/workspace.repository.js';
 import { AddWorkspaceMemberHandler } from './application/use-cases/add-workspace-member/add-workspace-member.handler.js';
@@ -13,6 +15,8 @@ import { GetWorkspaceHandler } from './application/use-cases/get-workspace/get-w
 import { LeaveWorkspaceHandler } from './application/use-cases/leave-workspace/leave-workspace.handler.js';
 import { ListWorkspaceMembersHandler } from './application/use-cases/list-workspace-members/list-workspace-members.handler.js';
 import { RemoveWorkspaceMemberHandler } from './application/use-cases/remove-workspace-member/remove-workspace-member.handler.js';
+import { DrizzleWorkspaceMemberQuery } from './infrastructure/persistence/drizzle-workspace-member.query.js';
+import { DrizzleWorkspaceMemberRepository } from './infrastructure/persistence/drizzle-workspace-member.repository.js';
 import { DrizzleWorkspaceQuery } from './infrastructure/persistence/drizzle-workspace.query.js';
 import { DrizzleWorkspaceRepository } from './infrastructure/persistence/drizzle-workspace.repository.js';
 import { WorkspacesController } from './presentation/workspaces.controller.js';
@@ -28,10 +32,22 @@ import { WorkspacesController } from './presentation/workspaces.controller.js';
         new DrizzleWorkspaceRepository(context),
     },
     {
+      provide: WORKSPACE_MEMBER_REPOSITORY,
+      inject: [DATABASE_CONTEXT],
+      useFactory: (context: DatabaseContext): DrizzleWorkspaceMemberRepository =>
+        new DrizzleWorkspaceMemberRepository(context),
+    },
+    {
       provide: WORKSPACE_QUERY,
       inject: [DATABASE_CONTEXT],
       useFactory: (context: DatabaseContext): DrizzleWorkspaceQuery =>
         new DrizzleWorkspaceQuery(context),
+    },
+    {
+      provide: WORKSPACE_MEMBER_QUERY,
+      inject: [DATABASE_CONTEXT],
+      useFactory: (context: DatabaseContext): DrizzleWorkspaceMemberQuery =>
+        new DrizzleWorkspaceMemberQuery(context),
     },
     GetWorkspaceHandler,
     ListWorkspaceMembersHandler,
@@ -40,6 +56,6 @@ import { WorkspacesController } from './presentation/workspaces.controller.js';
     RemoveWorkspaceMemberHandler,
     LeaveWorkspaceHandler,
   ],
-  exports: [WORKSPACE_REPOSITORY],
+  exports: [WORKSPACE_REPOSITORY, WORKSPACE_MEMBER_REPOSITORY],
 })
 export class WorkspacesModule {}

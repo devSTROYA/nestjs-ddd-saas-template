@@ -107,6 +107,14 @@ describe('migrations on existing data', () => {
     expect(members.rows).toEqual(
       [first, second, third].sort().map((userId) => ({ user_id: userId, role: 'owner' })),
     );
+    const memberIds = await pool.query<{ id: string; tenant_id: string; user_tenant_id: string }>(
+      `SELECT m.id, m.tenant_id, u.tenant_id AS user_tenant_id
+       FROM workspace_members m JOIN users u ON u.id = m.user_id`,
+    );
+    expect(memberIds.rows).toHaveLength(3);
+    expect(memberIds.rows.every((row) => UUID_V7.test(row.id))).toBe(true);
+    expect(new Set(memberIds.rows.map((row) => row.id)).size).toBe(3);
+    expect(memberIds.rows.every((row) => row.tenant_id === row.user_tenant_id)).toBe(true);
   });
 
   it('stops with a readable error when two tenants share an email', async () => {

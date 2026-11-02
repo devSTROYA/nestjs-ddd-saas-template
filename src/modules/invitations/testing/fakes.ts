@@ -4,7 +4,13 @@ import type { Clock } from '@common/clock';
 import type { Nullable } from '@common/types';
 import type { Tenant, TenantId, TenantRepository } from '@modules/tenants';
 import type { User, UserId, UserRepository } from '@modules/users';
-import type { Workspace, WorkspaceId, WorkspaceRepository } from '@modules/workspaces';
+import type {
+  Workspace,
+  WorkspaceId,
+  WorkspaceMember,
+  WorkspaceMemberRepository,
+  WorkspaceRepository,
+} from '@modules/workspaces';
 
 import type { InvitationRepository } from '../application/ports/invitation.repository.js';
 import type { Mailer } from '../application/ports/mailer.js';
@@ -94,6 +100,28 @@ export class FakeWorkspaces implements WorkspaceRepository {
 
   save(workspace: Workspace): Promise<void> {
     this.saved.set(workspace.id.value, workspace);
+    return Promise.resolve();
+  }
+}
+
+export class FakeWorkspaceMembers implements WorkspaceMemberRepository {
+  readonly saved = new Map<string, WorkspaceMember>();
+
+  findByUser(): Promise<Nullable<WorkspaceMember>> {
+    return Promise.resolve(null);
+  }
+
+  countOwners(): Promise<number> {
+    return Promise.resolve(0);
+  }
+
+  save(member: WorkspaceMember): Promise<void> {
+    this.saved.set(member.id.value, member);
+    return Promise.resolve();
+  }
+
+  delete(member: WorkspaceMember): Promise<void> {
+    this.saved.delete(member.id.value);
     return Promise.resolve();
   }
 }

@@ -14,8 +14,17 @@ import {
   type UserRepository,
 } from '@modules/users';
 
-import { WorkspaceNotFoundError } from '../../../domain/errors/domain.error.js';
+import { WorkspaceMember } from '../../../domain/entities/workspace-member.js';
+import {
+  WorkspaceMemberAlreadyExistsError,
+  WorkspaceNotFoundError,
+  WorkspaceOwnerRequiredError,
+} from '../../../domain/errors/domain.error.js';
 import { WorkspaceId } from '../../../domain/value-objects/workspace-id.js';
+import {
+  WORKSPACE_MEMBER_REPOSITORY,
+  type WorkspaceMemberRepository,
+} from '../../ports/workspace-member.repository.js';
 import {
   WORKSPACE_REPOSITORY,
   type WorkspaceRepository,
@@ -33,6 +42,7 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
 > {
   constructor(
     @Inject(WORKSPACE_REPOSITORY) private readonly workspaces: WorkspaceRepository,
+    @Inject(WORKSPACE_MEMBER_REPOSITORY) private readonly members: WorkspaceMemberRepository,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
     @Inject(UNIT_OF_WORK) private readonly unitOfWork: UnitOfWork,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -47,7 +57,6 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
     command: AddWorkspaceMemberCommand,
     email: Email,
   ): Promise<AddWorkspaceMemberResult> {
-    const actorId = UserId.restore(command.actorId);
     const tenantId = TenantId.restore(command.tenantId);
     const workspace = await this.workspaces.findByIdForUpdate(
       tenantId,
@@ -56,11 +65,21 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
     if (!workspace) {
       throw new WorkspaceNotFoundError();
     }
-    workspace.assertOwner(actorId);
+    const actor = await this.members.findByUser(
+      tenantId,
+      workspace.id,
+      UserId.restore(command.actorId),
+    );
+    if (!actor?.isOwner) {
+      throw new WorkspaceOwnerRequiredError();
+    }
 
     const existing = await this.users.findByEmail(email);
     if (existing && !existing.tenantId.equals(tenantId)) {
       throw new EmailAlreadyTakenError(email.value);
+    }
+    if (existing && (await this.members.findByUser(tenantId, workspace.id, existing.id))) {
+      throw new WorkspaceMemberAlreadyExistsError(existing.id.value);
     }
     const now = this.clock.now();
     const user =
@@ -72,11 +91,18 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
         createdAt: now,
       });
 
-    workspace.addMember(user.id, command.role, now);
     if (!existing) {
       await this.users.save(user);
     }
-    await this.workspaces.save(workspace);
+    await this.members.save(
+      WorkspaceMember.create({
+        tenantId,
+        workspaceId: workspace.id,
+        userId: user.id,
+        role: command.role,
+        createdAt: now,
+      }),
+    );
     return { userId: user.id };
   }
 }

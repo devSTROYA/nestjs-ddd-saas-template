@@ -1,4 +1,4 @@
-import type { WorkspaceMemberView } from '../../ports/workspace.query.js';
+import type { WorkspaceMemberView } from '../../ports/workspace-member.query.js';
 
 export class ListWorkspaceMembersQuery {
   constructor(

@@ -70,19 +70,22 @@ describe('AddWorkspaceMemberHandler', () => {
     expect(user?.email.value).toBe('new@acme.co');
     expect(user?.tenantId).toEqual(kit.tenantId);
     expect(user?.name.value).toBe('New Person');
-    expect(kit.workspace.roleOf(userId)).toBe(WorkspaceRole.ADMIN);
+    expect(kit.members.roleOf(userId)).toBe(WorkspaceRole.ADMIN);
   });
 
   it('adds an existing user of the same tenant without creating another user', async () => {
     const kit = createWorkspaceKit();
     const first = await addMember(kit, 'new@acme.co');
-    kit.workspace.removeMember(first.userId, new Date());
+    const member = await kit.members.findByUser(kit.tenantId, kit.workspace.id, first.userId);
+    if (member) {
+      await kit.members.delete(member);
+    }
 
     const again = await addMember(kit, 'new@acme.co', WorkspaceRole.OWNER);
 
     expect(again.userId).toEqual(first.userId);
     expect(kit.users.saved.size).toBe(2);
-    expect(kit.workspace.roleOf(first.userId)).toBe(WorkspaceRole.OWNER);
+    expect(kit.members.roleOf(first.userId)).toBe(WorkspaceRole.OWNER);
   });
 
   it('lets an owner add another owner', async () => {
@@ -90,7 +93,7 @@ describe('AddWorkspaceMemberHandler', () => {
 
     const { userId } = await addMember(kit, 'second@acme.co', WorkspaceRole.OWNER);
 
-    expect(kit.workspace.roleOf(userId)).toBe(WorkspaceRole.OWNER);
+    expect(kit.members.roleOf(userId)).toBe(WorkspaceRole.OWNER);
   });
 
   it('refuses an actor who is not an owner, including admins and outsiders', async () => {
@@ -162,7 +165,7 @@ describe('ChangeWorkspaceMemberRoleHandler', () => {
       ),
     );
 
-    expect(kit.workspace.roleOf(userId)).toBe(WorkspaceRole.OWNER);
+    expect(kit.members.roleOf(userId)).toBe(WorkspaceRole.OWNER);
   });
 
   it('refuses non-owners, unknown members and demoting the last owner', async () => {
@@ -211,7 +214,7 @@ describe('RemoveWorkspaceMemberHandler', () => {
     );
     await remove(kit.owner.id, userId);
 
-    expect(kit.workspace.roleOf(userId)).toBeNull();
+    expect(kit.members.roleOf(userId)).toBeNull();
     expect(await kit.users.findById(kit.tenantId, userId)).toBeNull();
     await expect(remove(kit.owner.id, userId)).rejects.toThrow(WorkspaceMemberNotFoundError);
   });
@@ -229,7 +232,7 @@ describe('LeaveWorkspaceHandler', () => {
     await expect(leave(kit.owner.id)).rejects.toThrow(LastWorkspaceOwnerRequiredError);
     await leave(userId);
 
-    expect(kit.workspace.roleOf(userId)).toBeNull();
+    expect(kit.members.roleOf(userId)).toBeNull();
     expect(await kit.users.findById(kit.tenantId, userId)).toBeNull();
     await expect(leave(userId)).rejects.toThrow(WorkspaceMemberNotFoundError);
   });
@@ -242,7 +245,7 @@ describe('LeaveWorkspaceHandler', () => {
       new LeaveWorkspaceCommand(kit.owner.id.value, kit.tenantId.value, kit.workspace.id.value),
     );
 
-    expect(kit.workspace.roleOf(kit.owner.id)).toBeNull();
+    expect(kit.members.roleOf(kit.owner.id)).toBeNull();
   });
 });
 

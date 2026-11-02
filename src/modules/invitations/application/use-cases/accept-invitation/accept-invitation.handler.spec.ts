@@ -16,6 +16,7 @@ import {
   FakeInvitations,
   FakeTenants,
   FakeUsers,
+  FakeWorkspaceMembers,
   FakeWorkspaces,
   OTP,
   fakeOtpService,
@@ -33,6 +34,7 @@ const setup = async (expiresAt = IN_A_DAY) => {
   const tenants = new FakeTenants();
   const users = new FakeUsers();
   const workspaces = new FakeWorkspaces();
+  const workspaceMembers = new FakeWorkspaceMembers();
   const id = InvitationId.create();
   await invitations.save(
     Invitation.create(
@@ -52,11 +54,12 @@ const setup = async (expiresAt = IN_A_DAY) => {
     tenants,
     users,
     workspaces,
+    workspaceMembers,
     fakeOtpService,
     fakeUnitOfWork,
     fixedClock(NOW),
   );
-  return { handler, invitations, tenants, users, workspaces, id };
+  return { handler, invitations, tenants, users, workspaces, workspaceMembers, id };
 };
 
 const accept = (id: InvitationId, otp = OTP, tenantName = ' Acme ', userName = ' Uz ') =>
@@ -64,14 +67,20 @@ const accept = (id: InvitationId, otp = OTP, tenantName = ' Acme ', userName = '
 
 describe('AcceptInvitationHandler', () => {
   it('creates the tenant, its owner and a workspace owned by them, and marks the invitation accepted', async () => {
-    const { handler, invitations, tenants, users, workspaces, id } = await setup();
+    const { handler, invitations, tenants, users, workspaces, workspaceMembers, id } =
+      await setup();
 
     const result = await handler.execute(accept(id));
 
     const workspace = workspaces.saved.get(result.workspaceId.value);
     expect(workspace?.tenantId).toEqual(result.tenantId);
     expect(workspace?.name.value).toBe('Acme');
-    expect(workspace?.members).toEqual([{ userId: result.userId, role: 'owner' }]);
+    const [owner, ...others] = workspaceMembers.saved.values();
+    expect(others).toEqual([]);
+    expect(owner?.tenantId).toEqual(result.tenantId);
+    expect(owner?.workspaceId).toEqual(result.workspaceId);
+    expect(owner?.userId).toEqual(result.userId);
+    expect(owner?.isOwner).toBe(true);
 
     expect(tenants.saved.get(result.tenantId.value)?.name.value).toBe('Acme');
     expect(users.saved).toHaveLength(1);

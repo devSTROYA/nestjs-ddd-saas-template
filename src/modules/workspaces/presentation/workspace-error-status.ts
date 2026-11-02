@@ -12,4 +12,5 @@ export const workspaceErrorStatus = {
   [WorkspaceErrorCodes.LAST_OWNER_REQUIRED]: HttpStatus.CONFLICT,
   [WorkspaceErrorCodes.ROLE_INVALID]: HttpStatus.INTERNAL_SERVER_ERROR,
   [WorkspaceErrorCodes.ID_CONFLICT]: HttpStatus.CONFLICT,
+  [WorkspaceErrorCodes.MEMBER_ID_CONFLICT]: HttpStatus.CONFLICT,
 } as const satisfies Record<WorkspaceErrorCode, number>;

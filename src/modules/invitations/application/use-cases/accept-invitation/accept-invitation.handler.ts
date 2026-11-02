@@ -8,10 +8,14 @@ import type { Nullable } from '@common/types';
 import { TENANT_REPOSITORY, Tenant, TenantName, type TenantRepository } from '@modules/tenants';
 import { USER_REPOSITORY, User, UserName, type UserRepository } from '@modules/users';
 import {
+  WORKSPACE_MEMBER_REPOSITORY,
   WORKSPACE_REPOSITORY,
   Workspace,
+  WorkspaceMember,
+  type WorkspaceMemberRepository,
   WorkspaceName,
   type WorkspaceRepository,
+  WorkspaceRole,
 } from '@modules/workspaces';
 
 import { InvalidOtpError, InvitationNotFoundError } from '../../../domain/errors/domain.error.js';
@@ -35,6 +39,8 @@ export class AcceptInvitationHandler implements ICommandHandler<
     @Inject(TENANT_REPOSITORY) private readonly tenants: TenantRepository,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
     @Inject(WORKSPACE_REPOSITORY) private readonly workspaces: WorkspaceRepository,
+    @Inject(WORKSPACE_MEMBER_REPOSITORY)
+    private readonly workspaceMembers: WorkspaceMemberRepository,
     @Inject(OTP_SERVICE) private readonly otpService: OtpService,
     @Inject(UNIT_OF_WORK) private readonly unitOfWork: UnitOfWork,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -87,9 +93,17 @@ export class AcceptInvitationHandler implements ICommandHandler<
       ownerId: user.id,
       createdAt: now,
     });
+    const owner = WorkspaceMember.create({
+      tenantId: tenant.id,
+      workspaceId: workspace.id,
+      userId: user.id,
+      role: WorkspaceRole.OWNER,
+      createdAt: now,
+    });
     await this.tenants.save(tenant);
     await this.users.save(user);
     await this.workspaces.save(workspace);
+    await this.workspaceMembers.save(owner);
     await this.invitations.save(invitation);
     return { tenantId: tenant.id, userId: user.id, workspaceId: workspace.id };
   }

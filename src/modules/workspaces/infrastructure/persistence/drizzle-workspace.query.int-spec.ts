@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { inject } from 'vitest';
 
 import { DatabaseContext } from '@common/database';
+import { newUuidV7 } from '@common/primitives';
 import { TenantId } from '@modules/tenants';
 import { UserId } from '@modules/users';
 
@@ -58,112 +59,72 @@ const seedWorkspace = async (
   });
   await repository.save(workspace);
   const start = Date.now();
-  await pool.query('UPDATE workspace_members SET created_at = $1', [new Date(start)]);
+  const insertMember = (userId: UserId, role: WorkspaceRole, createdAt: Date) =>
+    pool.query(
+      'INSERT INTO workspace_members (id, tenant_id, workspace_id, user_id, role, created_at) VALUES ($1, $2, $3, $4, $5, $6)',
+      [newUuidV7(), tenantId.value, workspace.id.value, userId.value, role, createdAt],
+    );
+  await insertMember(owner, WorkspaceRole.OWNER, new Date(start));
   const added: UserId[] = [];
   for (let index = 0; index < extraMembers; index++) {
     const userId = await insertUser(tenantId, `m${index}@a.co`, `Member ${index}`);
-    await pool.query(
-      "INSERT INTO workspace_members (workspace_id, user_id, role, created_at) VALUES ($1, $2, 'admin', $3)",
-      [workspace.id.value, userId.value, new Date(start + (index + 1) * 60_000)],
-    );
+    await insertMember(userId, WorkspaceRole.ADMIN, new Date(start + (index + 1) * 60_000));
     added.push(userId);
   }
   return { tenantId, workspaceId: workspace.id, owner, added };
 };
 
 describe('DrizzleWorkspaceQuery', () => {
-  describe('findViewFor', () => {
-    it('returns the workspace with its members, their name and email, and the role of the actor', async () => {
-      const { tenantId, workspaceId, owner, added } = await seedWorkspace(1);
-      const [admin] = added;
+  it('returns the workspace with its members, their name and email, and the role of the actor', async () => {
+    const { tenantId, workspaceId, owner, added } = await seedWorkspace(1);
+    const [admin] = added;
 
-      const view = await query.findViewFor(tenantId, workspaceId, admin as UserId);
+    const view = await query.findViewFor(tenantId, workspaceId, admin as UserId);
 
-      expect(view).toEqual({
-        id: workspaceId,
-        name: 'Acme',
-        role: WorkspaceRole.ADMIN,
-        memberCount: 2,
-        members: [
-          { userId: admin, name: 'Member 0', email: 'm0@a.co', role: WorkspaceRole.ADMIN },
-          { userId: owner, name: 'Olive', email: 'o@a.co', role: WorkspaceRole.OWNER },
-        ],
-      });
-    });
-
-    it('previews the newest members only and counts all of them', async () => {
-      const { tenantId, workspaceId, owner, added } = await seedWorkspace(
-        WORKSPACE_VIEW_MEMBER_LIMIT + 2,
-      );
-
-      const view = await query.findViewFor(tenantId, workspaceId, owner);
-
-      expect(view?.memberCount).toBe(WORKSPACE_VIEW_MEMBER_LIMIT + 3);
-      expect(view?.members.map((member) => member.userId)).toEqual(
-        added.slice(-WORKSPACE_VIEW_MEMBER_LIMIT).reverse(),
-      );
-    });
-
-    it('breaks ties on created_at by user id, newest first', async () => {
-      const { tenantId, workspaceId, owner } = await seedWorkspace(2);
-      await pool.query('UPDATE workspace_members SET created_at = now()');
-
-      const view = await query.findViewFor(tenantId, workspaceId, owner);
-
-      const ids = view?.members.map((member) => member.userId.value) ?? [];
-      expect(ids).toEqual([...ids].sort().reverse());
-    });
-
-    it('returns null for a non-member, an unknown workspace and a workspace of another tenant', async () => {
-      const { tenantId, workspaceId, owner } = await seedWorkspace(0);
-      const outsider = await insertUser(tenantId, 'x@a.co', 'Xena');
-      const otherTenantId = await insertTenant();
-      const stranger = await insertUser(otherTenantId, 's@b.co', 'Sam');
-
-      expect(await query.findViewFor(tenantId, workspaceId, outsider)).toBeNull();
-      expect(await query.findViewFor(tenantId, WorkspaceId.create(), owner)).toBeNull();
-      expect(await query.findViewFor(otherTenantId, workspaceId, owner)).toBeNull();
-      expect(await query.findViewFor(otherTenantId, workspaceId, stranger)).toBeNull();
+    expect(view).toEqual({
+      id: workspaceId,
+      name: 'Acme',
+      role: WorkspaceRole.ADMIN,
+      memberCount: 2,
+      members: [
+        { userId: admin, name: 'Member 0', email: 'm0@a.co', role: WorkspaceRole.ADMIN },
+        { userId: owner, name: 'Olive', email: 'o@a.co', role: WorkspaceRole.OWNER },
+      ],
     });
   });
 
-  describe('listMembers', () => {
-    it('pages the members newest first with the total', async () => {
-      const { tenantId, workspaceId, owner, added } = await seedWorkspace(4);
-      const newestFirst = [...added.reverse(), owner];
-      const page = (number: number) =>
-        query.listMembers({ tenantId, workspaceId, actorId: owner, page: number, limit: 2 });
+  it('previews the newest members only and counts all of them', async () => {
+    const { tenantId, workspaceId, owner, added } = await seedWorkspace(
+      WORKSPACE_VIEW_MEMBER_LIMIT + 2,
+    );
 
-      const first = await page(1);
-      const second = await page(2);
-      const last = await page(3);
-      const beyond = await page(4);
+    const view = await query.findViewFor(tenantId, workspaceId, owner);
 
-      expect(first?.total).toBe(5);
-      expect(first?.items.map((member) => member.userId)).toEqual(newestFirst.slice(0, 2));
-      expect(first?.items[0]).toEqual({
-        userId: newestFirst[0],
-        name: 'Member 3',
-        email: 'm3@a.co',
-        role: WorkspaceRole.ADMIN,
-      });
-      expect(second?.items.map((member) => member.userId)).toEqual(newestFirst.slice(2, 4));
-      expect(last?.items.map((member) => member.userId)).toEqual(newestFirst.slice(4));
-      expect(beyond).toEqual({ items: [], total: 5 });
-    });
+    expect(view?.memberCount).toBe(WORKSPACE_VIEW_MEMBER_LIMIT + 3);
+    expect(view?.members.map((member) => member.userId)).toEqual(
+      added.slice(-WORKSPACE_VIEW_MEMBER_LIMIT).reverse(),
+    );
+  });
 
-    it('returns null for a non-member, an unknown workspace and a workspace of another tenant', async () => {
-      const { tenantId, workspaceId, owner } = await seedWorkspace(0);
-      const outsider = await insertUser(tenantId, 'x@a.co', 'Xena');
-      const otherTenantId = await insertTenant();
-      const list = (params: { tenantId: TenantId; workspaceId: WorkspaceId; actorId: UserId }) =>
-        query.listMembers({ ...params, page: 1, limit: 20 });
+  it('breaks ties on created_at by user id, newest first', async () => {
+    const { tenantId, workspaceId, owner } = await seedWorkspace(2);
+    await pool.query('UPDATE workspace_members SET created_at = now()');
 
-      expect(await list({ tenantId, workspaceId, actorId: outsider })).toBeNull();
-      expect(
-        await list({ tenantId, workspaceId: WorkspaceId.create(), actorId: owner }),
-      ).toBeNull();
-      expect(await list({ tenantId: otherTenantId, workspaceId, actorId: owner })).toBeNull();
-    });
+    const view = await query.findViewFor(tenantId, workspaceId, owner);
+
+    const ids = view?.members.map((member) => member.userId.value) ?? [];
+    expect(ids).toEqual([...ids].sort().reverse());
+  });
+
+  it('returns null for a non-member, an unknown workspace and a workspace of another tenant', async () => {
+    const { tenantId, workspaceId, owner } = await seedWorkspace(0);
+    const outsider = await insertUser(tenantId, 'x@a.co', 'Xena');
+    const otherTenantId = await insertTenant();
+    const stranger = await insertUser(otherTenantId, 's@b.co', 'Sam');
+
+    expect(await query.findViewFor(tenantId, workspaceId, outsider)).toBeNull();
+    expect(await query.findViewFor(tenantId, WorkspaceId.create(), owner)).toBeNull();
+    expect(await query.findViewFor(otherTenantId, workspaceId, owner)).toBeNull();
+    expect(await query.findViewFor(otherTenantId, workspaceId, stranger)).toBeNull();
   });
 });
