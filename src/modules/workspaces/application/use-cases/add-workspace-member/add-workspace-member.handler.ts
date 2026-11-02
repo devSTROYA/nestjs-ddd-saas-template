@@ -18,9 +18,10 @@ import { WorkspaceMember } from '../../../domain/entities/workspace-member.js';
 import {
   WorkspaceMemberAlreadyExistsError,
   WorkspaceNotFoundError,
-  WorkspaceOwnerRequiredError,
 } from '../../../domain/errors/domain.error.js';
 import { WorkspaceId } from '../../../domain/value-objects/workspace-id.js';
+import { WorkspacePermission } from '../../../domain/value-objects/workspace-permission.js';
+import { WorkspaceRoleId } from '../../../domain/value-objects/workspace-role-id.js';
 import {
   WORKSPACE_MEMBER_REPOSITORY,
   type WorkspaceMemberRepository,
@@ -29,6 +30,7 @@ import {
   WORKSPACE_REPOSITORY,
   type WorkspaceRepository,
 } from '../../ports/workspace.repository.js';
+import { WorkspaceAccess } from '../../workspace-access.js';
 import {
   AddWorkspaceMemberCommand,
   type AddWorkspaceMemberResult,
@@ -43,6 +45,7 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
   constructor(
     @Inject(WORKSPACE_REPOSITORY) private readonly workspaces: WorkspaceRepository,
     @Inject(WORKSPACE_MEMBER_REPOSITORY) private readonly members: WorkspaceMemberRepository,
+    @Inject(WorkspaceAccess) private readonly access: WorkspaceAccess,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
     @Inject(UNIT_OF_WORK) private readonly unitOfWork: UnitOfWork,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -65,14 +68,18 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
     if (!workspace) {
       throw new WorkspaceNotFoundError();
     }
-    const actor = await this.members.findByUser(
+    const actor = await this.access.require(
       tenantId,
       workspace.id,
       UserId.restore(command.actorId),
+      WorkspacePermission.MEMBER_ADD,
     );
-    if (!actor?.isOwner) {
-      throw new WorkspaceOwnerRequiredError();
-    }
+    const role = await this.access.role(
+      tenantId,
+      workspace.id,
+      WorkspaceRoleId.restore(command.roleId),
+    );
+    actor.assertCanManage(role);
 
     const existing = await this.users.findByEmail(email);
     if (existing && !existing.tenantId.equals(tenantId)) {
@@ -99,7 +106,7 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
         tenantId,
         workspaceId: workspace.id,
         userId: user.id,
-        role: command.role,
+        roleId: role.id,
         createdAt: now,
       }),
     );

@@ -8,6 +8,7 @@ import type { Nullable } from '@common/types';
 import { TENANT_REPOSITORY, Tenant, TenantName, type TenantRepository } from '@modules/tenants';
 import { USER_REPOSITORY, User, UserName, type UserRepository } from '@modules/users';
 import {
+  SystemRoleId,
   WORKSPACE_MEMBER_REPOSITORY,
   WORKSPACE_REPOSITORY,
   Workspace,
@@ -15,7 +16,6 @@ import {
   type WorkspaceMemberRepository,
   WorkspaceName,
   type WorkspaceRepository,
-  WorkspaceRole,
 } from '@modules/workspaces';
 
 import { InvalidOtpError, InvitationNotFoundError } from '../../../domain/errors/domain.error.js';
@@ -97,7 +97,7 @@ export class AcceptInvitationHandler implements ICommandHandler<
       tenantId: tenant.id,
       workspaceId: workspace.id,
       userId: user.id,
-      role: WorkspaceRole.OWNER,
+      roleId: SystemRoleId.OWNER,
       createdAt: now,
     });
     await this.tenants.save(tenant);

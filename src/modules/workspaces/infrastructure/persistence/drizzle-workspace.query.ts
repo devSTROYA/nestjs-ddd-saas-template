@@ -11,9 +11,10 @@ import {
   type WorkspaceView,
 } from '../../application/ports/workspace.query.js';
 import { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
-import { toWorkspaceRole } from '../../domain/value-objects/workspace-role.js';
+import { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
 import { findMemberPage } from './workspace-member-page.js';
 import { workspaceMembers } from './workspace-member.schema.js';
+import { workspaceRoles } from './workspace-role.schema.js';
 import { workspaces } from './workspace.schema.js';
 
 export class DrizzleWorkspaceQuery implements WorkspaceQuery {
@@ -25,7 +26,12 @@ export class DrizzleWorkspaceQuery implements WorkspaceQuery {
     actorId: UserId,
   ): Promise<Nullable<WorkspaceView>> {
     const [access] = await this.context.client
-      .select({ id: workspaces.id, name: workspaces.name, role: workspaceMembers.role })
+      .select({
+        id: workspaces.id,
+        name: workspaces.name,
+        roleId: workspaceMembers.roleId,
+        role: workspaceRoles.key,
+      })
       .from(workspaces)
       .innerJoin(
         workspaceMembers,
@@ -34,6 +40,7 @@ export class DrizzleWorkspaceQuery implements WorkspaceQuery {
           eq(workspaceMembers.userId, actorId.value),
         ),
       )
+      .innerJoin(workspaceRoles, eq(workspaceRoles.id, workspaceMembers.roleId))
       .where(and(eq(workspaces.id, workspaceId.value), eq(workspaces.tenantId, tenantId.value)));
     if (!access) {
       return null;
@@ -47,7 +54,8 @@ export class DrizzleWorkspaceQuery implements WorkspaceQuery {
     return {
       id: WorkspaceId.restore(access.id),
       name: access.name,
-      role: toWorkspaceRole(access.role),
+      roleId: WorkspaceRoleId.restore(access.roleId),
+      role: access.role,
       memberCount: total,
       members: items,
     };

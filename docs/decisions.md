@@ -129,10 +129,32 @@ changes, update this file in the same change.
   (`findById(tenantId, id)` never finds it).
   - `Workspace` and `WorkspaceMember` are separate aggregates, each with its own repository:
     `WorkspaceRepository` never touches members, and a workspace can hold many members without
-    loading them all. Roles are `owner` and `admin` (`WorkspaceRole`). `workspace_members` has its
-    own UUID v7 `id` and `tenant_id`, is unique on `workspace_id, user_id`, and cascades with the
+    loading them all. `workspace_members` has its own UUID v7 `id` and `tenant_id`, is unique on `workspace_id, user_id`, and cascades with the
     workspace. Routes still identify a member by user id. Member events use the member id as
     `aggregateId` and carry `workspaceId`. A member change does not touch `workspaces.updated_at`.
+  - **One `workspace_roles` table, with nullable `workspace_id` and `tenant_id`.** A row without
+    them is a system role (`owner`, `admin`, `member`): seeded once by migration 0013 with fixed ids
+    (`SystemRoleId`), shared by every workspace, and never changed or deleted
+    (`409 WORKSPACE_ROLE_SYSTEM`; the repository's write guard cannot match them either). Changing a
+    system role's permissions takes a migration. A workspace adds its own roles through
+    `/workspaces/:workspaceId/roles`, unique per workspace on `key`, and a custom role cannot reuse a
+    system key. Every lookup is `workspace_id = $1 OR workspace_id IS NULL`, so a role of another
+    workspace is `404 WORKSPACE_ROLE_NOT_FOUND`. A check constraint keeps the two columns null
+    together, and `uq_workspace_roles_key_system` covers system keys because a unique index treats
+    nulls as distinct. `workspace_members.role_id` is a foreign key (`RESTRICT`); deleting a role
+    that still has members is `409 WORKSPACE_ROLE_IN_USE`. Permissions live in
+    `workspace_role_permissions`; a `WatchedList` on the aggregate tracks the changes and the
+    repository writes only those. Integration tests that truncate `tenants` or `workspaces` with
+    `CASCADE` also empty `workspace_roles`, so they call `restoreSystemRoles`.
+  - **Permissions:** `workspace-member:add`, `:change-role`, `:remove` and `workspace-role:manage`.
+    `owner` has all, `admin` has the three member ones, `member` has none. Seeing the workspace, its
+    members and its roles only needs membership. Handlers check permissions through
+    `WorkspaceAccess`, not a guard, because the check must happen inside the transaction after the
+    workspace lock, or a role could change between the check and the write.
+  - **No escalation** (`WorkspaceRole.assertCanManage`): nobody assigns, creates, edits, removes or
+    deletes a role holding permissions they lack (`403 WORKSPACE_PERMISSION_DENIED` with `missing`),
+    and only an owner can touch an owner or grant `owner` (`403 WORKSPACE_OWNER_REQUIRED`), even for
+    a custom role holding every permission.
   - **At least one owner always exists:** demoting, removing or leaving as the last owner is
     `409 WORKSPACE_LAST_OWNER_REQUIRED`. An owner can make others owners. This rule spans members,
     so the handler passes `countOwners` into `changeRole` and `remove`. **Every handler that changes
@@ -142,8 +164,8 @@ changes, update this file in the same change.
     with `email`, `name`, `role`) and they are a member at once. An email that is not a user yet
     becomes a user of that tenant (`name` is used only then) and logs in with a one-time code; an
     email of another tenant's user is `409 USER_EMAIL_TAKEN`. No email is sent when adding.
-  - Only owners add members, change roles (`PATCH /workspaces/:workspaceId/members/:userId`) and remove members
-    (`DELETE ...`); `403 WORKSPACE_OWNER_REQUIRED` otherwise. **Removing a member, or leaving,
+  - Adding a member, changing a role (`PATCH /workspaces/:workspaceId/members/:userId`) and removing
+    a member (`DELETE ...`) each need their permission. **Removing a member, or leaving,
     deletes the user** (same transaction): a tenant has one workspace, and login and refresh both
     need the user row, so access ends at once (an access token stays valid up to 15 minutes, and
     `GET /workspaces/:workspaceId` answers 404 to a non-member). Any member can leave
@@ -611,8 +633,7 @@ Starting points, to be tuned with Cloud Run metrics (CPU, memory, latency, insta
 
 - `User.create`, `Tenant.create`, `Admin.create` and `Workspace.create` call `new Date()` themselves.
 - `TenantsModule` has no module-level test yet (deferred).
-- Not built yet: what the `admin` workspace role may do beyond being a member (only owners manage
-  members), rename the workspace, member lists with search or sorting,
+- Not built yet: rename the workspace, member lists with search or sorting,
   a welcome email when someone is added to a workspace, purging expired `login_challenges`,
   `refresh_tokens` and `rate_limits` rows, structured logging, CORS (needs the frontend origin),
   and a frontend link in the invitation email (it carries the invitation id and the code only).

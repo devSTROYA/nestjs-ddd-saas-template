@@ -5,9 +5,10 @@ import { UserId } from '@modules/users';
 
 import type { WorkspaceMemberView } from '../../application/ports/workspace-member.query.js';
 import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
-import { toWorkspaceRole } from '../../domain/value-objects/workspace-role.js';
+import { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
 import { users } from '../../../users/infrastructure/persistence/user.schema.js';
 import { workspaceMembers } from './workspace-member.schema.js';
+import { workspaceRoles } from './workspace-role.schema.js';
 
 // INFO: Newest first; callers check first that the actor may see this workspace.
 export async function findMemberPage(
@@ -20,12 +21,14 @@ export async function findMemberPage(
     context.client
       .select({
         userId: workspaceMembers.userId,
-        role: workspaceMembers.role,
+        roleId: workspaceMembers.roleId,
+        role: workspaceRoles.key,
         name: users.name,
         email: users.email,
       })
       .from(workspaceMembers)
       .innerJoin(users, eq(users.id, workspaceMembers.userId))
+      .innerJoin(workspaceRoles, eq(workspaceRoles.id, workspaceMembers.roleId))
       .where(eq(workspaceMembers.workspaceId, workspaceId.value))
       .orderBy(desc(workspaceMembers.createdAt), desc(workspaceMembers.userId))
       .limit(limit)
@@ -40,7 +43,8 @@ export async function findMemberPage(
       userId: UserId.restore(row.userId),
       name: row.name,
       email: row.email,
-      role: toWorkspaceRole(row.role),
+      roleId: WorkspaceRoleId.restore(row.roleId),
+      role: row.role,
     })),
     total: counted[0]?.total ?? 0,
   };

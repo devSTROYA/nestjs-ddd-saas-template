@@ -11,8 +11,11 @@ import {
   WorkspaceMemberNotFoundError,
   WorkspaceNotFoundError,
   WorkspaceOwnerRequiredError,
+  WorkspacePermissionDeniedError,
+  WorkspaceRoleNotFoundError,
 } from '../../domain/errors/domain.error.js';
-import { WorkspaceRole } from '../../domain/value-objects/workspace-role.js';
+import { SystemRoleId } from '../../domain/value-objects/system-workspace-role.js';
+import { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
 import { type WorkspaceKit, createWorkspaceKit } from '../../testing/fakes.js';
 import { AddWorkspaceMemberCommand } from './add-workspace-member/add-workspace-member.command.js';
 import { ChangeWorkspaceMemberRoleCommand } from './change-workspace-member-role/change-workspace-member-role.command.js';
@@ -24,7 +27,7 @@ import { RemoveWorkspaceMemberCommand } from './remove-workspace-member/remove-w
 const addMember = (
   kit: WorkspaceKit,
   email: string,
-  role: WorkspaceRole = WorkspaceRole.ADMIN,
+  role: WorkspaceRoleId = SystemRoleId.ADMIN,
   actor = kit.owner.id,
 ) =>
   kit.add.execute(
@@ -34,7 +37,7 @@ const addMember = (
       kit.workspace.id.value,
       email,
       'New Person',
-      role,
+      role.value,
     ),
   );
 
@@ -70,7 +73,7 @@ describe('AddWorkspaceMemberHandler', () => {
     expect(user?.email.value).toBe('new@acme.co');
     expect(user?.tenantId).toEqual(kit.tenantId);
     expect(user?.name.value).toBe('New Person');
-    expect(kit.members.roleOf(userId)).toBe(WorkspaceRole.ADMIN);
+    expect(kit.members.roleOf(userId)).toEqual(SystemRoleId.ADMIN);
   });
 
   it('adds an existing user of the same tenant without creating another user', async () => {
@@ -81,32 +84,53 @@ describe('AddWorkspaceMemberHandler', () => {
       await kit.members.delete(member);
     }
 
-    const again = await addMember(kit, 'new@acme.co', WorkspaceRole.OWNER);
+    const again = await addMember(kit, 'new@acme.co', SystemRoleId.OWNER);
 
     expect(again.userId).toEqual(first.userId);
     expect(kit.users.saved.size).toBe(2);
-    expect(kit.members.roleOf(first.userId)).toBe(WorkspaceRole.OWNER);
+    expect(kit.members.roleOf(first.userId)).toEqual(SystemRoleId.OWNER);
   });
 
   it('lets an owner add another owner', async () => {
     const kit = createWorkspaceKit();
 
-    const { userId } = await addMember(kit, 'second@acme.co', WorkspaceRole.OWNER);
+    const { userId } = await addMember(kit, 'second@acme.co', SystemRoleId.OWNER);
 
-    expect(kit.members.roleOf(userId)).toBe(WorkspaceRole.OWNER);
+    expect(kit.members.roleOf(userId)).toEqual(SystemRoleId.OWNER);
   });
 
-  it('refuses an actor who is not an owner, including admins and outsiders', async () => {
+  it('lets an admin add a non-owner but not an owner', async () => {
     const kit = createWorkspaceKit();
     const admin = await addMember(kit, 'admin@acme.co');
 
-    await expect(addMember(kit, 'x@acme.co', WorkspaceRole.ADMIN, admin.userId)).rejects.toThrow(
+    const { userId } = await addMember(kit, 'x@acme.co', SystemRoleId.MEMBER, admin.userId);
+
+    expect(kit.members.roleOf(userId)).toEqual(SystemRoleId.MEMBER);
+    await expect(addMember(kit, 'y@acme.co', SystemRoleId.OWNER, admin.userId)).rejects.toThrow(
       WorkspaceOwnerRequiredError,
     );
-    await expect(addMember(kit, 'x@acme.co', WorkspaceRole.ADMIN, UserId.create())).rejects.toThrow(
-      WorkspaceOwnerRequiredError,
+  });
+
+  it('refuses members and outsiders, who hold no add permission', async () => {
+    const kit = createWorkspaceKit();
+    const member = await addMember(kit, 'member@acme.co', SystemRoleId.MEMBER);
+
+    await expect(addMember(kit, 'x@acme.co', SystemRoleId.MEMBER, member.userId)).rejects.toThrow(
+      WorkspacePermissionDeniedError,
+    );
+    await expect(addMember(kit, 'x@acme.co', SystemRoleId.MEMBER, UserId.create())).rejects.toThrow(
+      WorkspacePermissionDeniedError,
     );
     expect(kit.users.saved.size).toBe(2);
+  });
+
+  it('refuses a role the workspace does not have', async () => {
+    const kit = createWorkspaceKit();
+
+    await expect(addMember(kit, 'x@acme.co', WorkspaceRoleId.create())).rejects.toThrow(
+      WorkspaceRoleNotFoundError,
+    );
+    expect(kit.users.saved.size).toBe(1);
   });
 
   it('refuses an email that belongs to a user of another tenant', async () => {
@@ -142,7 +166,7 @@ describe('AddWorkspaceMemberHandler', () => {
           workspaceId.value,
           'a@b.co',
           'x',
-          WorkspaceRole.ADMIN,
+          SystemRoleId.ADMIN.value,
         ),
       );
     await expect(add(TenantId.create(), kit.workspace.id)).rejects.toThrow(WorkspaceNotFoundError);
@@ -161,34 +185,34 @@ describe('ChangeWorkspaceMemberRoleHandler', () => {
         kit.tenantId.value,
         kit.workspace.id.value,
         userId.value,
-        WorkspaceRole.OWNER,
+        SystemRoleId.OWNER.value,
       ),
     );
 
-    expect(kit.members.roleOf(userId)).toBe(WorkspaceRole.OWNER);
+    expect(kit.members.roleOf(userId)).toEqual(SystemRoleId.OWNER);
   });
 
   it('refuses non-owners, unknown members and demoting the last owner', async () => {
     const kit = createWorkspaceKit();
     const { userId } = await addMember(kit, 'new@acme.co');
-    const change = (actor: typeof userId, target: typeof userId, role: WorkspaceRole) =>
+    const change = (actor: typeof userId, target: typeof userId, role: WorkspaceRoleId) =>
       kit.changeRole.execute(
         new ChangeWorkspaceMemberRoleCommand(
           actor.value,
           kit.tenantId.value,
           kit.workspace.id.value,
           target.value,
-          role,
+          role.value,
         ),
       );
 
-    await expect(change(userId, userId, WorkspaceRole.OWNER)).rejects.toThrow(
+    await expect(change(userId, userId, SystemRoleId.OWNER)).rejects.toThrow(
       WorkspaceOwnerRequiredError,
     );
-    await expect(change(kit.owner.id, UserId.create(), WorkspaceRole.ADMIN)).rejects.toThrow(
+    await expect(change(kit.owner.id, UserId.create(), SystemRoleId.ADMIN)).rejects.toThrow(
       WorkspaceMemberNotFoundError,
     );
-    await expect(change(kit.owner.id, kit.owner.id, WorkspaceRole.ADMIN)).rejects.toThrow(
+    await expect(change(kit.owner.id, kit.owner.id, SystemRoleId.ADMIN)).rejects.toThrow(
       LastWorkspaceOwnerRequiredError,
     );
   });
@@ -239,7 +263,7 @@ describe('LeaveWorkspaceHandler', () => {
 
   it('lets an owner leave once another owner exists', async () => {
     const kit = createWorkspaceKit();
-    await addMember(kit, 'second@acme.co', WorkspaceRole.OWNER);
+    await addMember(kit, 'second@acme.co', SystemRoleId.OWNER);
 
     await kit.leave.execute(
       new LeaveWorkspaceCommand(kit.owner.id.value, kit.tenantId.value, kit.workspace.id.value),
@@ -259,15 +283,23 @@ describe('GetWorkspaceHandler', () => {
     expect(view).toEqual({
       id: kit.workspace.id,
       name: 'Acme',
-      role: WorkspaceRole.ADMIN,
+      roleId: SystemRoleId.ADMIN,
+      role: 'admin',
       memberCount: 2,
       members: [
-        { userId, name: 'New Person', email: 'new@acme.co', role: WorkspaceRole.ADMIN },
+        {
+          userId,
+          name: 'New Person',
+          email: 'new@acme.co',
+          roleId: SystemRoleId.ADMIN,
+          role: 'admin',
+        },
         {
           userId: kit.owner.id,
           name: 'Owner',
           email: 'owner@acme.co',
-          role: WorkspaceRole.OWNER,
+          roleId: SystemRoleId.OWNER,
+          role: 'owner',
         },
       ],
     });

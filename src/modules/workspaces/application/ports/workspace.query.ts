@@ -3,7 +3,7 @@ import type { TenantId } from '@modules/tenants';
 import type { UserId } from '@modules/users';
 
 import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
-import type { WorkspaceRole } from '../../domain/value-objects/workspace-role.js';
+import type { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
 import type { WorkspaceMemberView } from './workspace-member.query.js';
 
 export const WORKSPACE_VIEW_MEMBER_LIMIT = 10;
@@ -11,7 +11,8 @@ export const WORKSPACE_VIEW_MEMBER_LIMIT = 10;
 export type WorkspaceView = {
   id: WorkspaceId;
   name: string;
-  role: WorkspaceRole;
+  roleId: WorkspaceRoleId;
+  role: string;
   memberCount: number;
   members: WorkspaceMemberView[];
 };

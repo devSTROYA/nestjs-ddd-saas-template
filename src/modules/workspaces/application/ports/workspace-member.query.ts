@@ -3,13 +3,14 @@ import type { TenantId } from '@modules/tenants';
 import type { UserId } from '@modules/users';
 
 import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
-import type { WorkspaceRole } from '../../domain/value-objects/workspace-role.js';
+import type { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
 
 export type WorkspaceMemberView = {
   userId: UserId;
   name: string;
   email: string;
-  role: WorkspaceRole;
+  roleId: WorkspaceRoleId;
+  role: string;
 };
 
 type ListWorkspaceMembersParams = {

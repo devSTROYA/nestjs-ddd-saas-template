@@ -22,7 +22,15 @@ import {
   UnauthenticatedError,
 } from '@modules/auth';
 
+import type { WorkspaceRoleView } from '../application/ports/workspace-role.query.js';
 import type { WorkspaceView } from '../application/ports/workspace.query.js';
+import {
+  CreateWorkspaceRoleCommand,
+  type CreateWorkspaceRoleResult,
+} from '../application/use-cases/create-workspace-role/create-workspace-role.command.js';
+import { DeleteWorkspaceRoleCommand } from '../application/use-cases/delete-workspace-role/delete-workspace-role.command.js';
+import { ListWorkspaceRolesQuery } from '../application/use-cases/list-workspace-roles/list-workspace-roles.query.js';
+import { UpdateWorkspaceRoleCommand } from '../application/use-cases/update-workspace-role/update-workspace-role.command.js';
 import {
   AddWorkspaceMemberCommand,
   type AddWorkspaceMemberResult,
@@ -38,10 +46,14 @@ import { RemoveWorkspaceMemberCommand } from '../application/use-cases/remove-wo
 import {
   type AddWorkspaceMemberBody,
   type ChangeWorkspaceMemberRoleBody,
+  type CreateWorkspaceRoleBody,
   type ListWorkspaceMembersQueryParams,
+  type UpdateWorkspaceRoleBody,
   addWorkspaceMemberBodySchema,
   changeWorkspaceMemberRoleBodySchema,
+  createWorkspaceRoleBodySchema,
   listWorkspaceMembersQuerySchema,
+  updateWorkspaceRoleBodySchema,
 } from './workspace.schema.js';
 
 type Actor = {
@@ -109,7 +121,7 @@ export class WorkspacesController {
         workspaceId,
         body.email,
         body.name,
-        body.role,
+        body.roleId,
       ),
     );
   }
@@ -130,7 +142,7 @@ export class WorkspacesController {
         actor.tenantId,
         workspaceId,
         userId,
-        body.role,
+        body.roleId,
       ),
     );
   }
@@ -157,6 +169,70 @@ export class WorkspacesController {
     const actor = actorOf(principal);
     await this.commandBus.execute<LeaveWorkspaceCommand, void>(
       new LeaveWorkspaceCommand(actor.userId, actor.tenantId, workspaceId),
+    );
+  }
+
+  @Get(':workspaceId/roles')
+  listRoles(
+    @CurrentPrincipal() principal: Principal,
+    @Param('workspaceId', new UuidV7ParamPipe('workspaceId')) workspaceId: string,
+  ): Promise<WorkspaceRoleView[]> {
+    const actor = actorOf(principal);
+    return this.queryBus.execute<ListWorkspaceRolesQuery, WorkspaceRoleView[]>(
+      new ListWorkspaceRolesQuery(actor.userId, actor.tenantId, workspaceId),
+    );
+  }
+
+  @Post(':workspaceId/roles')
+  createRole(
+    @CurrentPrincipal() principal: Principal,
+    @Param('workspaceId', new UuidV7ParamPipe('workspaceId')) workspaceId: string,
+    @Body(new ZodValidationPipe(createWorkspaceRoleBodySchema)) body: CreateWorkspaceRoleBody,
+  ): Promise<CreateWorkspaceRoleResult> {
+    const actor = actorOf(principal);
+    return this.commandBus.execute<CreateWorkspaceRoleCommand, CreateWorkspaceRoleResult>(
+      new CreateWorkspaceRoleCommand(
+        actor.userId,
+        actor.tenantId,
+        workspaceId,
+        body.key,
+        body.name,
+        body.permissions,
+      ),
+    );
+  }
+
+  @Patch(':workspaceId/roles/:roleId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async updateRole(
+    @CurrentPrincipal() principal: Principal,
+    @Param('workspaceId', new UuidV7ParamPipe('workspaceId')) workspaceId: string,
+    @Param('roleId', new UuidV7ParamPipe('roleId')) roleId: string,
+    @Body(new ZodValidationPipe(updateWorkspaceRoleBodySchema)) body: UpdateWorkspaceRoleBody,
+  ): Promise<void> {
+    const actor = actorOf(principal);
+    await this.commandBus.execute<UpdateWorkspaceRoleCommand, void>(
+      new UpdateWorkspaceRoleCommand(
+        actor.userId,
+        actor.tenantId,
+        workspaceId,
+        roleId,
+        body.name,
+        body.permissions,
+      ),
+    );
+  }
+
+  @Delete(':workspaceId/roles/:roleId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteRole(
+    @CurrentPrincipal() principal: Principal,
+    @Param('workspaceId', new UuidV7ParamPipe('workspaceId')) workspaceId: string,
+    @Param('roleId', new UuidV7ParamPipe('roleId')) roleId: string,
+  ): Promise<void> {
+    const actor = actorOf(principal);
+    await this.commandBus.execute<DeleteWorkspaceRoleCommand, void>(
+      new DeleteWorkspaceRoleCommand(actor.userId, actor.tenantId, workspaceId, roleId),
     );
   }
 }

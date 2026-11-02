@@ -13,8 +13,12 @@ import {
   addWorkspaceMemberBodySchema,
   addWorkspaceMemberResponseSchema,
   changeWorkspaceMemberRoleBodySchema,
+  createWorkspaceRoleBodySchema,
+  createWorkspaceRoleResponseSchema,
   listWorkspaceMembersQuerySchema,
   listWorkspaceMembersResponseSchema,
+  listWorkspaceRolesResponseSchema,
+  updateWorkspaceRoleBodySchema,
   workspaceResponseSchema,
 } from './workspace.schema.js';
 
@@ -27,6 +31,14 @@ const MEMBER_PATH_PARAMS = {
   ...WORKSPACE_ID_PARAM,
   userId: { description: 'User id (UUID v7)', schema: z.uuid({ version: 'v7' }) },
 };
+const ROLE_PATH_PARAMS = {
+  ...WORKSPACE_ID_PARAM,
+  roleId: { description: 'Role id (UUID v7)', schema: z.uuid({ version: 'v7' }) },
+};
+const PERMISSION_ERRORS = [
+  WorkspaceErrorCodes.OWNER_REQUIRED,
+  WorkspaceErrorCodes.PERMISSION_DENIED,
+] as const;
 
 export const workspaceRouteDocs: readonly RouteDoc[] = [
   {
@@ -74,7 +86,7 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
     path: '/workspaces/{workspaceId}/members',
     tag: TAG,
     summary:
-      'Add a member (owners only). They become a member at once; an email that is not a user yet becomes one',
+      'Add a member (needs workspace-member:add). They become a member at once; an email that is not a user yet becomes one',
     auth: 'bearer',
     pathParams: WORKSPACE_ID_PARAM,
     body: addWorkspaceMemberBodySchema,
@@ -91,7 +103,8 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
       UserErrorCodes.NAME_TOO_LONG,
       UserErrorCodes.EMAIL_TAKEN,
       WorkspaceErrorCodes.NOT_FOUND,
-      WorkspaceErrorCodes.OWNER_REQUIRED,
+      ...PERMISSION_ERRORS,
+      WorkspaceErrorCodes.ROLE_NOT_FOUND,
       WorkspaceErrorCodes.MEMBER_ALREADY_EXISTS,
       RateLimitErrorCodes.EXCEEDED,
     ],
@@ -100,7 +113,8 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
     method: 'patch',
     path: '/workspaces/{workspaceId}/members/{userId}',
     tag: TAG,
-    summary: 'Change the role of a member (owners only). The last owner cannot be demoted',
+    summary:
+      'Change the role of a member (needs workspace-member:change-role). The last owner cannot be demoted',
     auth: 'bearer',
     pathParams: MEMBER_PATH_PARAMS,
     body: changeWorkspaceMemberRoleBodySchema,
@@ -109,7 +123,8 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
       ...AUTH_ERRORS,
       ValidationErrorCodes.INPUT_INVALID,
       WorkspaceErrorCodes.NOT_FOUND,
-      WorkspaceErrorCodes.OWNER_REQUIRED,
+      ...PERMISSION_ERRORS,
+      WorkspaceErrorCodes.ROLE_NOT_FOUND,
       WorkspaceErrorCodes.MEMBER_NOT_FOUND,
       WorkspaceErrorCodes.LAST_OWNER_REQUIRED,
       RateLimitErrorCodes.EXCEEDED,
@@ -120,7 +135,7 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
     path: '/workspaces/{workspaceId}/members/{userId}',
     tag: TAG,
     summary:
-      'Remove a member (owners only) and delete their user account, ending their access. The last owner cannot be removed',
+      'Remove a member (needs workspace-member:remove) and delete their user account, ending their access. The last owner cannot be removed',
     auth: 'bearer',
     pathParams: MEMBER_PATH_PARAMS,
     response: { status: HttpStatus.NO_CONTENT, description: 'Member removed' },
@@ -128,7 +143,7 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
       ...AUTH_ERRORS,
       ValidationErrorCodes.INPUT_INVALID,
       WorkspaceErrorCodes.NOT_FOUND,
-      WorkspaceErrorCodes.OWNER_REQUIRED,
+      ...PERMISSION_ERRORS,
       WorkspaceErrorCodes.MEMBER_NOT_FOUND,
       WorkspaceErrorCodes.LAST_OWNER_REQUIRED,
       RateLimitErrorCodes.EXCEEDED,
@@ -149,6 +164,91 @@ export const workspaceRouteDocs: readonly RouteDoc[] = [
       WorkspaceErrorCodes.NOT_FOUND,
       WorkspaceErrorCodes.MEMBER_NOT_FOUND,
       WorkspaceErrorCodes.LAST_OWNER_REQUIRED,
+      RateLimitErrorCodes.EXCEEDED,
+    ],
+  },
+  {
+    method: 'get',
+    path: '/workspaces/{workspaceId}/roles',
+    tag: TAG,
+    summary: 'The system roles and the custom roles of the workspace, members only',
+    auth: 'bearer',
+    pathParams: WORKSPACE_ID_PARAM,
+    response: {
+      status: HttpStatus.OK,
+      description: 'The roles',
+      schema: listWorkspaceRolesResponseSchema,
+    },
+    errors: [
+      ...AUTH_ERRORS,
+      ValidationErrorCodes.INPUT_INVALID,
+      WorkspaceErrorCodes.NOT_FOUND,
+      RateLimitErrorCodes.EXCEEDED,
+    ],
+  },
+  {
+    method: 'post',
+    path: '/workspaces/{workspaceId}/roles',
+    tag: TAG,
+    summary:
+      'Create a custom role (needs workspace-role:manage), with only permissions the caller holds',
+    auth: 'bearer',
+    pathParams: WORKSPACE_ID_PARAM,
+    body: createWorkspaceRoleBodySchema,
+    response: {
+      status: HttpStatus.CREATED,
+      description: 'Role created',
+      schema: createWorkspaceRoleResponseSchema,
+    },
+    errors: [
+      ...AUTH_ERRORS,
+      ValidationErrorCodes.INPUT_INVALID,
+      WorkspaceErrorCodes.NOT_FOUND,
+      ...PERMISSION_ERRORS,
+      WorkspaceErrorCodes.ROLE_KEY_INVALID,
+      WorkspaceErrorCodes.ROLE_KEY_TAKEN,
+      WorkspaceErrorCodes.ROLE_NAME_INVALID,
+      RateLimitErrorCodes.EXCEEDED,
+    ],
+  },
+  {
+    method: 'patch',
+    path: '/workspaces/{workspaceId}/roles/{roleId}',
+    tag: TAG,
+    summary:
+      'Replace the name and permissions of a custom role (needs workspace-role:manage). System roles cannot be changed',
+    auth: 'bearer',
+    pathParams: ROLE_PATH_PARAMS,
+    body: updateWorkspaceRoleBodySchema,
+    response: { status: HttpStatus.NO_CONTENT, description: 'Role updated' },
+    errors: [
+      ...AUTH_ERRORS,
+      ValidationErrorCodes.INPUT_INVALID,
+      WorkspaceErrorCodes.NOT_FOUND,
+      ...PERMISSION_ERRORS,
+      WorkspaceErrorCodes.ROLE_NOT_FOUND,
+      WorkspaceErrorCodes.ROLE_SYSTEM,
+      WorkspaceErrorCodes.ROLE_NAME_INVALID,
+      RateLimitErrorCodes.EXCEEDED,
+    ],
+  },
+  {
+    method: 'delete',
+    path: '/workspaces/{workspaceId}/roles/{roleId}',
+    tag: TAG,
+    summary:
+      'Delete a custom role that has no members (needs workspace-role:manage). System roles cannot be deleted',
+    auth: 'bearer',
+    pathParams: ROLE_PATH_PARAMS,
+    response: { status: HttpStatus.NO_CONTENT, description: 'Role deleted' },
+    errors: [
+      ...AUTH_ERRORS,
+      ValidationErrorCodes.INPUT_INVALID,
+      WorkspaceErrorCodes.NOT_FOUND,
+      ...PERMISSION_ERRORS,
+      WorkspaceErrorCodes.ROLE_NOT_FOUND,
+      WorkspaceErrorCodes.ROLE_SYSTEM,
+      WorkspaceErrorCodes.ROLE_IN_USE,
       RateLimitErrorCodes.EXCEEDED,
     ],
   },

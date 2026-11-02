@@ -16,13 +16,13 @@ export class WorkspaceMemberAddedEvent extends DomainEvent {
   readonly name = WorkspaceMemberEventNames.ADDED;
   readonly workspaceId: string;
   readonly userId: string;
-  readonly role: string;
+  readonly roleId: string;
 
-  constructor(props: WorkspaceMemberEventProps & { role: string }) {
+  constructor(props: WorkspaceMemberEventProps & { roleId: string }) {
     super(props);
     this.workspaceId = props.workspaceId;
     this.userId = props.userId;
-    this.role = props.role;
+    this.roleId = props.roleId;
   }
 }
 
@@ -30,15 +30,15 @@ export class WorkspaceMemberRoleChangedEvent extends DomainEvent {
   readonly name = WorkspaceMemberEventNames.ROLE_CHANGED;
   readonly workspaceId: string;
   readonly userId: string;
-  readonly previousRole: string;
-  readonly role: string;
+  readonly previousRoleId: string;
+  readonly roleId: string;
 
-  constructor(props: WorkspaceMemberEventProps & { previousRole: string; role: string }) {
+  constructor(props: WorkspaceMemberEventProps & { previousRoleId: string; roleId: string }) {
     super(props);
     this.workspaceId = props.workspaceId;
     this.userId = props.userId;
-    this.previousRole = props.previousRole;
-    this.role = props.role;
+    this.previousRoleId = props.previousRoleId;
+    this.roleId = props.roleId;
   }
 }
 

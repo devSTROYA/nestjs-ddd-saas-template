@@ -13,11 +13,12 @@ import { DrizzleUserRepository } from '../../../users/infrastructure/persistence
 import { WorkspaceMember } from '../../domain/entities/workspace-member.js';
 import { Workspace } from '../../domain/entities/workspace.js';
 import { LastWorkspaceOwnerRequiredError } from '../../domain/errors/domain.error.js';
+import { SystemRoleId } from '../../domain/value-objects/system-workspace-role.js';
 import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspaceName } from '../../domain/value-objects/workspace-name.js';
-import { WorkspaceRole } from '../../domain/value-objects/workspace-role.js';
 import { DrizzleWorkspaceMemberRepository } from '../../infrastructure/persistence/drizzle-workspace-member.repository.js';
 import { DrizzleWorkspaceRepository } from '../../infrastructure/persistence/drizzle-workspace.repository.js';
+import { restoreSystemRoles } from '../../testing/system-roles.js';
 import { LeaveWorkspaceCommand } from './leave-workspace/leave-workspace.command.js';
 import { LeaveWorkspaceHandler } from './leave-workspace/leave-workspace.handler.js';
 
@@ -57,6 +58,7 @@ const insertUser = async (tenantId: TenantId, email: string): Promise<UserId> =>
 
 beforeEach(async () => {
   await pool.query('TRUNCATE TABLE outbox, workspace_members, workspaces, users, tenants CASCADE');
+  await restoreSystemRoles(pool);
 });
 
 afterAll(async () => {
@@ -82,7 +84,7 @@ describe('workspace member handlers under concurrency', () => {
           tenantId,
           workspaceId: workspace.id,
           userId,
-          role: WorkspaceRole.OWNER,
+          roleId: SystemRoleId.OWNER,
           createdAt: new Date(),
         }),
       );

@@ -115,6 +115,10 @@ export class FakeWorkspaceMembers implements WorkspaceMemberRepository {
     return Promise.resolve(0);
   }
 
+  countWithRole(): Promise<number> {
+    return Promise.resolve(0);
+  }
+
   save(member: WorkspaceMember): Promise<void> {
     this.saved.set(member.id.value, member);
     return Promise.resolve();

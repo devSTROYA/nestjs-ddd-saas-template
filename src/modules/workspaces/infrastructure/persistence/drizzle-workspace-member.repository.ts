@@ -12,9 +12,10 @@ import {
   WorkspaceMemberAlreadyExistsError,
   WorkspaceMemberIdConflictError,
 } from '../../domain/errors/domain.error.js';
+import { SystemRoleId } from '../../domain/value-objects/system-workspace-role.js';
 import { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspaceMemberId } from '../../domain/value-objects/workspace-member-id.js';
-import { WorkspaceRole, toWorkspaceRole } from '../../domain/value-objects/workspace-role.js';
+import { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
 import { type WorkspaceMemberRow, workspaceMembers } from './workspace-member.schema.js';
 
 function toWorkspaceMember(row: WorkspaceMemberRow): WorkspaceMember {
@@ -23,7 +24,7 @@ function toWorkspaceMember(row: WorkspaceMemberRow): WorkspaceMember {
       tenantId: TenantId.restore(row.tenantId),
       workspaceId: WorkspaceId.restore(row.workspaceId),
       userId: UserId.restore(row.userId),
-      role: toWorkspaceRole(row.role),
+      roleId: WorkspaceRoleId.restore(row.roleId),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     },
@@ -52,7 +53,15 @@ export class DrizzleWorkspaceMemberRepository implements WorkspaceMemberReposito
     return row ? toWorkspaceMember(row) : null;
   }
 
-  async countOwners(tenantId: TenantId, workspaceId: WorkspaceId): Promise<number> {
+  countOwners(tenantId: TenantId, workspaceId: WorkspaceId): Promise<number> {
+    return this.countWithRole(tenantId, workspaceId, SystemRoleId.OWNER);
+  }
+
+  async countWithRole(
+    tenantId: TenantId,
+    workspaceId: WorkspaceId,
+    roleId: WorkspaceRoleId,
+  ): Promise<number> {
     const [row] = await this.context.client
       .select({ total: count() })
       .from(workspaceMembers)
@@ -60,7 +69,7 @@ export class DrizzleWorkspaceMemberRepository implements WorkspaceMemberReposito
         and(
           eq(workspaceMembers.tenantId, tenantId.value),
           eq(workspaceMembers.workspaceId, workspaceId.value),
-          eq(workspaceMembers.role, WorkspaceRole.OWNER),
+          eq(workspaceMembers.roleId, roleId.value),
         ),
       );
     return row?.total ?? 0;
@@ -68,7 +77,8 @@ export class DrizzleWorkspaceMemberRepository implements WorkspaceMemberReposito
 
   save(member: WorkspaceMember): Promise<void> {
     return saveAggregate(this.context, member, async () => {
-      const { role, updatedAt } = member;
+      const { updatedAt } = member;
+      const roleId = member.roleId.value;
       try {
         const written = await this.context.client
           .insert(workspaceMembers)
@@ -77,13 +87,13 @@ export class DrizzleWorkspaceMemberRepository implements WorkspaceMemberReposito
             tenantId: member.tenantId.value,
             workspaceId: member.workspaceId.value,
             userId: member.userId.value,
-            role,
+            roleId,
             createdAt: member.createdAt,
             updatedAt,
           })
           .onConflictDoUpdate({
             target: workspaceMembers.id,
-            set: { role, updatedAt },
+            set: { roleId, updatedAt },
             setWhere: eq(workspaceMembers.tenantId, member.tenantId.value),
           })
           .returning({ id: workspaceMembers.id });

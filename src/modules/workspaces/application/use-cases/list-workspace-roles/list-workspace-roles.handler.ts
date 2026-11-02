@@ -1,0 +1,34 @@
+import { Inject } from '@nestjs/common';
+import { type IQueryHandler, QueryHandler } from '@nestjs/cqrs';
+
+import { TenantId } from '@modules/tenants';
+import { UserId } from '@modules/users';
+
+import { WorkspaceNotFoundError } from '../../../domain/errors/domain.error.js';
+import { WorkspaceId } from '../../../domain/value-objects/workspace-id.js';
+import {
+  WORKSPACE_ROLE_QUERY,
+  type WorkspaceRoleQuery,
+  type WorkspaceRoleView,
+} from '../../ports/workspace-role.query.js';
+import { ListWorkspaceRolesQuery } from './list-workspace-roles.query.js';
+
+@QueryHandler(ListWorkspaceRolesQuery)
+export class ListWorkspaceRolesHandler implements IQueryHandler<
+  ListWorkspaceRolesQuery,
+  WorkspaceRoleView[]
+> {
+  constructor(@Inject(WORKSPACE_ROLE_QUERY) private readonly roles: WorkspaceRoleQuery) {}
+
+  async execute(query: ListWorkspaceRolesQuery): Promise<WorkspaceRoleView[]> {
+    const roles = await this.roles.listFor(
+      TenantId.restore(query.tenantId),
+      WorkspaceId.restore(query.workspaceId),
+      UserId.restore(query.actorId),
+    );
+    if (!roles) {
+      throw new WorkspaceNotFoundError();
+    }
+    return roles;
+  }
+}

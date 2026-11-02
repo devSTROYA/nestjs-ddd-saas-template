@@ -11,7 +11,9 @@ import { Workspace } from '../../domain/entities/workspace.js';
 import { WORKSPACE_VIEW_MEMBER_LIMIT } from '../../application/ports/workspace.query.js';
 import { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspaceName } from '../../domain/value-objects/workspace-name.js';
-import { WorkspaceRole } from '../../domain/value-objects/workspace-role.js';
+import { SystemRoleId } from '../../domain/value-objects/system-workspace-role.js';
+import type { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
+import { restoreSystemRoles } from '../../testing/system-roles.js';
 import { DrizzleWorkspaceQuery } from './drizzle-workspace.query.js';
 import { DrizzleWorkspaceRepository } from './drizzle-workspace.repository.js';
 
@@ -39,6 +41,7 @@ const insertUser = async (tenantId: TenantId, email: string, name: string): Prom
 
 beforeEach(async () => {
   await pool.query('TRUNCATE TABLE outbox, workspace_members, workspaces, users, tenants CASCADE');
+  await restoreSystemRoles(pool);
 });
 
 afterAll(async () => {
@@ -59,16 +62,16 @@ const seedWorkspace = async (
   });
   await repository.save(workspace);
   const start = Date.now();
-  const insertMember = (userId: UserId, role: WorkspaceRole, createdAt: Date) =>
+  const insertMember = (userId: UserId, roleId: WorkspaceRoleId, createdAt: Date) =>
     pool.query(
-      'INSERT INTO workspace_members (id, tenant_id, workspace_id, user_id, role, created_at) VALUES ($1, $2, $3, $4, $5, $6)',
-      [newUuidV7(), tenantId.value, workspace.id.value, userId.value, role, createdAt],
+      'INSERT INTO workspace_members (id, tenant_id, workspace_id, user_id, role_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)',
+      [newUuidV7(), tenantId.value, workspace.id.value, userId.value, roleId.value, createdAt],
     );
-  await insertMember(owner, WorkspaceRole.OWNER, new Date(start));
+  await insertMember(owner, SystemRoleId.OWNER, new Date(start));
   const added: UserId[] = [];
   for (let index = 0; index < extraMembers; index++) {
     const userId = await insertUser(tenantId, `m${index}@a.co`, `Member ${index}`);
-    await insertMember(userId, WorkspaceRole.ADMIN, new Date(start + (index + 1) * 60_000));
+    await insertMember(userId, SystemRoleId.ADMIN, new Date(start + (index + 1) * 60_000));
     added.push(userId);
   }
   return { tenantId, workspaceId: workspace.id, owner, added };
@@ -84,11 +87,24 @@ describe('DrizzleWorkspaceQuery', () => {
     expect(view).toEqual({
       id: workspaceId,
       name: 'Acme',
-      role: WorkspaceRole.ADMIN,
+      roleId: SystemRoleId.ADMIN,
+      role: 'admin',
       memberCount: 2,
       members: [
-        { userId: admin, name: 'Member 0', email: 'm0@a.co', role: WorkspaceRole.ADMIN },
-        { userId: owner, name: 'Olive', email: 'o@a.co', role: WorkspaceRole.OWNER },
+        {
+          userId: admin,
+          name: 'Member 0',
+          email: 'm0@a.co',
+          roleId: SystemRoleId.ADMIN,
+          role: 'admin',
+        },
+        {
+          userId: owner,
+          name: 'Olive',
+          email: 'o@a.co',
+          roleId: SystemRoleId.OWNER,
+          role: 'owner',
+        },
       ],
     });
   });

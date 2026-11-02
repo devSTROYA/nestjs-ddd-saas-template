@@ -7,16 +7,25 @@ import { TenantsModule } from '../tenants/tenants.module.js';
 import { UsersModule } from '../users/users.module.js';
 import { WORKSPACE_MEMBER_QUERY } from './application/ports/workspace-member.query.js';
 import { WORKSPACE_MEMBER_REPOSITORY } from './application/ports/workspace-member.repository.js';
+import { WORKSPACE_ROLE_QUERY } from './application/ports/workspace-role.query.js';
+import { WORKSPACE_ROLE_REPOSITORY } from './application/ports/workspace-role.repository.js';
 import { WORKSPACE_QUERY } from './application/ports/workspace.query.js';
 import { WORKSPACE_REPOSITORY } from './application/ports/workspace.repository.js';
 import { AddWorkspaceMemberHandler } from './application/use-cases/add-workspace-member/add-workspace-member.handler.js';
 import { ChangeWorkspaceMemberRoleHandler } from './application/use-cases/change-workspace-member-role/change-workspace-member-role.handler.js';
+import { CreateWorkspaceRoleHandler } from './application/use-cases/create-workspace-role/create-workspace-role.handler.js';
+import { DeleteWorkspaceRoleHandler } from './application/use-cases/delete-workspace-role/delete-workspace-role.handler.js';
 import { GetWorkspaceHandler } from './application/use-cases/get-workspace/get-workspace.handler.js';
 import { LeaveWorkspaceHandler } from './application/use-cases/leave-workspace/leave-workspace.handler.js';
 import { ListWorkspaceMembersHandler } from './application/use-cases/list-workspace-members/list-workspace-members.handler.js';
+import { ListWorkspaceRolesHandler } from './application/use-cases/list-workspace-roles/list-workspace-roles.handler.js';
 import { RemoveWorkspaceMemberHandler } from './application/use-cases/remove-workspace-member/remove-workspace-member.handler.js';
+import { UpdateWorkspaceRoleHandler } from './application/use-cases/update-workspace-role/update-workspace-role.handler.js';
+import { WorkspaceAccess } from './application/workspace-access.js';
 import { DrizzleWorkspaceMemberQuery } from './infrastructure/persistence/drizzle-workspace-member.query.js';
 import { DrizzleWorkspaceMemberRepository } from './infrastructure/persistence/drizzle-workspace-member.repository.js';
+import { DrizzleWorkspaceRoleQuery } from './infrastructure/persistence/drizzle-workspace-role.query.js';
+import { DrizzleWorkspaceRoleRepository } from './infrastructure/persistence/drizzle-workspace-role.repository.js';
 import { DrizzleWorkspaceQuery } from './infrastructure/persistence/drizzle-workspace.query.js';
 import { DrizzleWorkspaceRepository } from './infrastructure/persistence/drizzle-workspace.repository.js';
 import { WorkspacesController } from './presentation/workspaces.controller.js';
@@ -49,12 +58,29 @@ import { WorkspacesController } from './presentation/workspaces.controller.js';
       useFactory: (context: DatabaseContext): DrizzleWorkspaceMemberQuery =>
         new DrizzleWorkspaceMemberQuery(context),
     },
+    {
+      provide: WORKSPACE_ROLE_REPOSITORY,
+      inject: [DATABASE_CONTEXT],
+      useFactory: (context: DatabaseContext): DrizzleWorkspaceRoleRepository =>
+        new DrizzleWorkspaceRoleRepository(context),
+    },
+    {
+      provide: WORKSPACE_ROLE_QUERY,
+      inject: [DATABASE_CONTEXT],
+      useFactory: (context: DatabaseContext): DrizzleWorkspaceRoleQuery =>
+        new DrizzleWorkspaceRoleQuery(context),
+    },
+    WorkspaceAccess,
     GetWorkspaceHandler,
     ListWorkspaceMembersHandler,
     AddWorkspaceMemberHandler,
     ChangeWorkspaceMemberRoleHandler,
     RemoveWorkspaceMemberHandler,
     LeaveWorkspaceHandler,
+    ListWorkspaceRolesHandler,
+    CreateWorkspaceRoleHandler,
+    UpdateWorkspaceRoleHandler,
+    DeleteWorkspaceRoleHandler,
   ],
   exports: [WORKSPACE_REPOSITORY, WORKSPACE_MEMBER_REPOSITORY],
 })

@@ -1,17 +1,18 @@
 import { z } from 'zod';
 
-import { WorkspaceRole } from '../domain/value-objects/workspace-role.js';
+import { WorkspacePermission } from '../domain/value-objects/workspace-permission.js';
 
-const roleSchema = z.enum([WorkspaceRole.OWNER, WorkspaceRole.ADMIN]);
+const roleIdSchema = z.uuid({ version: 'v7' });
+const permissionsSchema = z.array(z.enum(WorkspacePermission));
 
 export const addWorkspaceMemberBodySchema = z.object({
   email: z.string(),
   // INFO: Used only when the email is not a user yet.
   name: z.string(),
-  role: roleSchema,
+  roleId: roleIdSchema,
 });
 
-export const changeWorkspaceMemberRoleBodySchema = z.object({ role: roleSchema });
+export const changeWorkspaceMemberRoleBodySchema = z.object({ roleId: roleIdSchema });
 
 export const addWorkspaceMemberResponseSchema = z.object({ userId: z.uuid({ version: 'v7' }) });
 
@@ -24,13 +25,15 @@ const memberResponseSchema = z.object({
   userId: z.uuid({ version: 'v7' }),
   name: z.string(),
   email: z.string(),
-  role: roleSchema,
+  roleId: roleIdSchema,
+  role: z.string(),
 });
 
 export const workspaceResponseSchema = z.object({
   id: z.uuid({ version: 'v7' }),
   name: z.string(),
-  role: roleSchema,
+  roleId: roleIdSchema,
+  role: z.string(),
   memberCount: z.number().int(),
   members: z.array(memberResponseSchema),
 });
@@ -42,6 +45,31 @@ export const listWorkspaceMembersResponseSchema = z.object({
   total: z.number().int(),
 });
 
+export const createWorkspaceRoleBodySchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  permissions: permissionsSchema,
+});
+
+export const createWorkspaceRoleResponseSchema = z.object({ id: roleIdSchema });
+
+export const updateWorkspaceRoleBodySchema = z.object({
+  name: z.string(),
+  permissions: permissionsSchema,
+});
+
+export const listWorkspaceRolesResponseSchema = z.array(
+  z.object({
+    id: roleIdSchema,
+    key: z.string(),
+    name: z.string(),
+    system: z.boolean(),
+    permissions: permissionsSchema,
+  }),
+);
+
+export type CreateWorkspaceRoleBody = z.infer<typeof createWorkspaceRoleBodySchema>;
+export type UpdateWorkspaceRoleBody = z.infer<typeof updateWorkspaceRoleBodySchema>;
 export type AddWorkspaceMemberBody = z.infer<typeof addWorkspaceMemberBodySchema>;
 export type ChangeWorkspaceMemberRoleBody = z.infer<typeof changeWorkspaceMemberRoleBodySchema>;
 export type ListWorkspaceMembersQueryParams = z.infer<typeof listWorkspaceMembersQuerySchema>;

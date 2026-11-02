@@ -8,9 +8,13 @@ import { Pool } from 'pg';
 import { inject } from 'vitest';
 
 import { newUuidV7 } from '@common/primitives';
+import { SystemRoleId } from '@modules/workspaces';
+
+import { SYSTEM_ROLES } from '../../src/modules/workspaces/testing/system-roles.js';
 
 const MIGRATIONS_FOLDER = './drizzle';
 const LAST_MIGRATION_BEFORE_DATA_CHANGES = 8;
+const LAST_MIGRATION_BEFORE_ROLES = 12;
 const byTenant = (a: { tenant_id: string }, b: { tenant_id: string }): number =>
   a.tenant_id.localeCompare(b.tenant_id);
 const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -102,7 +106,9 @@ describe('migrations on existing data', () => {
     expect(workspaces.rows.every((row) => UUID_V7.test(row.id))).toBe(true);
     expect(new Set(workspaces.rows.map((row) => row.id)).size).toBe(2);
     const members = await pool.query<{ user_id: string; role: string }>(
-      'SELECT user_id, role FROM workspace_members ORDER BY user_id',
+      `SELECT m.user_id, r.key AS role
+       FROM workspace_members m JOIN workspace_roles r ON r.id = m.role_id
+       ORDER BY m.user_id`,
     );
     expect(members.rows).toEqual(
       [first, second, third].sort().map((userId) => ({ user_id: userId, role: 'owner' })),
@@ -115,6 +121,72 @@ describe('migrations on existing data', () => {
     expect(memberIds.rows.every((row) => UUID_V7.test(row.id))).toBe(true);
     expect(new Set(memberIds.rows.map((row) => row.id)).size).toBe(3);
     expect(memberIds.rows.every((row) => row.tenant_id === row.user_tenant_id)).toBe(true);
+  });
+
+  it('seeds the system roles the code expects, with no workspace and no tenant', async () => {
+    const pool = await databaseAt(LAST_MIGRATION_BEFORE_ROLES);
+
+    await migrate(drizzle(pool), { migrationsFolder: MIGRATIONS_FOLDER });
+
+    const roles = await pool.query<{
+      id: string;
+      key: string;
+      name: string;
+      tenant_id: string | null;
+      workspace_id: string | null;
+      permissions: string[];
+    }>(
+      `SELECT r.id, r.key, r.name, r.tenant_id, r.workspace_id,
+              coalesce(array_agg(p.permission ORDER BY p.permission)
+                       FILTER (WHERE p.permission IS NOT NULL), '{}') AS permissions
+       FROM workspace_roles r
+       LEFT JOIN workspace_role_permissions p ON p.role_id = r.id
+       GROUP BY r.id ORDER BY r.id`,
+    );
+    expect(roles.rows).toEqual(
+      SYSTEM_ROLES.map(({ id, key, name, permissions }) => ({
+        id: id.value,
+        key,
+        name,
+        tenant_id: null,
+        workspace_id: null,
+        permissions: [...permissions].sort(),
+      })),
+    );
+  });
+
+  it('moves existing members to the system role with the same key', async () => {
+    const pool = await databaseAt(LAST_MIGRATION_BEFORE_ROLES);
+    const tenantId = newUuidV7();
+    await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'Acme')", [tenantId]);
+    const owner = await insertUser(pool, tenantId, 'o@acme.co');
+    const admin = await insertUser(pool, tenantId, 'a@acme.co');
+    const workspaceId = newUuidV7();
+    await pool.query("INSERT INTO workspaces (id, tenant_id, name) VALUES ($1, $2, 'Acme')", [
+      workspaceId,
+      tenantId,
+    ]);
+    for (const [userId, role] of [
+      [owner, 'owner'],
+      [admin, 'admin'],
+    ]) {
+      await pool.query(
+        'INSERT INTO workspace_members (id, tenant_id, workspace_id, user_id, role) VALUES ($1, $2, $3, $4, $5)',
+        [newUuidV7(), tenantId, workspaceId, userId, role],
+      );
+    }
+
+    await migrate(drizzle(pool), { migrationsFolder: MIGRATIONS_FOLDER });
+
+    const { rows } = await pool.query<{ user_id: string; role_id: string }>(
+      'SELECT user_id, role_id FROM workspace_members',
+    );
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        { user_id: owner, role_id: SystemRoleId.OWNER.value },
+        { user_id: admin, role_id: SystemRoleId.ADMIN.value },
+      ]),
+    );
   });
 
   it('stops with a readable error when two tenants share an email', async () => {

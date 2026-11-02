@@ -16,6 +16,11 @@ import type {
   WorkspaceMemberView,
 } from '../application/ports/workspace-member.query.js';
 import type { WorkspaceMemberRepository } from '../application/ports/workspace-member.repository.js';
+import type {
+  WorkspaceRoleQuery,
+  WorkspaceRoleView,
+} from '../application/ports/workspace-role.query.js';
+import type { WorkspaceRoleRepository } from '../application/ports/workspace-role.repository.js';
 import {
   WORKSPACE_VIEW_MEMBER_LIMIT,
   type WorkspaceQuery,
@@ -24,15 +29,24 @@ import {
 import type { WorkspaceRepository } from '../application/ports/workspace.repository.js';
 import { AddWorkspaceMemberHandler } from '../application/use-cases/add-workspace-member/add-workspace-member.handler.js';
 import { ChangeWorkspaceMemberRoleHandler } from '../application/use-cases/change-workspace-member-role/change-workspace-member-role.handler.js';
+import { CreateWorkspaceRoleHandler } from '../application/use-cases/create-workspace-role/create-workspace-role.handler.js';
+import { DeleteWorkspaceRoleHandler } from '../application/use-cases/delete-workspace-role/delete-workspace-role.handler.js';
 import { GetWorkspaceHandler } from '../application/use-cases/get-workspace/get-workspace.handler.js';
 import { LeaveWorkspaceHandler } from '../application/use-cases/leave-workspace/leave-workspace.handler.js';
 import { ListWorkspaceMembersHandler } from '../application/use-cases/list-workspace-members/list-workspace-members.handler.js';
+import { ListWorkspaceRolesHandler } from '../application/use-cases/list-workspace-roles/list-workspace-roles.handler.js';
 import { RemoveWorkspaceMemberHandler } from '../application/use-cases/remove-workspace-member/remove-workspace-member.handler.js';
+import { UpdateWorkspaceRoleHandler } from '../application/use-cases/update-workspace-role/update-workspace-role.handler.js';
+import { WorkspaceAccess } from '../application/workspace-access.js';
 import { WorkspaceMember } from '../domain/entities/workspace-member.js';
+import type { WorkspaceRole } from '../domain/entities/workspace-role.js';
 import { Workspace } from '../domain/entities/workspace.js';
+import { WorkspaceRoleKeyTakenError } from '../domain/errors/domain.error.js';
+import { SystemRoleId } from '../domain/value-objects/system-workspace-role.js';
 import { WorkspaceId } from '../domain/value-objects/workspace-id.js';
 import { WorkspaceName } from '../domain/value-objects/workspace-name.js';
-import { WorkspaceRole } from '../domain/value-objects/workspace-role.js';
+import type { WorkspaceRoleId } from '../domain/value-objects/workspace-role-id.js';
+import { systemRoles } from './system-roles.js';
 
 export class FakeWorkspaces implements WorkspaceRepository {
   readonly saved = new Map<string, Workspace>();
@@ -67,8 +81,18 @@ export class FakeWorkspaceMembers implements WorkspaceMemberRepository {
   }
 
   countOwners(tenantId: TenantId, workspaceId: WorkspaceId): Promise<number> {
-    const owners = this.inWorkspace(tenantId, workspaceId).filter((member) => member.isOwner);
-    return Promise.resolve(owners.length);
+    return this.countWithRole(tenantId, workspaceId, SystemRoleId.OWNER);
+  }
+
+  countWithRole(
+    tenantId: TenantId,
+    workspaceId: WorkspaceId,
+    roleId: WorkspaceRoleId,
+  ): Promise<number> {
+    const holders = this.inWorkspace(tenantId, workspaceId).filter((member) =>
+      member.roleId.equals(roleId),
+    );
+    return Promise.resolve(holders.length);
   }
 
   save(member: WorkspaceMember): Promise<void> {
@@ -87,9 +111,71 @@ export class FakeWorkspaceMembers implements WorkspaceMemberRepository {
     );
   }
 
-  roleOf(userId: UserId): Nullable<WorkspaceRole> {
+  roleOf(userId: UserId): Nullable<WorkspaceRoleId> {
     const found = [...this.saved.values()].find((member) => member.userId.equals(userId));
-    return found?.role ?? null;
+    return found?.roleId ?? null;
+  }
+}
+
+export class FakeWorkspaceRoles implements WorkspaceRoleRepository, WorkspaceRoleQuery {
+  readonly saved = new Map<string, WorkspaceRole>(
+    systemRoles().map((role) => [role.id.value, role]),
+  );
+
+  constructor(private readonly members: FakeWorkspaceMembers) {}
+
+  findById(
+    tenantId: TenantId,
+    workspaceId: WorkspaceId,
+    id: WorkspaceRoleId,
+  ): Promise<Nullable<WorkspaceRole>> {
+    const found = this.saved.get(id.value);
+    return Promise.resolve(found && this.isVisible(found, tenantId, workspaceId) ? found : null);
+  }
+
+  save(role: WorkspaceRole): Promise<void> {
+    const taken = [...this.saved.values()].some(
+      (other) =>
+        !other.id.equals(role.id) &&
+        other.key === role.key &&
+        other.workspaceId?.value === role.workspaceId?.value,
+    );
+    if (taken) {
+      return Promise.reject(new WorkspaceRoleKeyTakenError(role.key));
+    }
+    this.saved.set(role.id.value, role);
+    return Promise.resolve();
+  }
+
+  delete(role: WorkspaceRole): Promise<void> {
+    this.saved.delete(role.id.value);
+    return Promise.resolve();
+  }
+
+  async listFor(
+    tenantId: TenantId,
+    workspaceId: WorkspaceId,
+    actorId: UserId,
+  ): Promise<Nullable<WorkspaceRoleView[]>> {
+    if (!(await this.members.findByUser(tenantId, workspaceId, actorId))) {
+      return null;
+    }
+    return [...this.saved.values()]
+      .filter((role) => this.isVisible(role, tenantId, workspaceId))
+      .map((role) => ({
+        id: role.id,
+        key: role.key,
+        name: role.name,
+        system: role.isSystem,
+        permissions: role.permissions,
+      }));
+  }
+
+  private isVisible(role: WorkspaceRole, tenantId: TenantId, workspaceId: WorkspaceId): boolean {
+    return (
+      role.isSystem ||
+      (role.tenantId?.equals(tenantId) === true && role.workspaceId?.equals(workspaceId) === true)
+    );
   }
 }
 
@@ -126,17 +212,23 @@ export class FakeUsers implements UserRepository {
 }
 
 // INFO: Members keep insertion order, so the newest member is the last one.
-function newestFirst(members: WorkspaceMember[], users: FakeUsers): WorkspaceMemberView[] {
+function newestFirst(
+  members: WorkspaceMember[],
+  users: FakeUsers,
+  roles: FakeWorkspaceRoles,
+): WorkspaceMemberView[] {
   return members
     .flatMap((member) => {
       const user = users.saved.get(member.userId.value);
-      return user
+      const role = roles.saved.get(member.roleId.value);
+      return user && role
         ? [
             {
               userId: member.userId,
               name: user.name.value,
               email: user.email.value,
-              role: member.role,
+              roleId: member.roleId,
+              role: role.key,
             },
           ]
         : [];
@@ -149,6 +241,7 @@ export class FakeWorkspaceQuery implements WorkspaceQuery {
     private readonly workspaces: FakeWorkspaces,
     private readonly members: FakeWorkspaceMembers,
     private readonly users: FakeUsers,
+    private readonly roles: FakeWorkspaceRoles,
   ) {}
 
   async findViewFor(
@@ -158,14 +251,20 @@ export class FakeWorkspaceQuery implements WorkspaceQuery {
   ): Promise<Nullable<WorkspaceView>> {
     const workspace = await this.workspaces.findById(tenantId, workspaceId);
     const actor = await this.members.findByUser(tenantId, workspaceId, actorId);
-    if (!workspace || !actor) {
+    const role = actor && this.roles.saved.get(actor.roleId.value);
+    if (!workspace || !actor || !role) {
       return null;
     }
-    const members = newestFirst(this.members.inWorkspace(tenantId, workspaceId), this.users);
+    const members = newestFirst(
+      this.members.inWorkspace(tenantId, workspaceId),
+      this.users,
+      this.roles,
+    );
     return {
       id: workspace.id,
       name: workspace.name.value,
-      role: actor.role,
+      roleId: actor.roleId,
+      role: role.key,
       memberCount: members.length,
       members: members.slice(0, WORKSPACE_VIEW_MEMBER_LIMIT),
     };
@@ -176,6 +275,7 @@ export class FakeWorkspaceMemberQuery implements WorkspaceMemberQuery {
   constructor(
     private readonly members: FakeWorkspaceMembers,
     private readonly users: FakeUsers,
+    private readonly roles: FakeWorkspaceRoles,
   ) {}
 
   async list(params: {
@@ -189,7 +289,11 @@ export class FakeWorkspaceMemberQuery implements WorkspaceMemberQuery {
     if (!(await this.members.findByUser(tenantId, workspaceId, actorId))) {
       return null;
     }
-    const members = newestFirst(this.members.inWorkspace(tenantId, workspaceId), this.users);
+    const members = newestFirst(
+      this.members.inWorkspace(tenantId, workspaceId),
+      this.users,
+      this.roles,
+    );
     const start = (params.page - 1) * params.limit;
     return { items: members.slice(start, start + params.limit), total: members.length };
   }
@@ -200,6 +304,8 @@ export const fakeUnitOfWork: UnitOfWork = { run: (work) => work() };
 export function createWorkspaceKit() {
   const workspaces = new FakeWorkspaces();
   const members = new FakeWorkspaceMembers();
+  const roles = new FakeWorkspaceRoles(members);
+  const access = new WorkspaceAccess(members, roles);
   const users = new FakeUsers();
   const tenantId = TenantId.create();
   const clock = new SystemClock();
@@ -222,7 +328,7 @@ export function createWorkspaceKit() {
       tenantId,
       workspaceId: workspace.id,
       userId: owner.id,
-      role: WorkspaceRole.OWNER,
+      roleId: SystemRoleId.OWNER,
       createdAt: clock.now(),
     }),
   );
@@ -230,17 +336,42 @@ export function createWorkspaceKit() {
   return {
     workspaces,
     members,
+    roles,
     users,
     tenantId,
     owner,
     workspace,
     clock,
-    add: new AddWorkspaceMemberHandler(workspaces, members, users, fakeUnitOfWork, clock),
-    changeRole: new ChangeWorkspaceMemberRoleHandler(workspaces, members, fakeUnitOfWork, clock),
-    remove: new RemoveWorkspaceMemberHandler(workspaces, members, users, fakeUnitOfWork, clock),
+    add: new AddWorkspaceMemberHandler(workspaces, members, access, users, fakeUnitOfWork, clock),
+    changeRole: new ChangeWorkspaceMemberRoleHandler(
+      workspaces,
+      members,
+      access,
+      fakeUnitOfWork,
+      clock,
+    ),
+    remove: new RemoveWorkspaceMemberHandler(
+      workspaces,
+      members,
+      access,
+      users,
+      fakeUnitOfWork,
+      clock,
+    ),
     leave: new LeaveWorkspaceHandler(workspaces, members, users, fakeUnitOfWork, clock),
-    get: new GetWorkspaceHandler(new FakeWorkspaceQuery(workspaces, members, users)),
-    list: new ListWorkspaceMembersHandler(new FakeWorkspaceMemberQuery(members, users)),
+    get: new GetWorkspaceHandler(new FakeWorkspaceQuery(workspaces, members, users, roles)),
+    list: new ListWorkspaceMembersHandler(new FakeWorkspaceMemberQuery(members, users, roles)),
+    listRoles: new ListWorkspaceRolesHandler(roles),
+    createRole: new CreateWorkspaceRoleHandler(workspaces, roles, access, fakeUnitOfWork, clock),
+    updateRole: new UpdateWorkspaceRoleHandler(workspaces, roles, access, fakeUnitOfWork, clock),
+    deleteRole: new DeleteWorkspaceRoleHandler(
+      workspaces,
+      roles,
+      members,
+      access,
+      fakeUnitOfWork,
+      clock,
+    ),
   };
 }
 

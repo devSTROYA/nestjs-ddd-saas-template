@@ -9,9 +9,9 @@ import { USER_REPOSITORY, UserId, type UserRepository } from '@modules/users';
 import {
   WorkspaceMemberNotFoundError,
   WorkspaceNotFoundError,
-  WorkspaceOwnerRequiredError,
 } from '../../../domain/errors/domain.error.js';
 import { WorkspaceId } from '../../../domain/value-objects/workspace-id.js';
+import { WorkspacePermission } from '../../../domain/value-objects/workspace-permission.js';
 import {
   WORKSPACE_MEMBER_REPOSITORY,
   type WorkspaceMemberRepository,
@@ -20,6 +20,7 @@ import {
   WORKSPACE_REPOSITORY,
   type WorkspaceRepository,
 } from '../../ports/workspace.repository.js';
+import { WorkspaceAccess } from '../../workspace-access.js';
 import { RemoveWorkspaceMemberCommand } from './remove-workspace-member.command.js';
 
 @CommandHandler(RemoveWorkspaceMemberCommand)
@@ -30,6 +31,7 @@ export class RemoveWorkspaceMemberHandler implements ICommandHandler<
   constructor(
     @Inject(WORKSPACE_REPOSITORY) private readonly workspaces: WorkspaceRepository,
     @Inject(WORKSPACE_MEMBER_REPOSITORY) private readonly members: WorkspaceMemberRepository,
+    @Inject(WorkspaceAccess) private readonly access: WorkspaceAccess,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
     @Inject(UNIT_OF_WORK) private readonly unitOfWork: UnitOfWork,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -47,18 +49,17 @@ export class RemoveWorkspaceMemberHandler implements ICommandHandler<
       if (!workspace) {
         throw new WorkspaceNotFoundError();
       }
-      const actor = await this.members.findByUser(
+      const actor = await this.access.require(
         tenantId,
         workspace.id,
         UserId.restore(command.actorId),
+        WorkspacePermission.MEMBER_REMOVE,
       );
-      if (!actor?.isOwner) {
-        throw new WorkspaceOwnerRequiredError();
-      }
       const member = await this.members.findByUser(tenantId, workspace.id, memberId);
       if (!member) {
         throw new WorkspaceMemberNotFoundError(command.memberId);
       }
+      actor.assertCanManage(await this.access.role(tenantId, workspace.id, member.roleId));
       const ownerCount = await this.members.countOwners(tenantId, workspace.id);
       member.remove(ownerCount, this.clock.now());
       await this.members.delete(member);

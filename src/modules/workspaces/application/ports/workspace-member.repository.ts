@@ -4,6 +4,7 @@ import type { UserId } from '@modules/users';
 
 import type { WorkspaceMember } from '../../domain/entities/workspace-member.js';
 import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
+import type { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
 
 // INFO: Every membership change holds the workspace row lock (WorkspaceRepository.findByIdForUpdate), so the owner count cannot go stale.
 export interface WorkspaceMemberRepository {
@@ -13,6 +14,11 @@ export interface WorkspaceMemberRepository {
     userId: UserId,
   ): Promise<Nullable<WorkspaceMember>>;
   countOwners(tenantId: TenantId, workspaceId: WorkspaceId): Promise<number>;
+  countWithRole(
+    tenantId: TenantId,
+    workspaceId: WorkspaceId,
+    roleId: WorkspaceRoleId,
+  ): Promise<number>;
   save(member: WorkspaceMember): Promise<void>;
   delete(member: WorkspaceMember): Promise<void>;
 }

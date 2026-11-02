@@ -12,6 +12,7 @@ import { MAILER } from '../application/ports/mailer.js';
 import { InviteTenantCommand } from '../application/use-cases/invite-tenant/invite-tenant.command.js';
 import { InvitationId } from '../domain/value-objects/invitation-id.js';
 import { FakeMailer } from '../testing/fakes.js';
+import { restoreSystemRoles } from '../../workspaces/testing/system-roles.js';
 
 const ADMIN_ID = AdminId.create();
 const VALID_BODY = { tenantName: 'Acme', userName: 'Uz' };
@@ -46,6 +47,7 @@ describe('InvitationsController', () => {
   beforeEach(async () => {
     mailer.sent.length = 0;
     await pool.query('TRUNCATE TABLE rate_limits, invitations, users, tenants, admins CASCADE');
+    await restoreSystemRoles(pool);
     await pool.query("INSERT INTO admins (id, email) VALUES ($1, 'root@b.co')", [ADMIN_ID.value]);
     invitationId = await app
       .get(CommandBus)

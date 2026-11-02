@@ -8,15 +8,16 @@ import {
   WorkspaceMemberRemovedEvent,
   WorkspaceMemberRoleChangedEvent,
 } from '../events/workspace-member.events.js';
+import { SystemRoleId } from '../value-objects/system-workspace-role.js';
 import type { WorkspaceId } from '../value-objects/workspace-id.js';
 import { WorkspaceMemberId } from '../value-objects/workspace-member-id.js';
-import { WorkspaceRole } from '../value-objects/workspace-role.js';
+import type { WorkspaceRoleId } from '../value-objects/workspace-role-id.js';
 
 type Props = {
   tenantId: TenantId;
   workspaceId: WorkspaceId;
   userId: UserId;
-  role: WorkspaceRole;
+  roleId: WorkspaceRoleId;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -34,7 +35,7 @@ export class WorkspaceMember extends AggregateRoot<Props, WorkspaceMemberId> {
         occurredAt: props.createdAt.toISOString(),
         workspaceId: props.workspaceId.value,
         userId: props.userId.value,
-        role: props.role,
+        roleId: props.roleId.value,
       }),
     );
     return member;
@@ -56,12 +57,12 @@ export class WorkspaceMember extends AggregateRoot<Props, WorkspaceMemberId> {
     return this.props.userId;
   }
 
-  get role(): WorkspaceRole {
-    return this.props.role;
+  get roleId(): WorkspaceRoleId {
+    return this.props.roleId;
   }
 
   get isOwner(): boolean {
-    return this.props.role === WorkspaceRole.OWNER;
+    return this.props.roleId.equals(SystemRoleId.OWNER);
   }
 
   get createdAt(): Date {
@@ -73,12 +74,12 @@ export class WorkspaceMember extends AggregateRoot<Props, WorkspaceMemberId> {
   }
 
   // INFO: ownerCount counts this workspace's owners, read while holding the workspace lock.
-  changeRole(role: WorkspaceRole, ownerCount: number, now: Date): void {
-    if (role !== WorkspaceRole.OWNER) {
+  changeRole(roleId: WorkspaceRoleId, ownerCount: number, now: Date): void {
+    if (!roleId.equals(SystemRoleId.OWNER)) {
       this.assertNotLastOwner(ownerCount);
     }
-    const previousRole = this.props.role;
-    this.props.role = role;
+    const previousRoleId = this.props.roleId;
+    this.props.roleId = roleId;
     this.props.updatedAt = now;
     this.addEvent(
       new WorkspaceMemberRoleChangedEvent({
@@ -87,8 +88,8 @@ export class WorkspaceMember extends AggregateRoot<Props, WorkspaceMemberId> {
         occurredAt: now.toISOString(),
         workspaceId: this.props.workspaceId.value,
         userId: this.props.userId.value,
-        previousRole,
-        role,
+        previousRoleId: previousRoleId.value,
+        roleId: roleId.value,
       }),
     );
   }

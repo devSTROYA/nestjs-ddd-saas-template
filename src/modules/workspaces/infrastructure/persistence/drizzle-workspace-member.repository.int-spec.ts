@@ -9,14 +9,15 @@ import { UserId } from '@modules/users';
 import { WorkspaceMember } from '../../domain/entities/workspace-member.js';
 import { Workspace } from '../../domain/entities/workspace.js';
 import {
-  InvalidWorkspaceRoleError,
   WorkspaceMemberAlreadyExistsError,
   WorkspaceMemberIdConflictError,
 } from '../../domain/errors/domain.error.js';
 import { WorkspaceMemberEventNames } from '../../domain/events/workspace-member.events.js';
 import { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspaceName } from '../../domain/value-objects/workspace-name.js';
-import { WorkspaceRole } from '../../domain/value-objects/workspace-role.js';
+import { SystemRoleId } from '../../domain/value-objects/system-workspace-role.js';
+import type { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
+import { restoreSystemRoles } from '../../testing/system-roles.js';
 import { DrizzleWorkspaceMemberRepository } from './drizzle-workspace-member.repository.js';
 import { DrizzleWorkspaceRepository } from './drizzle-workspace.repository.js';
 
@@ -57,12 +58,13 @@ const newMember = (
   tenantId: TenantId,
   workspaceId: WorkspaceId,
   userId: UserId,
-  role: WorkspaceRole = WorkspaceRole.ADMIN,
+  roleId: WorkspaceRoleId = SystemRoleId.ADMIN,
 ): WorkspaceMember =>
-  WorkspaceMember.create({ tenantId, workspaceId, userId, role, createdAt: new Date() });
+  WorkspaceMember.create({ tenantId, workspaceId, userId, roleId, createdAt: new Date() });
 
 beforeEach(async () => {
   await pool.query('TRUNCATE TABLE outbox, workspace_members, workspaces, users, tenants CASCADE');
+  await restoreSystemRoles(pool);
 });
 
 afterAll(async () => {
@@ -82,7 +84,7 @@ describe('DrizzleWorkspaceMemberRepository', () => {
     expect(found?.tenantId).toEqual(tenantId);
     expect(found?.workspaceId).toEqual(workspaceId);
     expect(found?.userId).toEqual(userId);
-    expect(found?.role).toBe(WorkspaceRole.ADMIN);
+    expect(found?.roleId).toEqual(SystemRoleId.ADMIN);
     expect(found?.createdAt).toEqual(member.createdAt);
   });
 
@@ -103,11 +105,11 @@ describe('DrizzleWorkspaceMemberRepository', () => {
     await repository.save(member);
     const changedAt = new Date(member.createdAt.getTime() + 60_000);
 
-    member.changeRole(WorkspaceRole.OWNER, 1, changedAt);
+    member.changeRole(SystemRoleId.OWNER, 1, changedAt);
     await repository.save(member);
 
     const found = await repository.findByUser(tenantId, workspaceId, userId);
-    expect(found?.role).toBe(WorkspaceRole.OWNER);
+    expect(found?.roleId).toEqual(SystemRoleId.OWNER);
     expect(found?.updatedAt).toEqual(changedAt);
     expect(found?.createdAt).toEqual(member.createdAt);
   });
@@ -116,10 +118,10 @@ describe('DrizzleWorkspaceMemberRepository', () => {
     const { tenantId, workspaceId } = await seedWorkspace();
     const other = await seedWorkspace();
     await repository.save(
-      newMember(tenantId, workspaceId, await insertUser(tenantId, 'o@a.co'), WorkspaceRole.OWNER),
+      newMember(tenantId, workspaceId, await insertUser(tenantId, 'o@a.co'), SystemRoleId.OWNER),
     );
     await repository.save(
-      newMember(tenantId, workspaceId, await insertUser(tenantId, 'p@a.co'), WorkspaceRole.OWNER),
+      newMember(tenantId, workspaceId, await insertUser(tenantId, 'p@a.co'), SystemRoleId.OWNER),
     );
     await repository.save(newMember(tenantId, workspaceId, await insertUser(tenantId, 'a@a.co')));
     await repository.save(
@@ -127,7 +129,7 @@ describe('DrizzleWorkspaceMemberRepository', () => {
         other.tenantId,
         other.workspaceId,
         await insertUser(other.tenantId, 'o@b.co'),
-        WorkspaceRole.OWNER,
+        SystemRoleId.OWNER,
       ),
     );
 
@@ -179,7 +181,7 @@ describe('DrizzleWorkspaceMemberRepository', () => {
         tenantId: other.tenantId,
         workspaceId: other.workspaceId,
         userId: await insertUser(other.tenantId, 'i@b.co'),
-        role: WorkspaceRole.OWNER,
+        roleId: SystemRoleId.OWNER,
         createdAt: member.createdAt,
         updatedAt: member.updatedAt,
       },
@@ -189,7 +191,7 @@ describe('DrizzleWorkspaceMemberRepository', () => {
     await expect(repository.save(hijack)).rejects.toThrow(WorkspaceMemberIdConflictError);
 
     const found = await repository.findByUser(tenantId, workspaceId, userId);
-    expect(found?.role).toBe(WorkspaceRole.ADMIN);
+    expect(found?.roleId).toEqual(SystemRoleId.ADMIN);
   });
 
   it('does not delete a member of another tenant', async () => {
@@ -203,7 +205,7 @@ describe('DrizzleWorkspaceMemberRepository', () => {
         tenantId: other.tenantId,
         workspaceId: other.workspaceId,
         userId,
-        role: WorkspaceRole.ADMIN,
+        roleId: SystemRoleId.ADMIN,
         createdAt: member.createdAt,
         updatedAt: member.updatedAt,
       },
@@ -215,15 +217,14 @@ describe('DrizzleWorkspaceMemberRepository', () => {
     expect(await repository.findByUser(tenantId, workspaceId, userId)).not.toBeNull();
   });
 
-  it('rejects a stored role it does not know', async () => {
+  it('counts the members holding a role', async () => {
     const { tenantId, workspaceId } = await seedWorkspace();
-    const userId = await insertUser(tenantId, 'a@a.co');
-    await repository.save(newMember(tenantId, workspaceId, userId));
-    await pool.query("UPDATE workspace_members SET role = 'ghost'");
-
-    await expect(repository.findByUser(tenantId, workspaceId, userId)).rejects.toThrow(
-      InvalidWorkspaceRoleError,
+    await repository.save(
+      newMember(tenantId, workspaceId, await insertUser(tenantId, 'a@a.co'), SystemRoleId.MEMBER),
     );
+
+    expect(await repository.countWithRole(tenantId, workspaceId, SystemRoleId.MEMBER)).toBe(1);
+    expect(await repository.countWithRole(tenantId, workspaceId, SystemRoleId.ADMIN)).toBe(0);
   });
 
   it('writes the event to the outbox with the member as the aggregate', async () => {

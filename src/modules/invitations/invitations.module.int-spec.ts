@@ -13,6 +13,7 @@ import {
   type AcceptInvitationResult,
 } from './application/use-cases/accept-invitation/accept-invitation.command.js';
 import { InviteTenantCommand } from './application/use-cases/invite-tenant/invite-tenant.command.js';
+import { restoreSystemRoles } from '../workspaces/testing/system-roles.js';
 import { InvalidOtpError, InvitationNotPendingError } from './domain/errors/domain.error.js';
 import type { InvitationId } from './domain/value-objects/invitation-id.js';
 import { InvitationsModule } from './invitations.module.js';
@@ -61,6 +62,7 @@ describe('InvitationsModule', () => {
   beforeEach(async () => {
     mailer.sent.length = 0;
     await pool.query('TRUNCATE TABLE invitations, users, tenants, admins CASCADE');
+    await restoreSystemRoles(pool);
     await pool.query("INSERT INTO admins (id, email) VALUES ($1, 'root@b.co')", [ADMIN_ID.value]);
   });
 
