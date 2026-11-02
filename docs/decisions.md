@@ -406,6 +406,14 @@ changes, update this file in the same change.
   Scalar docs are enabled (non-production), because the docs page needs inline scripts.
 - **`DATABASE_POOL_MAX`** (default 5) caps connections per instance. With autoscaling the total is
   `instances x pool`, which must stay well below the database's `max_connections`.
+- **Losing a database connection never kills the process.** An `error` event without a listener is
+  fatal in Node, and `pg-pool` only listens to idle clients, so `createPool` (`DatabaseModule`) also
+  listens on every client (a client held by a transaction has no other listener) and logs the loss.
+- **Database timeouts are fixed in `createPool`, so a stuck database fails fast:** 5 s to get a
+  connection (including the wait for a free one), `statement_timeout` 10 s (Postgres cancels the
+  query, the connection stays healthy) and `query_timeout` 12 s (client side, for a dead network;
+  alone it would leave the connection busy, because the query keeps running). `migrate.ts` has its
+  own pool without timeouts, so long migrations are not cut off.
 - **Migrations and seeding run as one-off jobs, not at startup:** `node dist/migrate.js` (uses
   `drizzle-orm`'s migrator, so it works in the production image without `drizzle-kit`) and
   `node dist/seed.js`. `pnpm db:migrate` (drizzle-kit) stays for development.
