@@ -73,8 +73,11 @@ export class WorkspaceMember extends AggregateRoot<Props, WorkspaceMemberId> {
     return this.props.updatedAt;
   }
 
-  // INFO: ownerCount counts this workspace's owners, read while holding the workspace lock.
-  changeRole(roleId: WorkspaceRoleId, ownerCount: number, now: Date): void {
+  // INFO: ownerCount counts this workspace's owners, read while holding the workspace lock. Returns false when the member already holds the role.
+  changeRole(roleId: WorkspaceRoleId, ownerCount: number, now: Date): boolean {
+    if (roleId.equals(this.props.roleId)) {
+      return false;
+    }
     if (!roleId.equals(SystemRoleId.OWNER)) {
       this.assertNotLastOwner(ownerCount);
     }
@@ -92,6 +95,7 @@ export class WorkspaceMember extends AggregateRoot<Props, WorkspaceMemberId> {
         roleId: roleId.value,
       }),
     );
+    return true;
   }
 
   // INFO: ownerCount counts this workspace's owners, read while holding the workspace lock.

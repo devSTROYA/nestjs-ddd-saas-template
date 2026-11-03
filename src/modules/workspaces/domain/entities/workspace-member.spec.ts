@@ -67,7 +67,7 @@ describe('WorkspaceMember', () => {
     const member = newMember(SystemRoleId.ADMIN);
     member.pullEvents();
 
-    member.changeRole(SystemRoleId.OWNER, 1, NOW);
+    expect(member.changeRole(SystemRoleId.OWNER, 1, NOW)).toBe(true);
 
     expect(member.roleId).toEqual(SystemRoleId.OWNER);
     expect(member.updatedAt).toEqual(NOW);
@@ -82,6 +82,17 @@ describe('WorkspaceMember', () => {
         roleId: SystemRoleId.OWNER.value,
       },
     ]);
+  });
+
+  it('changes nothing when the member already holds the role, even as the last owner', () => {
+    const member = newMember(SystemRoleId.OWNER);
+    member.pullEvents();
+
+    expect(member.changeRole(SystemRoleId.OWNER, 1, NOW)).toBe(false);
+
+    expect(member.roleId).toEqual(SystemRoleId.OWNER);
+    expect(member.updatedAt).toEqual(CREATED_AT);
+    expect(member.pullEvents()).toEqual([]);
   });
 
   it('keeps at least one owner when demoting, also to a custom role', () => {

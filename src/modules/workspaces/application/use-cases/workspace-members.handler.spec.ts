@@ -192,6 +192,23 @@ describe('ChangeWorkspaceMemberRoleHandler', () => {
     expect(kit.members.roleOf(userId)).toEqual(SystemRoleId.OWNER);
   });
 
+  it('writes nothing when the member already holds the role', async () => {
+    const kit = createWorkspaceKit();
+    const save = vi.spyOn(kit.members, 'save');
+
+    await kit.changeRole.execute(
+      new ChangeWorkspaceMemberRoleCommand(
+        kit.owner.id.value,
+        kit.tenantId.value,
+        kit.workspace.id.value,
+        kit.owner.id.value,
+        SystemRoleId.OWNER.value,
+      ),
+    );
+
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it('refuses non-owners, unknown members and demoting the last owner', async () => {
     const kit = createWorkspaceKit();
     const { userId } = await addMember(kit, 'new@acme.co');

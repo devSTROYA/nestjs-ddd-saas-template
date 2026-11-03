@@ -56,8 +56,9 @@ export class ChangeWorkspaceMemberRoleHandler implements ICommandHandler<
       actor.assertCanManage(current);
       actor.assertCanManage(next);
       const ownerCount = await this.members.countOwners(tenantId, workspaceId);
-      member.changeRole(next.id, ownerCount, this.clock.now());
-      await this.members.save(member);
+      if (member.changeRole(next.id, ownerCount, this.clock.now())) {
+        await this.members.save(member);
+      }
     });
   }
 }
