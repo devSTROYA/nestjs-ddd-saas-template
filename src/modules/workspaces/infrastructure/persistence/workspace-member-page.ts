@@ -1,6 +1,7 @@
-import { count, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq } from 'drizzle-orm';
 
 import type { DatabaseContext } from '@common/database';
+import type { TenantId } from '@modules/tenants';
 import { UserId } from '@modules/users';
 
 import type { WorkspaceMemberView } from '../../application/ports/workspace-member.query.js';
@@ -9,6 +10,26 @@ import { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js
 import { users } from '../../../users/infrastructure/persistence/user.schema.js';
 import { workspaceMembers } from './workspace-member.schema.js';
 import { workspaceRoles } from './workspace-role.schema.js';
+
+// INFO: Who may see a workspace, its members and its roles: only its members.
+export async function isMember(
+  context: DatabaseContext,
+  tenantId: TenantId,
+  workspaceId: WorkspaceId,
+  userId: UserId,
+): Promise<boolean> {
+  const [row] = await context.client
+    .select({ id: workspaceMembers.id })
+    .from(workspaceMembers)
+    .where(
+      and(
+        eq(workspaceMembers.tenantId, tenantId.value),
+        eq(workspaceMembers.workspaceId, workspaceId.value),
+        eq(workspaceMembers.userId, userId.value),
+      ),
+    );
+  return row !== undefined;
+}
 
 // INFO: Newest first; callers check first that the actor may see this workspace.
 export async function findMemberPage(

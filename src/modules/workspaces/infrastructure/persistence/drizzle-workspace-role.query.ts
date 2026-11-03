@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, or, sql } from 'drizzle-orm';
+import { asc, eq, isNull, or, sql } from 'drizzle-orm';
 
 import type { DatabaseContext } from '@common/database';
 import type { Nullable } from '@common/types';
@@ -12,7 +12,7 @@ import type {
 import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
 import { knownPermissions } from './drizzle-workspace-role.repository.js';
-import { workspaceMembers } from './workspace-member.schema.js';
+import { isMember } from './workspace-member-page.js';
 import { workspaceRolePermissions, workspaceRoles } from './workspace-role.schema.js';
 
 export class DrizzleWorkspaceRoleQuery implements WorkspaceRoleQuery {
@@ -23,17 +23,7 @@ export class DrizzleWorkspaceRoleQuery implements WorkspaceRoleQuery {
     workspaceId: WorkspaceId,
     actorId: UserId,
   ): Promise<Nullable<WorkspaceRoleView[]>> {
-    const [access] = await this.context.client
-      .select({ id: workspaceMembers.id })
-      .from(workspaceMembers)
-      .where(
-        and(
-          eq(workspaceMembers.tenantId, tenantId.value),
-          eq(workspaceMembers.workspaceId, workspaceId.value),
-          eq(workspaceMembers.userId, actorId.value),
-        ),
-      );
-    if (!access) {
+    if (!(await isMember(this.context, tenantId, workspaceId, actorId))) {
       return null;
     }
     const visible = or(

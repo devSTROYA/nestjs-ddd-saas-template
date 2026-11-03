@@ -8,7 +8,6 @@ import { UserId } from '@modules/users';
 
 import {
   SystemWorkspaceRoleError,
-  WorkspaceNotFoundError,
   WorkspaceRoleInUseError,
 } from '../../../domain/errors/domain.error.js';
 import { WorkspaceId } from '../../../domain/value-objects/workspace-id.js';
@@ -22,10 +21,6 @@ import {
   WORKSPACE_ROLE_REPOSITORY,
   type WorkspaceRoleRepository,
 } from '../../ports/workspace-role.repository.js';
-import {
-  WORKSPACE_REPOSITORY,
-  type WorkspaceRepository,
-} from '../../ports/workspace.repository.js';
 import { WorkspaceAccess } from '../../workspace-access.js';
 import { DeleteWorkspaceRoleCommand } from './delete-workspace-role.command.js';
 
@@ -35,7 +30,6 @@ export class DeleteWorkspaceRoleHandler implements ICommandHandler<
   void
 > {
   constructor(
-    @Inject(WORKSPACE_REPOSITORY) private readonly workspaces: WorkspaceRepository,
     @Inject(WORKSPACE_ROLE_REPOSITORY) private readonly roles: WorkspaceRoleRepository,
     @Inject(WORKSPACE_MEMBER_REPOSITORY) private readonly members: WorkspaceMemberRepository,
     @Inject(WorkspaceAccess) private readonly access: WorkspaceAccess,
@@ -46,29 +40,23 @@ export class DeleteWorkspaceRoleHandler implements ICommandHandler<
   execute(command: DeleteWorkspaceRoleCommand): Promise<void> {
     return this.unitOfWork.run(async () => {
       const tenantId = TenantId.restore(command.tenantId);
-      const workspace = await this.workspaces.findByIdForUpdate(
+      const workspaceId = WorkspaceId.restore(command.workspaceId);
+      const actor = await this.access.lockAndRequire(
         tenantId,
-        WorkspaceId.restore(command.workspaceId),
-      );
-      if (!workspace) {
-        throw new WorkspaceNotFoundError();
-      }
-      const actor = await this.access.require(
-        tenantId,
-        workspace.id,
+        workspaceId,
         UserId.restore(command.actorId),
         WorkspacePermission.ROLE_MANAGE,
       );
       const role = await this.access.role(
         tenantId,
-        workspace.id,
+        workspaceId,
         WorkspaceRoleId.restore(command.roleId),
       );
       if (role.isSystem) {
         throw new SystemWorkspaceRoleError(role.key);
       }
       actor.assertCanManage(role);
-      if ((await this.members.countWithRole(tenantId, workspace.id, role.id)) > 0) {
+      if ((await this.members.countWithRole(tenantId, workspaceId, role.id)) > 0) {
         throw new WorkspaceRoleInUseError(role.key);
       }
       role.remove(this.clock.now());

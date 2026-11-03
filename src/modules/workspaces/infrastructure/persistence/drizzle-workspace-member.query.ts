@@ -1,5 +1,3 @@
-import { and, eq } from 'drizzle-orm';
-
 import type { DatabaseContext } from '@common/database';
 import type { Nullable } from '@common/types';
 import type { TenantId } from '@modules/tenants';
@@ -10,8 +8,7 @@ import type {
   WorkspaceMemberView,
 } from '../../application/ports/workspace-member.query.js';
 import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
-import { findMemberPage } from './workspace-member-page.js';
-import { workspaceMembers } from './workspace-member.schema.js';
+import { findMemberPage, isMember } from './workspace-member-page.js';
 
 export class DrizzleWorkspaceMemberQuery implements WorkspaceMemberQuery {
   constructor(private readonly context: DatabaseContext) {}
@@ -23,17 +20,7 @@ export class DrizzleWorkspaceMemberQuery implements WorkspaceMemberQuery {
     page: number;
     limit: number;
   }): Promise<Nullable<{ items: WorkspaceMemberView[]; total: number }>> {
-    const [access] = await this.context.client
-      .select({ id: workspaceMembers.id })
-      .from(workspaceMembers)
-      .where(
-        and(
-          eq(workspaceMembers.tenantId, params.tenantId.value),
-          eq(workspaceMembers.workspaceId, params.workspaceId.value),
-          eq(workspaceMembers.userId, params.actorId.value),
-        ),
-      );
-    if (!access) {
+    if (!(await isMember(this.context, params.tenantId, params.workspaceId, params.actorId))) {
       return null;
     }
     return findMemberPage(

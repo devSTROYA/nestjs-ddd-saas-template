@@ -5,6 +5,7 @@ import type { UserId } from '@modules/users';
 
 import type { WorkspaceRole } from '../domain/entities/workspace-role.js';
 import {
+  WorkspaceNotFoundError,
   WorkspacePermissionDeniedError,
   WorkspaceRoleNotFoundError,
 } from '../domain/errors/domain.error.js';
@@ -19,11 +20,13 @@ import {
   WORKSPACE_ROLE_REPOSITORY,
   type WorkspaceRoleRepository,
 } from './ports/workspace-role.repository.js';
+import { WORKSPACE_REPOSITORY, type WorkspaceRepository } from './ports/workspace.repository.js';
 
-// INFO: Handlers call this inside their transaction, after locking the workspace, so a role cannot change between the check and the write.
+// INFO: Handlers call this inside their transaction; it locks the workspace before the check, so a role cannot change between the check and the write.
 @Injectable()
 export class WorkspaceAccess {
   constructor(
+    @Inject(WORKSPACE_REPOSITORY) private readonly workspaces: WorkspaceRepository,
     @Inject(WORKSPACE_MEMBER_REPOSITORY) private readonly members: WorkspaceMemberRepository,
     @Inject(WORKSPACE_ROLE_REPOSITORY) private readonly roles: WorkspaceRoleRepository,
   ) {}
@@ -40,12 +43,15 @@ export class WorkspaceAccess {
     return role;
   }
 
-  async require(
+  async lockAndRequire(
     tenantId: TenantId,
     workspaceId: WorkspaceId,
     actorId: UserId,
     permission: WorkspacePermission,
   ): Promise<WorkspaceRole> {
+    if (!(await this.workspaces.findByIdForUpdate(tenantId, workspaceId))) {
+      throw new WorkspaceNotFoundError();
+    }
     const actor = await this.members.findByUser(tenantId, workspaceId, actorId);
     if (!actor) {
       throw new WorkspacePermissionDeniedError([permission]);

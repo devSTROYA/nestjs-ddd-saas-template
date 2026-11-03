@@ -305,7 +305,7 @@ export function createWorkspaceKit() {
   const workspaces = new FakeWorkspaces();
   const members = new FakeWorkspaceMembers();
   const roles = new FakeWorkspaceRoles(members);
-  const access = new WorkspaceAccess(members, roles);
+  const access = new WorkspaceAccess(workspaces, members, roles);
   const users = new FakeUsers();
   const tenantId = TenantId.create();
   const clock = new SystemClock();
@@ -342,36 +342,16 @@ export function createWorkspaceKit() {
     owner,
     workspace,
     clock,
-    add: new AddWorkspaceMemberHandler(workspaces, members, access, users, fakeUnitOfWork, clock),
-    changeRole: new ChangeWorkspaceMemberRoleHandler(
-      workspaces,
-      members,
-      access,
-      fakeUnitOfWork,
-      clock,
-    ),
-    remove: new RemoveWorkspaceMemberHandler(
-      workspaces,
-      members,
-      access,
-      users,
-      fakeUnitOfWork,
-      clock,
-    ),
+    add: new AddWorkspaceMemberHandler(members, access, users, fakeUnitOfWork, clock),
+    changeRole: new ChangeWorkspaceMemberRoleHandler(members, access, fakeUnitOfWork, clock),
+    remove: new RemoveWorkspaceMemberHandler(members, access, users, fakeUnitOfWork, clock),
     leave: new LeaveWorkspaceHandler(workspaces, members, users, fakeUnitOfWork, clock),
     get: new GetWorkspaceHandler(new FakeWorkspaceQuery(workspaces, members, users, roles)),
     list: new ListWorkspaceMembersHandler(new FakeWorkspaceMemberQuery(members, users, roles)),
     listRoles: new ListWorkspaceRolesHandler(roles),
-    createRole: new CreateWorkspaceRoleHandler(workspaces, roles, access, fakeUnitOfWork, clock),
-    updateRole: new UpdateWorkspaceRoleHandler(workspaces, roles, access, fakeUnitOfWork, clock),
-    deleteRole: new DeleteWorkspaceRoleHandler(
-      workspaces,
-      roles,
-      members,
-      access,
-      fakeUnitOfWork,
-      clock,
-    ),
+    createRole: new CreateWorkspaceRoleHandler(roles, access, fakeUnitOfWork, clock),
+    updateRole: new UpdateWorkspaceRoleHandler(roles, access, fakeUnitOfWork, clock),
+    deleteRole: new DeleteWorkspaceRoleHandler(roles, members, access, fakeUnitOfWork, clock),
   };
 }
 

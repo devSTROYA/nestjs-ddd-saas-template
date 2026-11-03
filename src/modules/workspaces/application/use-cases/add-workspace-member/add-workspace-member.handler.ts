@@ -15,10 +15,7 @@ import {
 } from '@modules/users';
 
 import { WorkspaceMember } from '../../../domain/entities/workspace-member.js';
-import {
-  WorkspaceMemberAlreadyExistsError,
-  WorkspaceNotFoundError,
-} from '../../../domain/errors/domain.error.js';
+import { WorkspaceMemberAlreadyExistsError } from '../../../domain/errors/domain.error.js';
 import { WorkspaceId } from '../../../domain/value-objects/workspace-id.js';
 import { WorkspacePermission } from '../../../domain/value-objects/workspace-permission.js';
 import { WorkspaceRoleId } from '../../../domain/value-objects/workspace-role-id.js';
@@ -26,10 +23,6 @@ import {
   WORKSPACE_MEMBER_REPOSITORY,
   type WorkspaceMemberRepository,
 } from '../../ports/workspace-member.repository.js';
-import {
-  WORKSPACE_REPOSITORY,
-  type WorkspaceRepository,
-} from '../../ports/workspace.repository.js';
 import { WorkspaceAccess } from '../../workspace-access.js';
 import {
   AddWorkspaceMemberCommand,
@@ -43,7 +36,6 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
   AddWorkspaceMemberResult
 > {
   constructor(
-    @Inject(WORKSPACE_REPOSITORY) private readonly workspaces: WorkspaceRepository,
     @Inject(WORKSPACE_MEMBER_REPOSITORY) private readonly members: WorkspaceMemberRepository,
     @Inject(WorkspaceAccess) private readonly access: WorkspaceAccess,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
@@ -61,22 +53,16 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
     email: Email,
   ): Promise<AddWorkspaceMemberResult> {
     const tenantId = TenantId.restore(command.tenantId);
-    const workspace = await this.workspaces.findByIdForUpdate(
+    const workspaceId = WorkspaceId.restore(command.workspaceId);
+    const actor = await this.access.lockAndRequire(
       tenantId,
-      WorkspaceId.restore(command.workspaceId),
-    );
-    if (!workspace) {
-      throw new WorkspaceNotFoundError();
-    }
-    const actor = await this.access.require(
-      tenantId,
-      workspace.id,
+      workspaceId,
       UserId.restore(command.actorId),
       WorkspacePermission.MEMBER_ADD,
     );
     const role = await this.access.role(
       tenantId,
-      workspace.id,
+      workspaceId,
       WorkspaceRoleId.restore(command.roleId),
     );
     actor.assertCanManage(role);
@@ -85,7 +71,7 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
     if (existing && !existing.tenantId.equals(tenantId)) {
       throw new EmailAlreadyTakenError(email.value);
     }
-    if (existing && (await this.members.findByUser(tenantId, workspace.id, existing.id))) {
+    if (existing && (await this.members.findByUser(tenantId, workspaceId, existing.id))) {
       throw new WorkspaceMemberAlreadyExistsError(existing.id.value);
     }
     const now = this.clock.now();
@@ -104,7 +90,7 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
     await this.members.save(
       WorkspaceMember.create({
         tenantId,
-        workspaceId: workspace.id,
+        workspaceId,
         userId: user.id,
         roleId: role.id,
         createdAt: now,
