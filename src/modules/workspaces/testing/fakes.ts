@@ -27,16 +27,16 @@ import {
   type WorkspaceView,
 } from '../application/ports/workspace.query.js';
 import type { WorkspaceRepository } from '../domain/ports/workspace.repository.js';
-import { AddWorkspaceMemberHandler } from '../application/use-cases/add-workspace-member/add-workspace-member.handler.js';
-import { ChangeWorkspaceMemberRoleHandler } from '../application/use-cases/change-workspace-member-role/change-workspace-member-role.handler.js';
-import { CreateWorkspaceRoleHandler } from '../application/use-cases/create-workspace-role/create-workspace-role.handler.js';
-import { DeleteWorkspaceRoleHandler } from '../application/use-cases/delete-workspace-role/delete-workspace-role.handler.js';
+import { AddWorkspaceMemberHandler } from '../application/commands/add-workspace-member/add-workspace-member.handler.js';
+import { ChangeWorkspaceMemberRoleHandler } from '../application/commands/change-workspace-member-role/change-workspace-member-role.handler.js';
+import { CreateWorkspaceRoleHandler } from '../application/commands/create-workspace-role/create-workspace-role.handler.js';
+import { DeleteWorkspaceRoleHandler } from '../application/commands/delete-workspace-role/delete-workspace-role.handler.js';
 import { GetWorkspaceHandler } from '../application/queries/get-workspace/get-workspace.handler.js';
-import { LeaveWorkspaceHandler } from '../application/use-cases/leave-workspace/leave-workspace.handler.js';
+import { LeaveWorkspaceHandler } from '../application/commands/leave-workspace/leave-workspace.handler.js';
 import { ListWorkspaceMembersHandler } from '../application/queries/list-workspace-members/list-workspace-members.handler.js';
 import { ListWorkspaceRolesHandler } from '../application/queries/list-workspace-roles/list-workspace-roles.handler.js';
-import { RemoveWorkspaceMemberHandler } from '../application/use-cases/remove-workspace-member/remove-workspace-member.handler.js';
-import { UpdateWorkspaceRoleHandler } from '../application/use-cases/update-workspace-role/update-workspace-role.handler.js';
+import { RemoveWorkspaceMemberHandler } from '../application/commands/remove-workspace-member/remove-workspace-member.handler.js';
+import { UpdateWorkspaceRoleHandler } from '../application/commands/update-workspace-role/update-workspace-role.handler.js';
 import { WorkspaceAccess } from '../application/workspace-access.js';
 import { WorkspaceMember } from '../domain/entities/workspace-member.js';
 import type { WorkspaceRole } from '../domain/entities/workspace-role.js';

@@ -27,22 +27,22 @@ import type { WorkspaceView } from '../application/ports/workspace.query.js';
 import {
   CreateWorkspaceRoleCommand,
   type CreateWorkspaceRoleResult,
-} from '../application/use-cases/create-workspace-role/create-workspace-role.command.js';
-import { DeleteWorkspaceRoleCommand } from '../application/use-cases/delete-workspace-role/delete-workspace-role.command.js';
+} from '../application/commands/create-workspace-role/create-workspace-role.command.js';
+import { DeleteWorkspaceRoleCommand } from '../application/commands/delete-workspace-role/delete-workspace-role.command.js';
 import { ListWorkspaceRolesQuery } from '../application/queries/list-workspace-roles/list-workspace-roles.query.js';
-import { UpdateWorkspaceRoleCommand } from '../application/use-cases/update-workspace-role/update-workspace-role.command.js';
+import { UpdateWorkspaceRoleCommand } from '../application/commands/update-workspace-role/update-workspace-role.command.js';
 import {
   AddWorkspaceMemberCommand,
   type AddWorkspaceMemberResult,
-} from '../application/use-cases/add-workspace-member/add-workspace-member.command.js';
-import { ChangeWorkspaceMemberRoleCommand } from '../application/use-cases/change-workspace-member-role/change-workspace-member-role.command.js';
+} from '../application/commands/add-workspace-member/add-workspace-member.command.js';
+import { ChangeWorkspaceMemberRoleCommand } from '../application/commands/change-workspace-member-role/change-workspace-member-role.command.js';
 import { GetWorkspaceQuery } from '../application/queries/get-workspace/get-workspace.query.js';
-import { LeaveWorkspaceCommand } from '../application/use-cases/leave-workspace/leave-workspace.command.js';
+import { LeaveWorkspaceCommand } from '../application/commands/leave-workspace/leave-workspace.command.js';
 import {
   ListWorkspaceMembersQuery,
   type ListWorkspaceMembersResult,
 } from '../application/queries/list-workspace-members/list-workspace-members.query.js';
-import { RemoveWorkspaceMemberCommand } from '../application/use-cases/remove-workspace-member/remove-workspace-member.command.js';
+import { RemoveWorkspaceMemberCommand } from '../application/commands/remove-workspace-member/remove-workspace-member.command.js';
 import {
   type AddWorkspaceMemberBody,
   type ChangeWorkspaceMemberRoleBody,
