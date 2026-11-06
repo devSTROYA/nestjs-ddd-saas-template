@@ -5,7 +5,7 @@ import { saveAggregate } from '@common/outbox';
 import type { Nullable } from '@common/types';
 import { TenantId } from '@modules/tenants';
 
-import type { WorkspaceRepository } from '../../application/ports/workspace.repository.js';
+import type { WorkspaceRepository } from '../../domain/ports/workspace.repository.js';
 import { Workspace } from '../../domain/entities/workspace.js';
 import { WorkspaceIdConflictError } from '../../domain/errors/domain.error.js';
 import { WorkspaceId } from '../../domain/value-objects/workspace-id.js';

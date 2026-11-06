@@ -15,12 +15,15 @@ import type { WorkspaceRoleId } from '../domain/value-objects/workspace-role-id.
 import {
   WORKSPACE_MEMBER_REPOSITORY,
   type WorkspaceMemberRepository,
-} from './ports/workspace-member.repository.js';
+} from '../domain/ports/workspace-member.repository.js';
 import {
   WORKSPACE_ROLE_REPOSITORY,
   type WorkspaceRoleRepository,
-} from './ports/workspace-role.repository.js';
-import { WORKSPACE_REPOSITORY, type WorkspaceRepository } from './ports/workspace.repository.js';
+} from '../domain/ports/workspace-role.repository.js';
+import {
+  WORKSPACE_REPOSITORY,
+  type WorkspaceRepository,
+} from '../domain/ports/workspace.repository.js';
 
 // INFO: Handlers call this inside their transaction; it locks the workspace before the check, so a role cannot change between the check and the write.
 @Injectable()

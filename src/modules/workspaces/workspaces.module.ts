@@ -6,11 +6,11 @@ import { DATABASE_CONTEXT, DatabaseModule, type DatabaseContext } from '@common/
 import { TenantsModule } from '../tenants/tenants.module.js';
 import { UsersModule } from '../users/users.module.js';
 import { WORKSPACE_MEMBER_QUERY } from './application/ports/workspace-member.query.js';
-import { WORKSPACE_MEMBER_REPOSITORY } from './application/ports/workspace-member.repository.js';
+import { WORKSPACE_MEMBER_REPOSITORY } from './domain/ports/workspace-member.repository.js';
 import { WORKSPACE_ROLE_QUERY } from './application/ports/workspace-role.query.js';
-import { WORKSPACE_ROLE_REPOSITORY } from './application/ports/workspace-role.repository.js';
+import { WORKSPACE_ROLE_REPOSITORY } from './domain/ports/workspace-role.repository.js';
 import { WORKSPACE_QUERY } from './application/ports/workspace.query.js';
-import { WORKSPACE_REPOSITORY } from './application/ports/workspace.repository.js';
+import { WORKSPACE_REPOSITORY } from './domain/ports/workspace.repository.js';
 import { AddWorkspaceMemberHandler } from './application/use-cases/add-workspace-member/add-workspace-member.handler.js';
 import { ChangeWorkspaceMemberRoleHandler } from './application/use-cases/change-workspace-member-role/change-workspace-member-role.handler.js';
 import { CreateWorkspaceRoleHandler } from './application/use-cases/create-workspace-role/create-workspace-role.handler.js';

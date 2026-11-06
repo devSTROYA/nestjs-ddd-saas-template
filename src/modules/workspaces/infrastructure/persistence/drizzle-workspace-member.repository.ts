@@ -6,7 +6,7 @@ import type { Nullable } from '@common/types';
 import { TenantId } from '@modules/tenants';
 import { UserId } from '@modules/users';
 
-import type { WorkspaceMemberRepository } from '../../application/ports/workspace-member.repository.js';
+import type { WorkspaceMemberRepository } from '../../domain/ports/workspace-member.repository.js';
 import { WorkspaceMember } from '../../domain/entities/workspace-member.js';
 import {
   WorkspaceMemberAlreadyExistsError,

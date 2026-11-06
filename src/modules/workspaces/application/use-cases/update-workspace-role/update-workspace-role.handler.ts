@@ -13,7 +13,7 @@ import { WorkspaceRoleId } from '../../../domain/value-objects/workspace-role-id
 import {
   WORKSPACE_ROLE_REPOSITORY,
   type WorkspaceRoleRepository,
-} from '../../ports/workspace-role.repository.js';
+} from '../../../domain/ports/workspace-role.repository.js';
 import { WorkspaceAccess } from '../../workspace-access.js';
 import { UpdateWorkspaceRoleCommand } from './update-workspace-role.command.js';
 

@@ -12,7 +12,7 @@ import { WorkspacePermission } from '../../../domain/value-objects/workspace-per
 import {
   WORKSPACE_ROLE_REPOSITORY,
   type WorkspaceRoleRepository,
-} from '../../ports/workspace-role.repository.js';
+} from '../../../domain/ports/workspace-role.repository.js';
 import { WorkspaceAccess } from '../../workspace-access.js';
 import {
   CreateWorkspaceRoleCommand,

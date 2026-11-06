@@ -12,7 +12,7 @@ import { WorkspacePermission } from '../../../domain/value-objects/workspace-per
 import {
   WORKSPACE_MEMBER_REPOSITORY,
   type WorkspaceMemberRepository,
-} from '../../ports/workspace-member.repository.js';
+} from '../../../domain/ports/workspace-member.repository.js';
 import { WorkspaceAccess } from '../../workspace-access.js';
 import { RemoveWorkspaceMemberCommand } from './remove-workspace-member.command.js';
 

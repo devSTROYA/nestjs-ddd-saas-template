@@ -2,9 +2,9 @@ import type { Nullable } from '@common/types';
 import type { TenantId } from '@modules/tenants';
 import type { UserId } from '@modules/users';
 
-import type { WorkspaceMember } from '../../domain/entities/workspace-member.js';
-import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
-import type { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
+import type { WorkspaceMember } from '../entities/workspace-member.js';
+import type { WorkspaceId } from '../value-objects/workspace-id.js';
+import type { WorkspaceRoleId } from '../value-objects/workspace-role-id.js';
 
 // INFO: Every membership change holds the workspace row lock (WorkspaceRepository.findByIdForUpdate), so the owner count cannot go stale.
 export interface WorkspaceMemberRepository {

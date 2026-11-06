@@ -15,18 +15,18 @@ import type {
   WorkspaceMemberQuery,
   WorkspaceMemberView,
 } from '../application/ports/workspace-member.query.js';
-import type { WorkspaceMemberRepository } from '../application/ports/workspace-member.repository.js';
+import type { WorkspaceMemberRepository } from '../domain/ports/workspace-member.repository.js';
 import type {
   WorkspaceRoleQuery,
   WorkspaceRoleView,
 } from '../application/ports/workspace-role.query.js';
-import type { WorkspaceRoleRepository } from '../application/ports/workspace-role.repository.js';
+import type { WorkspaceRoleRepository } from '../domain/ports/workspace-role.repository.js';
 import {
   WORKSPACE_VIEW_MEMBER_LIMIT,
   type WorkspaceQuery,
   type WorkspaceView,
 } from '../application/ports/workspace.query.js';
-import type { WorkspaceRepository } from '../application/ports/workspace.repository.js';
+import type { WorkspaceRepository } from '../domain/ports/workspace.repository.js';
 import { AddWorkspaceMemberHandler } from '../application/use-cases/add-workspace-member/add-workspace-member.handler.js';
 import { ChangeWorkspaceMemberRoleHandler } from '../application/use-cases/change-workspace-member-role/change-workspace-member-role.handler.js';
 import { CreateWorkspaceRoleHandler } from '../application/use-cases/create-workspace-role/create-workspace-role.handler.js';

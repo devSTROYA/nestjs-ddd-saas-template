@@ -5,7 +5,7 @@ import { saveAggregate } from '@common/outbox';
 import type { Nullable } from '@common/types';
 import { TenantId } from '@modules/tenants';
 
-import type { WorkspaceRoleRepository } from '../../application/ports/workspace-role.repository.js';
+import type { WorkspaceRoleRepository } from '../../domain/ports/workspace-role.repository.js';
 import { WorkspacePermissionList } from '../../domain/entities/workspace-permission-list.js';
 import { WorkspaceRole } from '../../domain/entities/workspace-role.js';
 import {

@@ -14,11 +14,11 @@ import { WorkspaceId } from '../../../domain/value-objects/workspace-id.js';
 import {
   WORKSPACE_MEMBER_REPOSITORY,
   type WorkspaceMemberRepository,
-} from '../../ports/workspace-member.repository.js';
+} from '../../../domain/ports/workspace-member.repository.js';
 import {
   WORKSPACE_REPOSITORY,
   type WorkspaceRepository,
-} from '../../ports/workspace.repository.js';
+} from '../../../domain/ports/workspace.repository.js';
 import { LeaveWorkspaceCommand } from './leave-workspace.command.js';
 
 @CommandHandler(LeaveWorkspaceCommand)
