@@ -22,7 +22,7 @@ type CreateProps = {
 
 export class Workspace extends AggregateRoot<Props, WorkspaceId> {
   static create(props: CreateProps): Workspace {
-    const id = WorkspaceId.create();
+    const id = WorkspaceId.generate();
     const workspace = new Workspace(
       {
         tenantId: props.tenantId,
@@ -34,17 +34,17 @@ export class Workspace extends AggregateRoot<Props, WorkspaceId> {
     );
     workspace.addEvent(
       new WorkspaceCreatedEvent({
-        aggregateId: id.value,
-        tenantId: props.tenantId.value,
+        aggregateId: id,
+        tenantId: props.tenantId,
         occurredAt: props.createdAt.toISOString(),
-        ownerId: props.ownerId.value,
+        ownerId: props.ownerId,
         workspaceName: props.name.value,
       }),
     );
     return workspace;
   }
 
-  static restore(props: Props, id: WorkspaceId): Workspace {
+  static rehydrate(props: Props, id: WorkspaceId): Workspace {
     return new Workspace(props, id);
   }
 
@@ -69,8 +69,8 @@ export class Workspace extends AggregateRoot<Props, WorkspaceId> {
     this.props.updatedAt = now;
     this.addEvent(
       new WorkspaceRenamedEvent({
-        aggregateId: this.id.value,
-        tenantId: this.props.tenantId.value,
+        aggregateId: this.id,
+        tenantId: this.props.tenantId,
         occurredAt: now.toISOString(),
         workspaceName: name.value,
       }),

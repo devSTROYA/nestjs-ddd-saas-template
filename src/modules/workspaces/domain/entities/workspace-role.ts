@@ -65,7 +65,7 @@ function assertUsableKey(key: string): void {
 export class WorkspaceRole extends AggregateRoot<Props, WorkspaceRoleId> {
   static create(props: CreateProps): WorkspaceRole {
     assertUsableKey(props.key);
-    const id = WorkspaceRoleId.create();
+    const id = WorkspaceRoleId.generate();
     // INFO: Starts empty so every permission of a new role shows up as added and gets written.
     const permissions = new WorkspacePermissionList();
     permissions.update(props.permissions);
@@ -75,10 +75,10 @@ export class WorkspaceRole extends AggregateRoot<Props, WorkspaceRoleId> {
     );
     role.addEvent(
       new WorkspaceRoleCreatedEvent({
-        aggregateId: id.value,
-        tenantId: props.tenantId.value,
+        aggregateId: id,
+        tenantId: props.tenantId,
         occurredAt: props.createdAt.toISOString(),
-        workspaceId: props.workspaceId.value,
+        workspaceId: props.workspaceId,
         key: props.key,
         permissions: permissions.getItems(),
       }),
@@ -86,7 +86,7 @@ export class WorkspaceRole extends AggregateRoot<Props, WorkspaceRoleId> {
     return role;
   }
 
-  static restore(props: Props, id: WorkspaceRoleId): WorkspaceRole {
+  static rehydrate(props: Props, id: WorkspaceRoleId): WorkspaceRole {
     return new WorkspaceRole(props, id);
   }
 
@@ -119,7 +119,7 @@ export class WorkspaceRole extends AggregateRoot<Props, WorkspaceRoleId> {
   }
 
   get isOwner(): boolean {
-    return this.id.equals(SystemRoleId.OWNER);
+    return this.id === SystemRoleId.OWNER;
   }
 
   get createdAt(): Date {
@@ -156,10 +156,10 @@ export class WorkspaceRole extends AggregateRoot<Props, WorkspaceRoleId> {
     this.props.updatedAt = now;
     this.addEvent(
       new WorkspaceRoleUpdatedEvent({
-        aggregateId: this.id.value,
-        tenantId: tenantId.value,
+        aggregateId: this.id,
+        tenantId: tenantId,
         occurredAt: now.toISOString(),
-        workspaceId: workspaceId.value,
+        workspaceId: workspaceId,
         key: this.props.key,
         permissions: this.props.permissions.getItems(),
       }),
@@ -170,10 +170,10 @@ export class WorkspaceRole extends AggregateRoot<Props, WorkspaceRoleId> {
     const { tenantId, workspaceId } = this.editableScope();
     this.addEvent(
       new WorkspaceRoleDeletedEvent({
-        aggregateId: this.id.value,
-        tenantId: tenantId.value,
+        aggregateId: this.id,
+        tenantId: tenantId,
         occurredAt: now.toISOString(),
-        workspaceId: workspaceId.value,
+        workspaceId: workspaceId,
         key: this.props.key,
       }),
     );

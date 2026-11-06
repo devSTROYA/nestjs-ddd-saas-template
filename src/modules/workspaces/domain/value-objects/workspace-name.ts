@@ -16,7 +16,7 @@ export class WorkspaceName {
     return new WorkspaceName(value);
   }
 
-  static restore(value: string): WorkspaceName {
+  static rehydrate(value: string): WorkspaceName {
     return new WorkspaceName(value);
   }
 

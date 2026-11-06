@@ -6,13 +6,13 @@ import { WorkspaceId } from '../value-objects/workspace-id.js';
 import { WorkspaceName } from '../value-objects/workspace-name.js';
 import { Workspace } from './workspace.js';
 
-const OWNER = UserId.create();
+const OWNER = UserId.generate();
 const CREATED_AT = new Date('2026-01-01T00:00:00Z');
 const NOW = new Date('2026-01-02T00:00:00Z');
 
 const newWorkspace = (): Workspace =>
   Workspace.create({
-    tenantId: TenantId.create(),
+    tenantId: TenantId.generate(),
     name: WorkspaceName.create('Acme'),
     ownerId: OWNER,
     createdAt: CREATED_AT,
@@ -36,9 +36,9 @@ describe('Workspace', () => {
     expect(workspace.pullEvents()).toMatchObject([
       {
         name: WorkspaceEventNames.CREATED,
-        aggregateId: workspace.id.value,
-        tenantId: workspace.tenantId.value,
-        ownerId: OWNER.value,
+        aggregateId: workspace.id,
+        tenantId: workspace.tenantId,
+        ownerId: OWNER,
         workspaceName: 'Acme',
         occurredAt: CREATED_AT.toISOString(),
       },
@@ -52,15 +52,15 @@ describe('Workspace', () => {
     expect(workspace.pullEvents()).toEqual([]);
   });
 
-  it('raises no event on restore', () => {
-    const restored = Workspace.restore(
+  it('raises no event on rehydrate', () => {
+    const restored = Workspace.rehydrate(
       {
-        tenantId: TenantId.create(),
-        name: WorkspaceName.restore('Acme'),
+        tenantId: TenantId.generate(),
+        name: WorkspaceName.rehydrate('Acme'),
         createdAt: new Date(),
         updatedAt: new Date(),
       },
-      WorkspaceId.create(),
+      WorkspaceId.generate(),
     );
 
     expect(restored.pullEvents()).toEqual([]);

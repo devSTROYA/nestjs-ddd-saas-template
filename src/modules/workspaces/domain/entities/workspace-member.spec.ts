@@ -14,9 +14,9 @@ const NOW = new Date('2026-01-02T00:00:00Z');
 
 const newMember = (roleId: WorkspaceRoleId): WorkspaceMember =>
   WorkspaceMember.create({
-    tenantId: TenantId.create(),
-    workspaceId: WorkspaceId.create(),
-    userId: UserId.create(),
+    tenantId: TenantId.generate(),
+    workspaceId: WorkspaceId.generate(),
+    userId: UserId.generate(),
     roleId,
     createdAt: CREATED_AT,
   });
@@ -31,28 +31,28 @@ describe('WorkspaceMember', () => {
     expect(member.pullEvents()).toMatchObject([
       {
         name: WorkspaceMemberEventNames.ADDED,
-        aggregateId: member.id.value,
-        tenantId: member.tenantId.value,
-        workspaceId: member.workspaceId.value,
-        userId: member.userId.value,
-        roleId: SystemRoleId.ADMIN.value,
+        aggregateId: member.id,
+        tenantId: member.tenantId,
+        workspaceId: member.workspaceId,
+        userId: member.userId,
+        roleId: SystemRoleId.ADMIN,
         occurredAt: CREATED_AT.toISOString(),
       },
     ]);
     expect(member.pullEvents()).toEqual([]);
   });
 
-  it('raises no event on restore', () => {
-    const restored = WorkspaceMember.restore(
+  it('raises no event on rehydrate', () => {
+    const restored = WorkspaceMember.rehydrate(
       {
-        tenantId: TenantId.create(),
-        workspaceId: WorkspaceId.create(),
-        userId: UserId.create(),
+        tenantId: TenantId.generate(),
+        workspaceId: WorkspaceId.generate(),
+        userId: UserId.generate(),
         roleId: SystemRoleId.OWNER,
         createdAt: CREATED_AT,
         updatedAt: NOW,
       },
-      WorkspaceMemberId.create(),
+      WorkspaceMemberId.generate(),
     );
 
     expect(restored.isOwner).toBe(true);
@@ -60,7 +60,7 @@ describe('WorkspaceMember', () => {
   });
 
   it('knows the owner role by id, even from a restored id', () => {
-    expect(newMember(WorkspaceRoleId.restore(SystemRoleId.OWNER.value)).isOwner).toBe(true);
+    expect(newMember(WorkspaceRoleId.parse(SystemRoleId.OWNER)).isOwner).toBe(true);
   });
 
   it('changes the role, moves updatedAt and raises an event', () => {
@@ -75,11 +75,11 @@ describe('WorkspaceMember', () => {
     expect(member.pullEvents()).toMatchObject([
       {
         name: WorkspaceMemberEventNames.ROLE_CHANGED,
-        aggregateId: member.id.value,
-        workspaceId: member.workspaceId.value,
-        userId: member.userId.value,
-        previousRoleId: SystemRoleId.ADMIN.value,
-        roleId: SystemRoleId.OWNER.value,
+        aggregateId: member.id,
+        workspaceId: member.workspaceId,
+        userId: member.userId,
+        previousRoleId: SystemRoleId.ADMIN,
+        roleId: SystemRoleId.OWNER,
       },
     ]);
   });
@@ -102,7 +102,7 @@ describe('WorkspaceMember', () => {
     expect(() => member.changeRole(SystemRoleId.ADMIN, 1, NOW)).toThrow(
       LastWorkspaceOwnerRequiredError,
     );
-    expect(() => member.changeRole(WorkspaceRoleId.create(), 1, NOW)).toThrow(
+    expect(() => member.changeRole(WorkspaceRoleId.generate(), 1, NOW)).toThrow(
       LastWorkspaceOwnerRequiredError,
     );
     expect(member.roleId).toEqual(SystemRoleId.OWNER);
@@ -123,9 +123,9 @@ describe('WorkspaceMember', () => {
     expect(owner.pullEvents()).toMatchObject([
       {
         name: WorkspaceMemberEventNames.REMOVED,
-        aggregateId: owner.id.value,
-        workspaceId: owner.workspaceId.value,
-        userId: owner.userId.value,
+        aggregateId: owner.id,
+        workspaceId: owner.workspaceId,
+        userId: owner.userId,
         occurredAt: NOW.toISOString(),
       },
     ]);

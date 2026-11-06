@@ -29,8 +29,8 @@ const newRole = (
   permissions: readonly WorkspacePermission[] = [MEMBER_ADD],
 ) =>
   WorkspaceRole.create({
-    tenantId: TenantId.create(),
-    workspaceId: WorkspaceId.create(),
+    tenantId: TenantId.generate(),
+    workspaceId: WorkspaceId.generate(),
     key,
     name,
     permissions,
@@ -38,17 +38,17 @@ const newRole = (
   });
 
 const restoredRole = () =>
-  WorkspaceRole.restore(
+  WorkspaceRole.rehydrate(
     {
-      tenantId: TenantId.create(),
-      workspaceId: WorkspaceId.create(),
+      tenantId: TenantId.generate(),
+      workspaceId: WorkspaceId.generate(),
       key: 'reviewer',
       name: 'Reviewer',
       permissions: new WorkspacePermissionList([MEMBER_ADD, MEMBER_REMOVE]),
       createdAt: CREATED_AT,
       updatedAt: CREATED_AT,
     },
-    WorkspaceRoleId.create(),
+    WorkspaceRoleId.generate(),
   );
 
 const systemRole = (key: string): WorkspaceRole => {
@@ -69,8 +69,8 @@ describe('WorkspaceRole', () => {
     expect(role.pullEvents()).toMatchObject([
       {
         name: WorkspaceRoleEventNames.CREATED,
-        aggregateId: role.id.value,
-        workspaceId: role.workspaceId?.value,
+        aggregateId: role.id,
+        workspaceId: role.workspaceId,
         key: 'reviewer',
         permissions: [MEMBER_ADD],
       },
@@ -113,7 +113,7 @@ describe('WorkspaceRole', () => {
     expect(role.pullEvents()).toEqual([]);
   });
 
-  it('raises an event on remove and none on restore', () => {
+  it('raises an event on remove and none on rehydrate', () => {
     const role = restoredRole();
     expect(role.pullEvents()).toEqual([]);
 

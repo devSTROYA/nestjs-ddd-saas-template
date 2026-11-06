@@ -26,22 +26,22 @@ type CreateProps = Omit<Props, 'updatedAt'>;
 
 export class WorkspaceMember extends AggregateRoot<Props, WorkspaceMemberId> {
   static create(props: CreateProps): WorkspaceMember {
-    const id = WorkspaceMemberId.create();
+    const id = WorkspaceMemberId.generate();
     const member = new WorkspaceMember({ ...props, updatedAt: props.createdAt }, id);
     member.addEvent(
       new WorkspaceMemberAddedEvent({
-        aggregateId: id.value,
-        tenantId: props.tenantId.value,
+        aggregateId: id,
+        tenantId: props.tenantId,
         occurredAt: props.createdAt.toISOString(),
-        workspaceId: props.workspaceId.value,
-        userId: props.userId.value,
-        roleId: props.roleId.value,
+        workspaceId: props.workspaceId,
+        userId: props.userId,
+        roleId: props.roleId,
       }),
     );
     return member;
   }
 
-  static restore(props: Props, id: WorkspaceMemberId): WorkspaceMember {
+  static rehydrate(props: Props, id: WorkspaceMemberId): WorkspaceMember {
     return new WorkspaceMember(props, id);
   }
 
@@ -62,7 +62,7 @@ export class WorkspaceMember extends AggregateRoot<Props, WorkspaceMemberId> {
   }
 
   get isOwner(): boolean {
-    return this.props.roleId.equals(SystemRoleId.OWNER);
+    return this.props.roleId === SystemRoleId.OWNER;
   }
 
   get createdAt(): Date {
@@ -75,10 +75,10 @@ export class WorkspaceMember extends AggregateRoot<Props, WorkspaceMemberId> {
 
   // INFO: ownerCount counts this workspace's owners, read while holding the workspace lock. Returns false when the member already holds the role.
   changeRole(roleId: WorkspaceRoleId, ownerCount: number, now: Date): boolean {
-    if (roleId.equals(this.props.roleId)) {
+    if (roleId === this.props.roleId) {
       return false;
     }
-    if (!roleId.equals(SystemRoleId.OWNER)) {
+    if (roleId !== SystemRoleId.OWNER) {
       this.assertNotLastOwner(ownerCount);
     }
     const previousRoleId = this.props.roleId;
@@ -86,13 +86,13 @@ export class WorkspaceMember extends AggregateRoot<Props, WorkspaceMemberId> {
     this.props.updatedAt = now;
     this.addEvent(
       new WorkspaceMemberRoleChangedEvent({
-        aggregateId: this.id.value,
-        tenantId: this.props.tenantId.value,
+        aggregateId: this.id,
+        tenantId: this.props.tenantId,
         occurredAt: now.toISOString(),
-        workspaceId: this.props.workspaceId.value,
-        userId: this.props.userId.value,
-        previousRoleId: previousRoleId.value,
-        roleId: roleId.value,
+        workspaceId: this.props.workspaceId,
+        userId: this.props.userId,
+        previousRoleId: previousRoleId,
+        roleId: roleId,
       }),
     );
     return true;
@@ -103,11 +103,11 @@ export class WorkspaceMember extends AggregateRoot<Props, WorkspaceMemberId> {
     this.assertNotLastOwner(ownerCount);
     this.addEvent(
       new WorkspaceMemberRemovedEvent({
-        aggregateId: this.id.value,
-        tenantId: this.props.tenantId.value,
+        aggregateId: this.id,
+        tenantId: this.props.tenantId,
         occurredAt: now.toISOString(),
-        workspaceId: this.props.workspaceId.value,
-        userId: this.props.userId.value,
+        workspaceId: this.props.workspaceId,
+        userId: this.props.userId,
       }),
     );
   }

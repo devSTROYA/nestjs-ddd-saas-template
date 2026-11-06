@@ -1,13 +1,4 @@
-import { newUuidV7, parseUuidV7, UuidV7Id } from '@common/primitives';
+import { type UuidV7Id, uuidV7IdFactory } from '@common/primitives';
 
-export class WorkspaceRoleId extends UuidV7Id {
-  declare private readonly workspaceRoleIdBrand: true;
-
-  static create(): WorkspaceRoleId {
-    return new WorkspaceRoleId(newUuidV7());
-  }
-
-  static restore(value: string): WorkspaceRoleId {
-    return new WorkspaceRoleId(parseUuidV7(value));
-  }
-}
+export type WorkspaceRoleId = UuidV7Id<'WorkspaceRoleId'>;
+export const WorkspaceRoleId = uuidV7IdFactory<WorkspaceRoleId>();
