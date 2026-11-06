@@ -2,7 +2,7 @@ import type { Email } from '@common/primitives';
 import type { Nullable } from '@common/types';
 import type { TenantId } from '@modules/tenants';
 
-import type { LoginChallenge } from '../../domain/entities/login-challenge.js';
+import type { LoginChallenge } from '../entities/login-challenge.js';
 
 export interface LoginChallengeRepository {
   findPendingByEmail(email: Email, tenantId: Nullable<TenantId>): Promise<Nullable<LoginChallenge>>;

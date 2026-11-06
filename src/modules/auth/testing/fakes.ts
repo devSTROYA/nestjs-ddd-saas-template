@@ -8,10 +8,10 @@ import type { Admin, AdminId, AdminRepository } from '@modules/admins';
 import type { TenantId } from '@modules/tenants';
 import type { User, UserId, UserRepository } from '@modules/users';
 
-import type { LoginChallengeRepository } from '../application/ports/login-challenge.repository.js';
+import type { LoginChallengeRepository } from '../domain/ports/login-challenge.repository.js';
 import type { LoginMailer } from '../application/ports/login-mailer.js';
 import type { RefreshTokenCodec } from '../application/ports/refresh-token-codec.js';
-import type { RefreshTokenRepository } from '../application/ports/refresh-token.repository.js';
+import type { RefreshTokenRepository } from '../domain/ports/refresh-token.repository.js';
 import type { AccessToken, TokenService } from '../application/ports/token.service.js';
 import { LoginCodes } from '../application/login-codes.service.js';
 import { SessionService } from '../application/session.service.js';

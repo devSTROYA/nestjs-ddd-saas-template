@@ -1,7 +1,7 @@
 import type { Nullable } from '@common/types';
 
-import type { RefreshToken } from '../../domain/entities/refresh-token.js';
-import type { TokenFamilyId } from '../../domain/value-objects/ids.js';
+import type { RefreshToken } from '../entities/refresh-token.js';
+import type { TokenFamilyId } from '../value-objects/ids.js';
 
 export interface RefreshTokenRepository {
   findByHashForUpdate(tokenHash: string): Promise<Nullable<RefreshToken>>;

@@ -13,7 +13,7 @@ import { LoginChallengeId } from '../domain/value-objects/ids.js';
 import {
   LOGIN_CHALLENGE_REPOSITORY,
   type LoginChallengeRepository,
-} from './ports/login-challenge.repository.js';
+} from '../domain/ports/login-challenge.repository.js';
 import { LOGIN_MAILER, type LoginMailer } from './ports/login-mailer.js';
 import { LOGIN_OTP_TTL_MS } from './token-lifetimes.js';
 

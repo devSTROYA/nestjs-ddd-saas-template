@@ -6,7 +6,7 @@ import { Email } from '@common/primitives';
 import type { Nullable } from '@common/types';
 import { TenantId } from '@modules/tenants';
 
-import type { LoginChallengeRepository } from '../../application/ports/login-challenge.repository.js';
+import type { LoginChallengeRepository } from '../../domain/ports/login-challenge.repository.js';
 import { LoginChallenge } from '../../domain/entities/login-challenge.js';
 import {
   InvalidLoginChallengeStatusError,

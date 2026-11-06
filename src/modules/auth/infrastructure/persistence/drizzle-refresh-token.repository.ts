@@ -4,7 +4,7 @@ import type { DatabaseContext } from '@common/database';
 import { appendEvents, saveAggregate } from '@common/outbox';
 import type { Nullable } from '@common/types';
 
-import type { RefreshTokenRepository } from '../../application/ports/refresh-token.repository.js';
+import type { RefreshTokenRepository } from '../../domain/ports/refresh-token.repository.js';
 import { RefreshToken } from '../../domain/entities/refresh-token.js';
 import { InvalidPrincipalTypeError } from '../../domain/errors/domain.error.js';
 import { RefreshTokenFamilyRevokedEvent } from '../../domain/events/refresh-token.events.js';

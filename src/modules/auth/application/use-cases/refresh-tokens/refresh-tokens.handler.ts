@@ -15,7 +15,7 @@ import { REFRESH_TOKEN_CODEC, type RefreshTokenCodec } from '../../ports/refresh
 import {
   REFRESH_TOKEN_REPOSITORY,
   type RefreshTokenRepository,
-} from '../../ports/refresh-token.repository.js';
+} from '../../../domain/ports/refresh-token.repository.js';
 import { type Session, SessionService } from '../../session.service.js';
 import { RefreshTokensCommand } from './refresh-tokens.command.js';
 

@@ -9,10 +9,10 @@ import { RateLimitModule } from '@common/rate-limit';
 
 import { AdminsModule } from '../admins/admins.module.js';
 import { UsersModule } from '../users/users.module.js';
-import { LOGIN_CHALLENGE_REPOSITORY } from './application/ports/login-challenge.repository.js';
+import { LOGIN_CHALLENGE_REPOSITORY } from './domain/ports/login-challenge.repository.js';
 import { LOGIN_MAILER } from './application/ports/login-mailer.js';
 import { REFRESH_TOKEN_CODEC } from './application/ports/refresh-token-codec.js';
-import { REFRESH_TOKEN_REPOSITORY } from './application/ports/refresh-token.repository.js';
+import { REFRESH_TOKEN_REPOSITORY } from './domain/ports/refresh-token.repository.js';
 import { TOKEN_SERVICE } from './application/ports/token.service.js';
 import { authConfig } from './auth.config.js';
 import { LoginCodes } from './application/login-codes.service.js';

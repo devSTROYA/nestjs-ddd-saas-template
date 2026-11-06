@@ -7,7 +7,7 @@ import { REFRESH_TOKEN_CODEC, type RefreshTokenCodec } from './ports/refresh-tok
 import {
   REFRESH_TOKEN_REPOSITORY,
   type RefreshTokenRepository,
-} from './ports/refresh-token.repository.js';
+} from '../domain/ports/refresh-token.repository.js';
 import { TOKEN_SERVICE, type TokenService } from './ports/token.service.js';
 import { REFRESH_TOKEN_TTL_MS } from './token-lifetimes.js';
 
