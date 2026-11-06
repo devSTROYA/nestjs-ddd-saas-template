@@ -23,7 +23,7 @@ import { VerifyUserLoginCommand } from './verify-user-login.command.js';
 
 const addUser = async (kit: AuthKit, email: string) => {
   const user = User.create({
-    tenantId: TenantId.create(),
+    tenantId: TenantId.generate(),
     email: Email.create(email),
     name: UserName.create('Owner'),
     createdAt: kit.clock.current,
@@ -46,12 +46,12 @@ describe('VerifyUserLoginHandler', () => {
 
     const session = await verify(kit, 'owner@acme.co');
 
-    expect(session.accessToken).toBe(`access:user:${user.id.value}:${user.tenantId.value}`);
+    expect(session.accessToken).toBe(`access:user:${user.id}:${user.tenantId}`);
     const [stored] = [...kit.refreshTokens.saved.values()];
     expect(stored?.principal).toEqual({
       type: PrincipalType.USER,
-      id: user.id.value,
-      tenantId: user.tenantId.value,
+      id: user.id,
+      tenantId: user.tenantId,
     });
   });
 

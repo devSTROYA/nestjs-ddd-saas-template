@@ -41,13 +41,13 @@ describe('VerifyAdminLoginHandler', () => {
 
     expect(await kit.tokens.verifyAccessToken(session.accessToken)).toEqual({
       type: PrincipalType.ADMIN,
-      id: admin.id.value,
+      id: admin.id,
     });
     expect(session.expiresInSeconds).toBe(900);
     const [stored] = [...kit.refreshTokens.saved.values()];
     expect(stored?.tokenHash).toBe(kit.codec.hash(session.refreshToken));
     expect(stored?.tokenHash).not.toBe(session.refreshToken);
-    expect(stored?.principal).toEqual({ type: PrincipalType.ADMIN, id: admin.id.value });
+    expect(stored?.principal).toEqual({ type: PrincipalType.ADMIN, id: admin.id });
     expect(stored?.expiresAt).toEqual(new Date(kit.clock.current.getTime() + REFRESH_TOKEN_TTL_MS));
     expect([...kit.challenges.saved.values()][0]?.status).toBe(LoginChallengeStatus.CONSUMED);
   });

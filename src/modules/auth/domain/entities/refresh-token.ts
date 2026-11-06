@@ -36,7 +36,7 @@ type CreateProps = {
 
 export class RefreshToken extends AggregateRoot<Props, RefreshTokenId> {
   static issue(props: CreateProps): RefreshToken {
-    const id = RefreshTokenId.create();
+    const id = RefreshTokenId.generate();
     const token = new RefreshToken(
       {
         familyId: props.familyId,
@@ -51,17 +51,17 @@ export class RefreshToken extends AggregateRoot<Props, RefreshTokenId> {
     );
     token.addEvent(
       new RefreshTokenIssuedEvent({
-        aggregateId: id.value,
+        aggregateId: id,
         tenantId: props.principal.tenantId ?? null,
         occurredAt: props.createdAt.toISOString(),
-        familyId: props.familyId.value,
+        familyId: props.familyId,
         principalType: props.principal.type,
       }),
     );
     return token;
   }
 
-  static restore(props: Props, id: RefreshTokenId): RefreshToken {
+  static rehydrate(props: Props, id: RefreshTokenId): RefreshToken {
     return new RefreshToken(props, id);
   }
 
@@ -103,10 +103,10 @@ export class RefreshToken extends AggregateRoot<Props, RefreshTokenId> {
     this.props.usedAt = now;
     this.addEvent(
       new RefreshTokenRotatedEvent({
-        aggregateId: this.id.value,
+        aggregateId: this.id,
         tenantId: this.props.principal.tenantId ?? null,
         occurredAt: now.toISOString(),
-        familyId: this.props.familyId.value,
+        familyId: this.props.familyId,
       }),
     );
     return RotationOutcome.ROTATED;

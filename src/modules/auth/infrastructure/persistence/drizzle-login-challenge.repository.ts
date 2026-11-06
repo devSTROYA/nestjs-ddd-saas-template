@@ -23,17 +23,17 @@ function toChallenge(row: LoginChallengeRow): LoginChallenge {
   if (!isLoginChallengeStatus(row.status)) {
     throw new InvalidLoginChallengeStatusError(row.status);
   }
-  return LoginChallenge.restore(
+  return LoginChallenge.rehydrate(
     {
-      tenantId: row.tenantId ? TenantId.restore(row.tenantId) : null,
-      email: Email.restore(row.email),
+      tenantId: row.tenantId ? TenantId.rehydrate(row.tenantId) : null,
+      email: Email.rehydrate(row.email),
       otpHash: row.otpHash,
       expiresAt: row.expiresAt,
       attempts: row.attempts,
       status: row.status,
       createdAt: row.createdAt,
     },
-    LoginChallengeId.restore(row.id),
+    LoginChallengeId.rehydrate(row.id),
   );
 }
 
@@ -76,8 +76,8 @@ export class DrizzleLoginChallengeRepository implements LoginChallengeRepository
         const written = await this.context.client
           .insert(loginChallenges)
           .values({
-            id: challenge.id.value,
-            tenantId: challenge.tenantId?.value ?? null,
+            id: challenge.id,
+            tenantId: challenge.tenantId ?? null,
             email: challenge.email.value,
             createdAt: challenge.createdAt,
             ...mutable,
@@ -102,7 +102,7 @@ export class DrizzleLoginChallengeRepository implements LoginChallengeRepository
 
   private pendingFor(email: Email, tenantId: Nullable<TenantId>) {
     return and(
-      tenantId ? eq(loginChallenges.tenantId, tenantId.value) : isNull(loginChallenges.tenantId),
+      tenantId ? eq(loginChallenges.tenantId, tenantId) : isNull(loginChallenges.tenantId),
       eq(loginChallenges.email, email.value),
       eq(loginChallenges.status, LoginChallengeStatus.PENDING),
     );

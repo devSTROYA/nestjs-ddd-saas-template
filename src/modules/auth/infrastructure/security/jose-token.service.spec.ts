@@ -9,7 +9,7 @@ import { JoseTokenService } from './jose-token.service.js';
 
 const SECRET = 's'.repeat(32);
 const NOW = new Date('2026-01-01T00:00:00Z');
-const PRINCIPAL = { type: PrincipalType.ADMIN, id: AdminId.create().value };
+const PRINCIPAL = { type: PrincipalType.ADMIN, id: AdminId.generate() };
 
 describe('JoseTokenService', () => {
   const service = new JoseTokenService(SECRET);
@@ -24,8 +24,8 @@ describe('JoseTokenService', () => {
   it('carries the tenant of a user and rejects a user token without one', async () => {
     const user = {
       type: PrincipalType.USER,
-      id: AdminId.create().value,
-      tenantId: TenantId.create().value,
+      id: AdminId.generate(),
+      tenantId: TenantId.generate(),
     };
     const { token } = await service.issueAccessToken(user, NOW);
     const noTenant = await service.issueAccessToken({ type: PrincipalType.USER, id: user.id }, NOW);

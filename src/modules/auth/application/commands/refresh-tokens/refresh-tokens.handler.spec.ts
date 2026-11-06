@@ -28,7 +28,7 @@ describe('RefreshTokensHandler for tenant users', () => {
   it('rotates a user session, keeping the tenant, and revokes it once the user is gone', async () => {
     const kit = createAuthKit();
     const user = User.create({
-      tenantId: TenantId.create(),
+      tenantId: TenantId.generate(),
       email: Email.create('owner@acme.co'),
       name: UserName.create('Owner'),
       createdAt: kit.clock.current,
@@ -41,7 +41,7 @@ describe('RefreshTokensHandler for tenant users', () => {
 
     const next = await refresh(kit, session.refreshToken);
 
-    expect(next.accessToken).toBe(`access:user:${user.id.value}:${user.tenantId.value}`);
+    expect(next.accessToken).toBe(`access:user:${user.id}:${user.tenantId}`);
     kit.users.saved.clear();
     await expect(refresh(kit, next.refreshToken)).rejects.toThrow(InvalidRefreshTokenError);
   });
@@ -98,7 +98,7 @@ describe('RefreshTokensHandler', () => {
 
   it('rejects and revokes the session when the admin no longer exists', async () => {
     const { kit, admin, session } = await loggedIn();
-    kit.admins.saved.delete(admin.id.value);
+    kit.admins.saved.delete(admin.id);
 
     await expect(refresh(kit, session.refreshToken)).rejects.toThrow(InvalidRefreshTokenError);
 

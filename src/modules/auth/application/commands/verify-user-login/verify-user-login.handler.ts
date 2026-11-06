@@ -50,8 +50,8 @@ export class VerifyUserLoginHandler implements ICommandHandler<VerifyUserLoginCo
       return null;
     }
     return this.sessions.issue(
-      { type: PrincipalType.USER, id: user.id.value, tenantId: user.tenantId.value },
-      TokenFamilyId.create(),
+      { type: PrincipalType.USER, id: user.id, tenantId: user.tenantId },
+      TokenFamilyId.generate(),
       now,
     );
   }

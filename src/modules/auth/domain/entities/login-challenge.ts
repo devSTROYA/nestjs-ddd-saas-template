@@ -36,7 +36,7 @@ export class LoginChallenge extends AggregateRoot<Props, LoginChallengeId> {
   // INFO: the OTP hash is bound to the challenge id, so the caller creates the id first.
   static create(
     props: CreateProps,
-    id: LoginChallengeId = LoginChallengeId.create(),
+    id: LoginChallengeId = LoginChallengeId.generate(),
   ): LoginChallenge {
     const challenge = new LoginChallenge(
       {
@@ -52,8 +52,8 @@ export class LoginChallenge extends AggregateRoot<Props, LoginChallengeId> {
     );
     challenge.addEvent(
       new LoginChallengeCreatedEvent({
-        aggregateId: id.value,
-        tenantId: props.tenantId?.value ?? null,
+        aggregateId: id,
+        tenantId: props.tenantId ?? null,
         occurredAt: props.createdAt.toISOString(),
         expiresAt: props.expiresAt.toISOString(),
       }),
@@ -61,7 +61,7 @@ export class LoginChallenge extends AggregateRoot<Props, LoginChallengeId> {
     return challenge;
   }
 
-  static restore(props: Props, id: LoginChallengeId): LoginChallenge {
+  static rehydrate(props: Props, id: LoginChallengeId): LoginChallenge {
     return new LoginChallenge(props, id);
   }
 
@@ -105,8 +105,8 @@ export class LoginChallenge extends AggregateRoot<Props, LoginChallengeId> {
       this.props.attempts += 1;
       this.addEvent(
         new LoginChallengeAttemptFailedEvent({
-          aggregateId: this.id.value,
-          tenantId: this.props.tenantId?.value ?? null,
+          aggregateId: this.id,
+          tenantId: this.props.tenantId ?? null,
           occurredAt: now.toISOString(),
           attempts: this.props.attempts,
         }),
@@ -116,8 +116,8 @@ export class LoginChallenge extends AggregateRoot<Props, LoginChallengeId> {
     this.props.status = LoginChallengeStatus.CONSUMED;
     this.addEvent(
       new LoginChallengeConsumedEvent({
-        aggregateId: this.id.value,
-        tenantId: this.props.tenantId?.value ?? null,
+        aggregateId: this.id,
+        tenantId: this.props.tenantId ?? null,
         occurredAt: now.toISOString(),
       }),
     );
@@ -130,8 +130,8 @@ export class LoginChallenge extends AggregateRoot<Props, LoginChallengeId> {
     this.props.attempts = 0;
     this.addEvent(
       new LoginChallengeRegeneratedEvent({
-        aggregateId: this.id.value,
-        tenantId: this.props.tenantId?.value ?? null,
+        aggregateId: this.id,
+        tenantId: this.props.tenantId ?? null,
         occurredAt: now.toISOString(),
         expiresAt: expiresAt.toISOString(),
       }),

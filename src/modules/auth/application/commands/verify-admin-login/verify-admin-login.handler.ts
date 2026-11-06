@@ -50,8 +50,8 @@ export class VerifyAdminLoginHandler implements ICommandHandler<VerifyAdminLogin
       return null;
     }
     return this.sessions.issue(
-      { type: PrincipalType.ADMIN, id: admin.id.value },
-      TokenFamilyId.create(),
+      { type: PrincipalType.ADMIN, id: admin.id },
+      TokenFamilyId.generate(),
       now,
     );
   }

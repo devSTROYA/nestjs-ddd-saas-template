@@ -16,9 +16,9 @@ function toToken(row: RefreshTokenRow): RefreshToken {
   if (!isPrincipalType(row.principalType)) {
     throw new InvalidPrincipalTypeError(row.principalType);
   }
-  return RefreshToken.restore(
+  return RefreshToken.rehydrate(
     {
-      familyId: TokenFamilyId.restore(row.familyId),
+      familyId: TokenFamilyId.rehydrate(row.familyId),
       principal: {
         type: row.principalType,
         id: row.principalId,
@@ -30,7 +30,7 @@ function toToken(row: RefreshTokenRow): RefreshToken {
       revokedAt: row.revokedAt,
       createdAt: row.createdAt,
     },
-    RefreshTokenId.restore(row.id),
+    RefreshTokenId.rehydrate(row.id),
   );
 }
 
@@ -52,8 +52,8 @@ export class DrizzleRefreshTokenRepository implements RefreshTokenRepository {
       await this.context.client
         .insert(refreshTokens)
         .values({
-          id: token.id.value,
-          familyId: token.familyId.value,
+          id: token.id,
+          familyId: token.familyId,
           principalType: token.principal.type,
           principalId: token.principal.id,
           tenantId: token.principal.tenantId ?? null,
@@ -71,14 +71,14 @@ export class DrizzleRefreshTokenRepository implements RefreshTokenRepository {
       const revoked = await this.context.client
         .update(refreshTokens)
         .set({ revokedAt: now })
-        .where(and(eq(refreshTokens.familyId, familyId.value), isNull(refreshTokens.revokedAt)))
+        .where(and(eq(refreshTokens.familyId, familyId), isNull(refreshTokens.revokedAt)))
         .returning({ id: refreshTokens.id });
       if (revoked.length === 0) {
         return;
       }
       await appendEvents(this.context, [
         new RefreshTokenFamilyRevokedEvent({
-          aggregateId: familyId.value,
+          aggregateId: familyId,
           tenantId: null,
           occurredAt: now.toISOString(),
           revokedTokens: revoked.length,

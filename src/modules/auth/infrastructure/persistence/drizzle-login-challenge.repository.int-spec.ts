@@ -31,8 +31,8 @@ const newChallenge = (tenantId: Nullable<TenantId> = null) =>
   });
 
 const insertTenant = async (name: string): Promise<TenantId> => {
-  const id = TenantId.create();
-  await pool.query('INSERT INTO tenants (id, name) VALUES ($1, $2)', [id.value, name]);
+  const id = TenantId.generate();
+  await pool.query('INSERT INTO tenants (id, name) VALUES ($1, $2)', [id, name]);
   return id;
 };
 
@@ -147,7 +147,7 @@ describe('DrizzleLoginChallengeRepository', () => {
     expect(rows).toEqual([
       {
         name: LoginChallengeEventNames.CREATED,
-        aggregate_id: challenge.id.value,
+        aggregate_id: challenge.id,
         payload: { expiresAt: IN_15_MIN.toISOString() },
       },
     ]);

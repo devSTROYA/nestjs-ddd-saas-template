@@ -10,8 +10,8 @@ const IN_A_DAY = new Date(NOW.getTime() + 24 * 60 * 60 * 1000);
 
 const issue = (): RefreshToken =>
   RefreshToken.issue({
-    familyId: TokenFamilyId.create(),
-    principal: { type: PrincipalType.ADMIN, id: AdminId.create().value },
+    familyId: TokenFamilyId.generate(),
+    principal: { type: PrincipalType.ADMIN, id: AdminId.generate() },
     tokenHash: 'hash',
     expiresAt: IN_A_DAY,
     createdAt: NOW,
@@ -33,9 +33,9 @@ describe('RefreshToken', () => {
   });
 
   it('reports reuse for a revoked token', () => {
-    const token = RefreshToken.restore(
+    const token = RefreshToken.rehydrate(
       { ...issueProps(), usedAt: null, revokedAt: NOW },
-      RefreshTokenId.create(),
+      RefreshTokenId.generate(),
     );
 
     expect(token.rotate(NOW)).toBe(RotationOutcome.REUSED);
@@ -55,10 +55,10 @@ describe('RefreshToken', () => {
     expect(events).toMatchObject([
       {
         name: RefreshTokenEventNames.ISSUED,
-        aggregateId: token.id.value,
+        aggregateId: token.id,
         tenantId: null,
         occurredAt: NOW.toISOString(),
-        familyId: token.familyId.value,
+        familyId: token.familyId,
         principalType: PrincipalType.ADMIN,
       },
     ]);
@@ -76,8 +76,8 @@ describe('RefreshToken', () => {
     expect(token.pullEvents()).toMatchObject([
       {
         name: RefreshTokenEventNames.ROTATED,
-        aggregateId: token.id.value,
-        familyId: token.familyId.value,
+        aggregateId: token.id,
+        familyId: token.familyId,
       },
     ]);
   });
@@ -91,10 +91,10 @@ describe('RefreshToken', () => {
     expect(token.pullEvents()).toEqual([]);
   });
 
-  it('raises no event on restore', () => {
-    const token = RefreshToken.restore(
+  it('raises no event on rehydrate', () => {
+    const token = RefreshToken.rehydrate(
       { ...issueProps(), usedAt: null, revokedAt: null },
-      RefreshTokenId.create(),
+      RefreshTokenId.generate(),
     );
 
     expect(token.pullEvents()).toEqual([]);
@@ -103,8 +103,8 @@ describe('RefreshToken', () => {
 
 function issueProps() {
   return {
-    familyId: TokenFamilyId.create(),
-    principal: { type: PrincipalType.ADMIN, id: AdminId.create().value },
+    familyId: TokenFamilyId.generate(),
+    principal: { type: PrincipalType.ADMIN, id: AdminId.generate() },
     tokenHash: 'hash',
     expiresAt: IN_A_DAY,
     createdAt: NOW,

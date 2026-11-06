@@ -64,11 +64,11 @@ export class RefreshTokensHandler implements ICommandHandler<RefreshTokensComman
   private async principalExists(token: RefreshToken): Promise<boolean> {
     const { type, id, tenantId } = token.principal;
     if (type === PrincipalType.ADMIN) {
-      return (await this.admins.findById(AdminId.restore(id))) !== null;
+      return (await this.admins.findById(AdminId.parse(id))) !== null;
     }
     return (
       tenantId !== undefined &&
-      (await this.users.findById(TenantId.restore(tenantId), UserId.restore(id))) !== null
+      (await this.users.findById(TenantId.parse(tenantId), UserId.parse(id))) !== null
     );
   }
 }

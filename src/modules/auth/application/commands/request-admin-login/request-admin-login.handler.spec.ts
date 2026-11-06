@@ -32,7 +32,7 @@ describe('RequestAdminLoginHandler', () => {
     const [challenge] = [...kit.challenges.saved.values()];
     expect(challenge?.email.value).toBe('root@b.co');
     expect(challenge?.status).toBe(LoginChallengeStatus.PENDING);
-    expect(challenge?.otpHash).toBe(fakeOtpService.hash(challenge?.id.value ?? '', OTP));
+    expect(challenge?.otpHash).toBe(fakeOtpService.hash(challenge?.id ?? '', OTP));
     expect(challenge?.expiresAt).toEqual(new Date(kit.clock.current.getTime() + LOGIN_OTP_TTL_MS));
     expect(kit.mailer.sent).toHaveLength(1);
     expect(kit.mailer.sent[0]?.otp).toBe(OTP);

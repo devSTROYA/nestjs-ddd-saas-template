@@ -76,7 +76,7 @@ describe('LoginChallenge', () => {
     expect(challenge.pullEvents()).toMatchObject([
       {
         name: LoginChallengeEventNames.CREATED,
-        aggregateId: challenge.id.value,
+        aggregateId: challenge.id,
         tenantId: null,
         occurredAt: NOW.toISOString(),
         expiresAt: IN_15_MIN.toISOString(),
@@ -93,7 +93,7 @@ describe('LoginChallenge', () => {
     challenge.verify(true, NOW);
 
     expect(challenge.pullEvents()).toMatchObject([
-      { name: LoginChallengeEventNames.CONSUMED, aggregateId: challenge.id.value },
+      { name: LoginChallengeEventNames.CONSUMED, aggregateId: challenge.id },
     ]);
   });
 
@@ -137,8 +137,8 @@ describe('LoginChallenge', () => {
     expect(JSON.stringify(events)).not.toContain('secret-hash');
   });
 
-  it('raises no event on restore', () => {
-    const challenge = LoginChallenge.restore(
+  it('raises no event on rehydrate', () => {
+    const challenge = LoginChallenge.rehydrate(
       {
         tenantId: null,
         email: Email.create('root@b.co'),
@@ -148,7 +148,7 @@ describe('LoginChallenge', () => {
         status: LoginChallengeStatus.PENDING,
         createdAt: NOW,
       },
-      LoginChallengeId.create(),
+      LoginChallengeId.generate(),
     );
 
     expect(challenge.pullEvents()).toEqual([]);

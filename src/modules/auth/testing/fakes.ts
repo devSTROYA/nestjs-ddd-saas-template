@@ -45,7 +45,7 @@ export class FakeAdmins implements AdminRepository {
   readonly saved = new Map<string, Admin>();
 
   findById(id: AdminId): Promise<Nullable<Admin>> {
-    return Promise.resolve(this.saved.get(id.value) ?? null);
+    return Promise.resolve(this.saved.get(id) ?? null);
   }
 
   findByEmail(email: Email): Promise<Nullable<Admin>> {
@@ -54,7 +54,7 @@ export class FakeAdmins implements AdminRepository {
   }
 
   save(admin: Admin): Promise<void> {
-    this.saved.set(admin.id.value, admin);
+    this.saved.set(admin.id, admin);
     return Promise.resolve();
   }
 }
@@ -63,8 +63,8 @@ export class FakeUsers implements UserRepository {
   readonly saved = new Map<string, User>();
 
   findById(tenantId: TenantId, id: UserId): Promise<Nullable<User>> {
-    const found = this.saved.get(id.value);
-    return Promise.resolve(found?.tenantId.equals(tenantId) ? found : null);
+    const found = this.saved.get(id);
+    return Promise.resolve(found?.tenantId === tenantId ? found : null);
   }
 
   findByEmail(email: Email): Promise<Nullable<User>> {
@@ -73,13 +73,13 @@ export class FakeUsers implements UserRepository {
   }
 
   save(user: User): Promise<void> {
-    this.saved.set(user.id.value, user);
+    this.saved.set(user.id, user);
     return Promise.resolve();
   }
 
   delete(tenantId: TenantId, id: UserId): Promise<void> {
-    if (this.saved.get(id.value)?.tenantId.equals(tenantId)) {
-      this.saved.delete(id.value);
+    if (this.saved.get(id)?.tenantId === tenantId) {
+      this.saved.delete(id);
     }
     return Promise.resolve();
   }
@@ -98,7 +98,7 @@ export class FakeLoginChallenges implements LoginChallengeRepository {
         challenge.email.equals(email) &&
         (challenge.tenantId === null
           ? tenantId === null
-          : tenantId !== null && challenge.tenantId.equals(tenantId)) &&
+          : tenantId !== null && challenge.tenantId === tenantId) &&
         challenge.status === LoginChallengeStatus.PENDING,
     );
     return Promise.resolve(found ?? null);
@@ -115,7 +115,7 @@ export class FakeLoginChallenges implements LoginChallengeRepository {
     if (this.saveError) {
       return Promise.reject(this.saveError);
     }
-    this.saved.set(challenge.id.value, challenge);
+    this.saved.set(challenge.id, challenge);
     return Promise.resolve();
   }
 }
@@ -129,16 +129,16 @@ export class FakeRefreshTokens implements RefreshTokenRepository {
   }
 
   save(token: RefreshToken): Promise<void> {
-    this.saved.set(token.id.value, token);
+    this.saved.set(token.id, token);
     return Promise.resolve();
   }
 
   revokeFamily(familyId: TokenFamilyId, now: Date): Promise<void> {
     for (const token of this.saved.values()) {
-      if (token.familyId.equals(familyId) && token.revokedAt === null) {
+      if (token.familyId === familyId && token.revokedAt === null) {
         this.saved.set(
-          token.id.value,
-          RefreshToken.restore(
+          token.id,
+          RefreshToken.rehydrate(
             {
               familyId: token.familyId,
               principal: token.principal,
@@ -157,7 +157,7 @@ export class FakeRefreshTokens implements RefreshTokenRepository {
   }
 
   inFamily(familyId: TokenFamilyId): RefreshToken[] {
-    return [...this.saved.values()].filter((token) => token.familyId.equals(familyId));
+    return [...this.saved.values()].filter((token) => token.familyId === familyId);
   }
 }
 

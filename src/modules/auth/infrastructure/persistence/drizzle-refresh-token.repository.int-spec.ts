@@ -14,13 +14,13 @@ import { DrizzleRefreshTokenRepository } from './drizzle-refresh-token.repositor
 
 const NOW = new Date('2026-01-01T00:00:00Z');
 const IN_A_DAY = new Date(NOW.getTime() + 24 * 60 * 60 * 1000);
-const PRINCIPAL = { type: PrincipalType.ADMIN, id: AdminId.create().value };
+const PRINCIPAL = { type: PrincipalType.ADMIN, id: AdminId.generate() };
 
 const pool = new Pool({ connectionString: inject('databaseUrl') });
 const context = new DatabaseContext(drizzle(pool));
 const repository = new DrizzleRefreshTokenRepository(context);
 
-const issue = (tokenHash: string, familyId: TokenFamilyId = TokenFamilyId.create()) =>
+const issue = (tokenHash: string, familyId: TokenFamilyId = TokenFamilyId.generate()) =>
   RefreshToken.issue({
     familyId,
     principal: PRINCIPAL,
@@ -85,8 +85,8 @@ describe('DrizzleRefreshTokenRepository', () => {
     expect(rows).toEqual([
       {
         name: RefreshTokenEventNames.ISSUED,
-        aggregate_id: token.id.value,
-        payload: { familyId: token.familyId.value, principalType: PrincipalType.ADMIN },
+        aggregate_id: token.id,
+        payload: { familyId: token.familyId, principalType: PrincipalType.ADMIN },
       },
     ]);
   });
@@ -106,7 +106,7 @@ describe('DrizzleRefreshTokenRepository', () => {
   });
 
   it('revokes every unrevoked token of one family and leaves other families alone', async () => {
-    const family = TokenFamilyId.create();
+    const family = TokenFamilyId.generate();
     await repository.save(issue('a'.repeat(64), family));
     await repository.save(issue('b'.repeat(64), family));
     await repository.save(issue('c'.repeat(64)));
@@ -120,7 +120,7 @@ describe('DrizzleRefreshTokenRepository', () => {
   });
 
   it('queues one family_revoked event only when revoking changed something', async () => {
-    const family = TokenFamilyId.create();
+    const family = TokenFamilyId.generate();
     await repository.save(issue('a'.repeat(64), family));
     await pool.query('TRUNCATE TABLE outbox');
 
@@ -133,7 +133,7 @@ describe('DrizzleRefreshTokenRepository', () => {
     expect(rows).toEqual([
       {
         name: RefreshTokenEventNames.FAMILY_REVOKED,
-        aggregate_id: family.value,
+        aggregate_id: family,
         payload: { revokedTokens: 1 },
       },
     ]);

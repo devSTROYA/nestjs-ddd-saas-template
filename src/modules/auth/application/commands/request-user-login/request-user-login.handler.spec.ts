@@ -8,7 +8,7 @@ import { type AuthKit, OTP, createAuthKit } from '../../../testing/fakes.js';
 import { LOGIN_CODE_PER_EMAIL } from '../../rate-limits.js';
 import { RequestUserLoginCommand } from './request-user-login.command.js';
 
-const TENANT_ID = TenantId.create();
+const TENANT_ID = TenantId.generate();
 
 const request = (kit: AuthKit, email = 'owner@acme.co') =>
   kit.requestUserLogin.execute(new RequestUserLoginCommand(email));
