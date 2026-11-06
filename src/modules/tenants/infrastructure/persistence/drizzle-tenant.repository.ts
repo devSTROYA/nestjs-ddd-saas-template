@@ -4,7 +4,7 @@ import type { DatabaseContext } from '@common/database';
 import { saveAggregate } from '@common/outbox';
 import type { Nullable } from '@common/types';
 
-import type { TenantRepository } from '../../application/ports/tenant.repository.js';
+import type { TenantRepository } from '../../domain/ports/tenant.repository.js';
 import { Tenant } from '../../domain/entities/tenant.js';
 import { TenantId } from '../../domain/value-objects/tenant-id.js';
 import { TenantName } from '../../domain/value-objects/tenant-name.js';

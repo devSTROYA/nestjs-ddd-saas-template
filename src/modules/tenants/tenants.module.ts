@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { DATABASE_CONTEXT, DatabaseModule, type DatabaseContext } from '@common/database';
 
-import { TENANT_REPOSITORY } from './application/ports/tenant.repository.js';
+import { TENANT_REPOSITORY } from './domain/ports/tenant.repository.js';
 import { DrizzleTenantRepository } from './infrastructure/persistence/drizzle-tenant.repository.js';
 
 @Module({
