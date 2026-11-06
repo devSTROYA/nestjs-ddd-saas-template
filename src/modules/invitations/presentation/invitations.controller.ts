@@ -14,8 +14,8 @@ import {
 import {
   AcceptInvitationCommand,
   type AcceptInvitationResult,
-} from '../application/use-cases/accept-invitation/accept-invitation.command.js';
-import { InviteTenantCommand } from '../application/use-cases/invite-tenant/invite-tenant.command.js';
+} from '../application/commands/accept-invitation/accept-invitation.command.js';
+import { InviteTenantCommand } from '../application/commands/invite-tenant/invite-tenant.command.js';
 import { InvitationId } from '../domain/value-objects/invitation-id.js';
 import { ACCEPT_PER_IP } from './invitation.rate-limits.js';
 import {

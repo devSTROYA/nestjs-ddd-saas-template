@@ -9,7 +9,7 @@ import { AdminId } from '@modules/admins';
 
 import { configureApp } from '../../../configure-app.js';
 import { MAILER } from '../application/ports/mailer.js';
-import { InviteTenantCommand } from '../application/use-cases/invite-tenant/invite-tenant.command.js';
+import { InviteTenantCommand } from '../application/commands/invite-tenant/invite-tenant.command.js';
 import { InvitationId } from '../domain/value-objects/invitation-id.js';
 import { FakeMailer } from '../testing/fakes.js';
 import { restoreSystemRoles } from '../../workspaces/testing/system-roles.js';

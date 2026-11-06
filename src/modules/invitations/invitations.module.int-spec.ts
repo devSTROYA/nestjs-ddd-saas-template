@@ -11,8 +11,8 @@ import { MAILER } from './application/ports/mailer.js';
 import {
   AcceptInvitationCommand,
   type AcceptInvitationResult,
-} from './application/use-cases/accept-invitation/accept-invitation.command.js';
-import { InviteTenantCommand } from './application/use-cases/invite-tenant/invite-tenant.command.js';
+} from './application/commands/accept-invitation/accept-invitation.command.js';
+import { InviteTenantCommand } from './application/commands/invite-tenant/invite-tenant.command.js';
 import { restoreSystemRoles } from '../workspaces/testing/system-roles.js';
 import { InvalidOtpError, InvitationNotPendingError } from './domain/errors/domain.error.js';
 import type { InvitationId } from './domain/value-objects/invitation-id.js';
