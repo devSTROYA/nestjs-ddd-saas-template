@@ -4,7 +4,7 @@ import type { Nullable } from '@common/types';
 import { Admin } from '../domain/entities/admin.js';
 import { AdminEmailAlreadyTakenError } from '../domain/errors/domain.error.js';
 import { AdminId } from '../domain/value-objects/admin-id.js';
-import type { AdminRepository } from './ports/admin.repository.js';
+import type { AdminRepository } from '../domain/ports/admin.repository.js';
 import { SEED_ADMIN_ID, seedAdmin } from './seed-admin.js';
 
 class FakeAdmins implements AdminRepository {

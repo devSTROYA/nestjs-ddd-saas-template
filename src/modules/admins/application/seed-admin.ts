@@ -2,7 +2,7 @@ import { Email } from '@common/primitives';
 
 import { Admin } from '../domain/entities/admin.js';
 import { AdminId } from '../domain/value-objects/admin-id.js';
-import type { AdminRepository } from './ports/admin.repository.js';
+import type { AdminRepository } from '../domain/ports/admin.repository.js';
 
 export const SEED_ADMIN_ID = AdminId.restore('00000000-0000-7000-8000-000000000001');
 

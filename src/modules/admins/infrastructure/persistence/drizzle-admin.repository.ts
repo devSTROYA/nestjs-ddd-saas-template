@@ -5,7 +5,7 @@ import { saveAggregate } from '@common/outbox';
 import { Email } from '@common/primitives';
 import type { Nullable } from '@common/types';
 
-import type { AdminRepository } from '../../application/ports/admin.repository.js';
+import type { AdminRepository } from '../../domain/ports/admin.repository.js';
 import { Admin } from '../../domain/entities/admin.js';
 import { AdminEmailAlreadyTakenError } from '../../domain/errors/domain.error.js';
 import { AdminId } from '../../domain/value-objects/admin-id.js';

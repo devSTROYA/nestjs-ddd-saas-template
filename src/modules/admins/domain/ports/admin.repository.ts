@@ -1,8 +1,8 @@
 import type { Email } from '@common/primitives';
 import type { Nullable } from '@common/types';
 
-import type { Admin } from '../../domain/entities/admin.js';
-import type { AdminId } from '../../domain/value-objects/admin-id.js';
+import type { Admin } from '../entities/admin.js';
+import type { AdminId } from '../value-objects/admin-id.js';
 
 export interface AdminRepository {
   findById(id: AdminId): Promise<Nullable<Admin>>;
