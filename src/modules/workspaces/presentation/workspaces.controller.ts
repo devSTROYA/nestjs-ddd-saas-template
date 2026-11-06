@@ -22,8 +22,8 @@ import {
   UnauthenticatedError,
 } from '@modules/auth';
 
-import type { WorkspaceRoleView } from '../application/ports/workspace-role.query.js';
-import type { WorkspaceView } from '../application/ports/workspace.query.js';
+import type { WorkspaceRoleListItem } from '../application/ports/workspace-role.query.js';
+import type { WorkspaceDetail } from '../application/ports/workspace.query.js';
 import {
   CreateWorkspaceRoleCommand,
   type CreateWorkspaceRoleResult,
@@ -81,9 +81,9 @@ export class WorkspacesController {
   get(
     @CurrentPrincipal() principal: Principal,
     @Param('workspaceId', new UuidV7ParamPipe('workspaceId')) workspaceId: string,
-  ): Promise<WorkspaceView> {
+  ): Promise<WorkspaceDetail> {
     const actor = actorOf(principal);
-    return this.queryBus.execute<GetWorkspaceQuery, WorkspaceView>(
+    return this.queryBus.execute<GetWorkspaceQuery, WorkspaceDetail>(
       new GetWorkspaceQuery(actor.userId, actor.tenantId, workspaceId),
     );
   }
@@ -176,9 +176,9 @@ export class WorkspacesController {
   listRoles(
     @CurrentPrincipal() principal: Principal,
     @Param('workspaceId', new UuidV7ParamPipe('workspaceId')) workspaceId: string,
-  ): Promise<WorkspaceRoleView[]> {
+  ): Promise<WorkspaceRoleListItem[]> {
     const actor = actorOf(principal);
-    return this.queryBus.execute<ListWorkspaceRolesQuery, WorkspaceRoleView[]>(
+    return this.queryBus.execute<ListWorkspaceRolesQuery, WorkspaceRoleListItem[]>(
       new ListWorkspaceRolesQuery(actor.userId, actor.tenantId, workspaceId),
     );
   }

@@ -1,4 +1,4 @@
-import type { WorkspaceMemberView } from '../../ports/workspace-member.query.js';
+import type { WorkspaceMemberListItem } from '../../ports/workspace-member.query.js';
 
 export class ListWorkspaceMembersQuery {
   constructor(
@@ -11,7 +11,7 @@ export class ListWorkspaceMembersQuery {
 }
 
 export type ListWorkspaceMembersResult = {
-  items: WorkspaceMemberView[];
+  items: WorkspaceMemberListItem[];
   page: number;
   limit: number;
   total: number;

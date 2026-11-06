@@ -9,18 +9,18 @@ import { WorkspaceId } from '../../../domain/value-objects/workspace-id.js';
 import {
   WORKSPACE_ROLE_QUERY,
   type WorkspaceRoleQuery,
-  type WorkspaceRoleView,
+  type WorkspaceRoleListItem,
 } from '../../ports/workspace-role.query.js';
 import { ListWorkspaceRolesQuery } from './list-workspace-roles.query.js';
 
 @QueryHandler(ListWorkspaceRolesQuery)
 export class ListWorkspaceRolesHandler implements IQueryHandler<
   ListWorkspaceRolesQuery,
-  WorkspaceRoleView[]
+  WorkspaceRoleListItem[]
 > {
   constructor(@Inject(WORKSPACE_ROLE_QUERY) private readonly roles: WorkspaceRoleQuery) {}
 
-  async execute(query: ListWorkspaceRolesQuery): Promise<WorkspaceRoleView[]> {
+  async execute(query: ListWorkspaceRolesQuery): Promise<WorkspaceRoleListItem[]> {
     const roles = await this.roles.listFor(
       TenantId.restore(query.tenantId),
       WorkspaceId.restore(query.workspaceId),

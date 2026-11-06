@@ -4,7 +4,7 @@ import type { DatabaseContext } from '@common/database';
 import type { TenantId } from '@modules/tenants';
 import { UserId } from '@modules/users';
 
-import type { WorkspaceMemberView } from '../../application/ports/workspace-member.query.js';
+import type { WorkspaceMemberListItem } from '../../application/ports/workspace-member.query.js';
 import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
 import { users } from '../../../users/infrastructure/persistence/user.schema.js';
@@ -37,7 +37,7 @@ export async function findMemberPage(
   workspaceId: WorkspaceId,
   limit: number,
   offset: number,
-): Promise<{ items: WorkspaceMemberView[]; total: number }> {
+): Promise<{ items: WorkspaceMemberListItem[]; total: number }> {
   const [rows, counted] = await Promise.all([
     context.client
       .select({

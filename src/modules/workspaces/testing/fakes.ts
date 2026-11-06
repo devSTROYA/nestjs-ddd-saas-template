@@ -13,18 +13,18 @@ import {
 
 import type {
   WorkspaceMemberQuery,
-  WorkspaceMemberView,
+  WorkspaceMemberListItem,
 } from '../application/ports/workspace-member.query.js';
 import type { WorkspaceMemberRepository } from '../domain/ports/workspace-member.repository.js';
 import type {
   WorkspaceRoleQuery,
-  WorkspaceRoleView,
+  WorkspaceRoleListItem,
 } from '../application/ports/workspace-role.query.js';
 import type { WorkspaceRoleRepository } from '../domain/ports/workspace-role.repository.js';
 import {
   WORKSPACE_VIEW_MEMBER_LIMIT,
   type WorkspaceQuery,
-  type WorkspaceView,
+  type WorkspaceDetail,
 } from '../application/ports/workspace.query.js';
 import type { WorkspaceRepository } from '../domain/ports/workspace.repository.js';
 import { AddWorkspaceMemberHandler } from '../application/commands/add-workspace-member/add-workspace-member.handler.js';
@@ -156,7 +156,7 @@ export class FakeWorkspaceRoles implements WorkspaceRoleRepository, WorkspaceRol
     tenantId: TenantId,
     workspaceId: WorkspaceId,
     actorId: UserId,
-  ): Promise<Nullable<WorkspaceRoleView[]>> {
+  ): Promise<Nullable<WorkspaceRoleListItem[]>> {
     if (!(await this.members.findByUser(tenantId, workspaceId, actorId))) {
       return null;
     }
@@ -216,7 +216,7 @@ function newestFirst(
   members: WorkspaceMember[],
   users: FakeUsers,
   roles: FakeWorkspaceRoles,
-): WorkspaceMemberView[] {
+): WorkspaceMemberListItem[] {
   return members
     .flatMap((member) => {
       const user = users.saved.get(member.userId.value);
@@ -244,11 +244,11 @@ export class FakeWorkspaceQuery implements WorkspaceQuery {
     private readonly roles: FakeWorkspaceRoles,
   ) {}
 
-  async findViewFor(
+  async findDetailFor(
     tenantId: TenantId,
     workspaceId: WorkspaceId,
     actorId: UserId,
-  ): Promise<Nullable<WorkspaceView>> {
+  ): Promise<Nullable<WorkspaceDetail>> {
     const workspace = await this.workspaces.findById(tenantId, workspaceId);
     const actor = await this.members.findByUser(tenantId, workspaceId, actorId);
     const role = actor && this.roles.saved.get(actor.roleId.value);
@@ -284,7 +284,7 @@ export class FakeWorkspaceMemberQuery implements WorkspaceMemberQuery {
     actorId: UserId;
     page: number;
     limit: number;
-  }): Promise<Nullable<{ items: WorkspaceMemberView[]; total: number }>> {
+  }): Promise<Nullable<{ items: WorkspaceMemberListItem[]; total: number }>> {
     const { tenantId, workspaceId, actorId } = params;
     if (!(await this.members.findByUser(tenantId, workspaceId, actorId))) {
       return null;

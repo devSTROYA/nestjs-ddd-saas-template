@@ -5,7 +5,7 @@ import type { UserId } from '@modules/users';
 
 import type {
   WorkspaceMemberQuery,
-  WorkspaceMemberView,
+  WorkspaceMemberListItem,
 } from '../../application/ports/workspace-member.query.js';
 import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { findMemberPage, isMember } from './workspace-member-page.js';
@@ -19,7 +19,7 @@ export class DrizzleWorkspaceMemberQuery implements WorkspaceMemberQuery {
     actorId: UserId;
     page: number;
     limit: number;
-  }): Promise<Nullable<{ items: WorkspaceMemberView[]; total: number }>> {
+  }): Promise<Nullable<{ items: WorkspaceMemberListItem[]; total: number }>> {
     if (!(await isMember(this.context, params.tenantId, params.workspaceId, params.actorId))) {
       return null;
     }

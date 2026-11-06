@@ -6,7 +6,7 @@ import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import type { WorkspacePermission } from '../../domain/value-objects/workspace-permission.js';
 import type { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
 
-export type WorkspaceRoleView = {
+export type WorkspaceRoleListItem = {
   id: WorkspaceRoleId;
   key: string;
   name: string;
@@ -20,7 +20,7 @@ export interface WorkspaceRoleQuery {
     tenantId: TenantId,
     workspaceId: WorkspaceId,
     actorId: UserId,
-  ): Promise<Nullable<WorkspaceRoleView[]>>;
+  ): Promise<Nullable<WorkspaceRoleListItem[]>>;
 }
 
 export const WORKSPACE_ROLE_QUERY = Symbol('WORKSPACE_ROLE_QUERY');

@@ -7,7 +7,7 @@ import type { UserId } from '@modules/users';
 
 import type {
   WorkspaceRoleQuery,
-  WorkspaceRoleView,
+  WorkspaceRoleListItem,
 } from '../../application/ports/workspace-role.query.js';
 import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
@@ -22,7 +22,7 @@ export class DrizzleWorkspaceRoleQuery implements WorkspaceRoleQuery {
     tenantId: TenantId,
     workspaceId: WorkspaceId,
     actorId: UserId,
-  ): Promise<Nullable<WorkspaceRoleView[]>> {
+  ): Promise<Nullable<WorkspaceRoleListItem[]>> {
     if (!(await isMember(this.context, tenantId, workspaceId, actorId))) {
       return null;
     }

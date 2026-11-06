@@ -82,7 +82,7 @@ describe('DrizzleWorkspaceQuery', () => {
     const { tenantId, workspaceId, owner, added } = await seedWorkspace(1);
     const [admin] = added;
 
-    const view = await query.findViewFor(tenantId, workspaceId, admin as UserId);
+    const view = await query.findDetailFor(tenantId, workspaceId, admin as UserId);
 
     expect(view).toEqual({
       id: workspaceId,
@@ -114,7 +114,7 @@ describe('DrizzleWorkspaceQuery', () => {
       WORKSPACE_VIEW_MEMBER_LIMIT + 2,
     );
 
-    const view = await query.findViewFor(tenantId, workspaceId, owner);
+    const view = await query.findDetailFor(tenantId, workspaceId, owner);
 
     expect(view?.memberCount).toBe(WORKSPACE_VIEW_MEMBER_LIMIT + 3);
     expect(view?.members.map((member) => member.userId)).toEqual(
@@ -126,7 +126,7 @@ describe('DrizzleWorkspaceQuery', () => {
     const { tenantId, workspaceId, owner } = await seedWorkspace(2);
     await pool.query('UPDATE workspace_members SET created_at = now()');
 
-    const view = await query.findViewFor(tenantId, workspaceId, owner);
+    const view = await query.findDetailFor(tenantId, workspaceId, owner);
 
     const ids = view?.members.map((member) => member.userId.value) ?? [];
     expect(ids).toEqual([...ids].sort().reverse());
@@ -138,9 +138,9 @@ describe('DrizzleWorkspaceQuery', () => {
     const otherTenantId = await insertTenant();
     const stranger = await insertUser(otherTenantId, 's@b.co', 'Sam');
 
-    expect(await query.findViewFor(tenantId, workspaceId, outsider)).toBeNull();
-    expect(await query.findViewFor(tenantId, WorkspaceId.create(), owner)).toBeNull();
-    expect(await query.findViewFor(otherTenantId, workspaceId, owner)).toBeNull();
-    expect(await query.findViewFor(otherTenantId, workspaceId, stranger)).toBeNull();
+    expect(await query.findDetailFor(tenantId, workspaceId, outsider)).toBeNull();
+    expect(await query.findDetailFor(tenantId, WorkspaceId.create(), owner)).toBeNull();
+    expect(await query.findDetailFor(otherTenantId, workspaceId, owner)).toBeNull();
+    expect(await query.findDetailFor(otherTenantId, workspaceId, stranger)).toBeNull();
   });
 });

@@ -8,7 +8,7 @@ import type { UserId } from '@modules/users';
 import {
   WORKSPACE_VIEW_MEMBER_LIMIT,
   type WorkspaceQuery,
-  type WorkspaceView,
+  type WorkspaceDetail,
 } from '../../application/ports/workspace.query.js';
 import { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
@@ -20,11 +20,11 @@ import { workspaces } from './workspace.schema.js';
 export class DrizzleWorkspaceQuery implements WorkspaceQuery {
   constructor(private readonly context: DatabaseContext) {}
 
-  async findViewFor(
+  async findDetailFor(
     tenantId: TenantId,
     workspaceId: WorkspaceId,
     actorId: UserId,
-  ): Promise<Nullable<WorkspaceView>> {
+  ): Promise<Nullable<WorkspaceDetail>> {
     const [access] = await this.context.client
       .select({
         id: workspaces.id,
