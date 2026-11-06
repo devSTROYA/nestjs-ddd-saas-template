@@ -8,7 +8,7 @@ import { OtpModule } from '@common/otp';
 import { TenantsModule } from '../tenants/tenants.module.js';
 import { UsersModule } from '../users/users.module.js';
 import { WorkspacesModule } from '../workspaces/workspaces.module.js';
-import { INVITATION_REPOSITORY } from './application/ports/invitation.repository.js';
+import { INVITATION_REPOSITORY } from './domain/ports/invitation.repository.js';
 import { MAILER } from './application/ports/mailer.js';
 import { AcceptInvitationHandler } from './application/use-cases/accept-invitation/accept-invitation.handler.js';
 import { InviteTenantHandler } from './application/use-cases/invite-tenant/invite-tenant.handler.js';

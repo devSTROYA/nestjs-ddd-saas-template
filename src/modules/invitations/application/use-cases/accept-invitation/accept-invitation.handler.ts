@@ -23,7 +23,7 @@ import { InvitationId } from '../../../domain/value-objects/invitation-id.js';
 import {
   INVITATION_REPOSITORY,
   type InvitationRepository,
-} from '../../ports/invitation.repository.js';
+} from '../../../domain/ports/invitation.repository.js';
 import {
   AcceptInvitationCommand,
   type AcceptInvitationResult,

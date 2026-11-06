@@ -1,8 +1,8 @@
 import type { Email } from '@common/primitives';
 import type { Nullable } from '@common/types';
 
-import type { Invitation } from '../../domain/entities/invitation.js';
-import type { InvitationId } from '../../domain/value-objects/invitation-id.js';
+import type { Invitation } from '../entities/invitation.js';
+import type { InvitationId } from '../value-objects/invitation-id.js';
 
 export interface InvitationRepository {
   findById(id: InvitationId): Promise<Nullable<Invitation>>;

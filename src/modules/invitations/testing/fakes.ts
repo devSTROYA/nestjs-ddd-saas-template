@@ -12,7 +12,7 @@ import type {
   WorkspaceRepository,
 } from '@modules/workspaces';
 
-import type { InvitationRepository } from '../application/ports/invitation.repository.js';
+import type { InvitationRepository } from '../domain/ports/invitation.repository.js';
 import type { Mailer } from '../application/ports/mailer.js';
 import type { OtpService } from '@common/otp';
 import type { Invitation } from '../domain/entities/invitation.js';

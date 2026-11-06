@@ -6,7 +6,7 @@ import { Email } from '@common/primitives';
 import type { Nullable } from '@common/types';
 import { AdminId } from '@modules/admins';
 
-import type { InvitationRepository } from '../../application/ports/invitation.repository.js';
+import type { InvitationRepository } from '../../domain/ports/invitation.repository.js';
 import { Invitation } from '../../domain/entities/invitation.js';
 import {
   InvalidInvitationStatusError,

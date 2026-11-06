@@ -13,7 +13,7 @@ import { InvitationId } from '../../../domain/value-objects/invitation-id.js';
 import {
   INVITATION_REPOSITORY,
   type InvitationRepository,
-} from '../../ports/invitation.repository.js';
+} from '../../../domain/ports/invitation.repository.js';
 import { MAILER, type Mailer } from '../../ports/mailer.js';
 import { InviteTenantCommand } from './invite-tenant.command.js';
 
