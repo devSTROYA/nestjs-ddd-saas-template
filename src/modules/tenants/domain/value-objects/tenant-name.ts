@@ -16,7 +16,7 @@ export class TenantName {
     return new TenantName(value);
   }
 
-  static restore(value: string): TenantName {
+  static rehydrate(value: string): TenantName {
     return new TenantName(value);
   }
 

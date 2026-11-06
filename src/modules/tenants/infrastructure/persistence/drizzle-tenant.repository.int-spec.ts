@@ -49,7 +49,7 @@ describe('DrizzleTenantRepository', () => {
     const tenant = newTenant();
     await repository.save(tenant);
 
-    expect(await outboxNames(tenant.id.value)).toEqual([TenantEventNames.CREATED]);
+    expect(await outboxNames(tenant.id)).toEqual([TenantEventNames.CREATED]);
   });
 
   it('leaves neither the tenant nor its events when the surrounding transaction fails', async () => {
@@ -63,11 +63,11 @@ describe('DrizzleTenantRepository', () => {
     ).rejects.toThrow('boom');
 
     expect(await repository.findById(tenant.id)).toBeNull();
-    expect(await outboxNames(tenant.id.value)).toEqual([]);
+    expect(await outboxNames(tenant.id)).toEqual([]);
   });
 
   it('returns null when nothing matches', async () => {
-    expect(await repository.findById(TenantId.create())).toBeNull();
+    expect(await repository.findById(TenantId.generate())).toBeNull();
   });
 
   it('updates the name when saving an existing tenant', async () => {

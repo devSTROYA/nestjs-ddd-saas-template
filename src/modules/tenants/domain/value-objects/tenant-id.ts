@@ -1,13 +1,4 @@
-import { newUuidV7, parseUuidV7, UuidV7Id } from '@common/primitives';
+import { type UuidV7Id, uuidV7IdFactory } from '@common/primitives';
 
-export class TenantId extends UuidV7Id {
-  declare private readonly tenantIdBrand: true;
-
-  static create(): TenantId {
-    return new TenantId(newUuidV7());
-  }
-
-  static restore(value: string): TenantId {
-    return new TenantId(parseUuidV7(value));
-  }
-}
+export type TenantId = UuidV7Id<'TenantId'>;
+export const TenantId = uuidV7IdFactory<TenantId>();

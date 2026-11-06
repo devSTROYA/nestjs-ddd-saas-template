@@ -12,7 +12,7 @@ const newTenant = (): Tenant =>
 describe('Tenant', () => {
   it('creates with a generated id, the given name and createdAt', () => {
     const tenant = newTenant();
-    expect(tenant.id).toBeInstanceOf(TenantId);
+    expect(TenantId.parse(tenant.id)).toBe(tenant.id);
     expect(tenant.name.value).toBe('Acme');
     expect(tenant.createdAt).toEqual(CREATED_AT);
   });
@@ -32,15 +32,15 @@ describe('Tenant', () => {
     expect(events).toMatchObject([
       {
         name: TenantEventNames.CREATED,
-        aggregateId: tenant.id.value,
-        tenantId: tenant.id.value,
+        aggregateId: tenant.id,
+        tenantId: tenant.id,
         tenantName: 'Acme',
         occurredAt: CREATED_AT.toISOString(),
       },
       {
         name: TenantEventNames.RENAMED,
-        aggregateId: tenant.id.value,
-        tenantId: tenant.id.value,
+        aggregateId: tenant.id,
+        tenantId: tenant.id,
         tenantName: 'Beta',
         occurredAt: NOW.toISOString(),
       },
@@ -48,19 +48,19 @@ describe('Tenant', () => {
     expect(tenant.pullEvents()).toEqual([]);
   });
 
-  it('raises no event on restore', () => {
-    const tenant = Tenant.restore(
-      { name: TenantName.restore('Acme'), createdAt: new Date() },
-      TenantId.create(),
+  it('raises no event on rehydrate', () => {
+    const tenant = Tenant.rehydrate(
+      { name: TenantName.rehydrate('Acme'), createdAt: new Date() },
+      TenantId.generate(),
     );
     expect(tenant.pullEvents()).toEqual([]);
   });
 
-  it('restores without re-validation', () => {
+  it('rehydrates without re-validation', () => {
     const createdAt = new Date('2026-01-01T00:00:00Z');
-    const tenant = Tenant.restore(
-      { name: TenantName.restore('Acme'), createdAt },
-      TenantId.create(),
+    const tenant = Tenant.rehydrate(
+      { name: TenantName.rehydrate('Acme'), createdAt },
+      TenantId.generate(),
     );
     expect(tenant.createdAt).toBe(createdAt);
   });
