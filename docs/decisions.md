@@ -82,20 +82,19 @@ changes, update this file in the same change.
 ## Domain modelling
 
 - **Aggregates have a private constructor** with two factories: `create` validates and builds a new
-  instance, `restore` rebuilds from storage without re-validating (so old rows that violate new rules
+  instance, `rehydrate` rebuilds from storage without re-validating (so old rows that violate new rules
   can still be loaded).
 - **Value objects only where there is a real rule:** `Email`, `UserName`, `TenantName`. They follow
-  the same `create` / `restore` / `equals` shape. Names have a max length that matches the column.
-- **Ids are classes holding a UUID v7.** Every id extends `UuidV7Id` and has the same shape as the other
-  value objects: `XId.restore(value)` validates (throws `ID_INVALID`), `XId.create()` generates,
-  `.value` is the plain uuid. A private brand member keeps each id nominal, so a `UserId` is not a
-  `TenantId`. `equals` is true only for the same class and value, so never compare ids with `===`, and
-  never key a `Map`, `Set` or object by an id: use `.value`. `toJSON` and `toString` return the uuid, so
-  JSON responses are unchanged. Plain strings are used only at the edges: database columns and Drizzle
-  (`id.value`, rows mapped back with `XId.restore`), domain event payloads, JWT and principal payloads,
-  and request params and bodies (controllers call `XId.restore`). Aggregate factories generate their
-  own id; only `Admin`, `Invitation` and `LoginChallenge` take an optional trailing id (fixed seed id,
-  OTP hash bound to the id).
+  the same `create` / `rehydrate` / `equals` shape. Names have a max length that matches the column.
+- **Ids are branded strings holding a UUID v7.** Each id is `type XId = UuidV7Id<'XId'>` plus
+  `const XId = uuidV7IdFactory<XId>()`, so the type and its factory share a name. The brand keeps ids
+  nominal at compile time (a `UserId` is not a `TenantId`) while the runtime value is the plain uuid:
+  compare with `===`, key a `Map` or `Set` by it, and serialise it as is. The factory has three
+  functions: `XId.generate()` generates a new id, `XId.parse(value)` validates untrusted input and throws
+  `ID_INVALID`, and `XId.rehydrate(value)` casts a trusted value without validating. Use `rehydrate`
+  only when mapping rows read from persistence; controllers, handlers, token claims and tests use
+  `parse`. Aggregate factories generate their own id; only `Admin`, `Invitation` and `LoginChallenge`
+  take an optional trailing id (fixed seed id, OTP hash bound to the id).
 - **Time:** `Invitation.create` receives `now` so tests control it. `User`, `Tenant`, `Admin` and
   `Workspace` still use `new Date()` inside `create` (known gap, see the end of this file).
 - **Email validation:** WHATWG-style pattern after trimming and lowercasing, total length at most 254
@@ -505,7 +504,7 @@ Starting points, to be tuned with Cloud Run metrics (CPU, memory, latency, insta
 
 ## Persistence
 
-- **Repositories map rows to aggregates** with a `toX(row)` function using `restore`. Enum-like
+- **Repositories map rows to aggregates** with a `toX(row)` function using `rehydrate`. Enum-like
   columns are plain `varchar` (no `pgEnum`) validated in the mapper, so adding a value never needs an
   `ALTER TYPE`; an unknown stored value fails loudly (`INVITATION_STATUS_INVALID`).
 - **`save` is an upsert** (`onConflictDoUpdate` on the id). For tenant-owned rows the update has
@@ -548,7 +547,7 @@ Starting points, to be tuned with Cloud Run metrics (CPU, memory, latency, insta
 
 - **Every mutation of an aggregate raises a domain event**, even when the only reaction is a log
   line. Aggregates extend `AggregateRoot` (`src/common/ddd`): `create` and every behaviour method
-  call `addEvent`, `restore` never does. Events are named `<Aggregate><PastTense>Event`, carry only
+  call `addEvent`, `rehydrate` never does. Events are named `<Aggregate><PastTense>Event`, carry only
   primitives and never secrets (no OTP or token hashes), and live in
   `modules/<m>/domain/events/<aggregate>.events.ts` with their names in an `as const` object.
   A call that changes nothing (wrong state, expired, reused token) raises nothing.

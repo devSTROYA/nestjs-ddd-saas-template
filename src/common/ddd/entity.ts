@@ -1,6 +1,6 @@
 import type { UuidV7Id } from '@common/primitives';
 
-export abstract class Entity<Props extends object, Id extends UuidV7Id> {
+export abstract class Entity<Props extends object, Id extends UuidV7Id<string>> {
   protected constructor(
     protected readonly props: Props,
     public readonly id: Id,

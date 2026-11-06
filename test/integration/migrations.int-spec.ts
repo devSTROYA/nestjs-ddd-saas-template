@@ -145,7 +145,7 @@ describe('migrations on existing data', () => {
     );
     expect(roles.rows).toEqual(
       SYSTEM_ROLES.map(({ id, key, name, permissions }) => ({
-        id: id.value,
+        id: id,
         key,
         name,
         tenant_id: null,
@@ -183,8 +183,8 @@ describe('migrations on existing data', () => {
     );
     expect(rows).toEqual(
       expect.arrayContaining([
-        { user_id: owner, role_id: SystemRoleId.OWNER.value },
-        { user_id: admin, role_id: SystemRoleId.ADMIN.value },
+        { user_id: owner, role_id: SystemRoleId.OWNER },
+        { user_id: admin, role_id: SystemRoleId.ADMIN },
       ]),
     );
   });

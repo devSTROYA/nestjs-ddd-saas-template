@@ -23,7 +23,7 @@ export class Email {
     return new Email(value);
   }
 
-  static restore(value: string): Email {
+  static rehydrate(value: string): Email {
     return new Email(value);
   }
 

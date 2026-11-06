@@ -1,71 +1,53 @@
 import { randomUUID } from 'node:crypto';
 
 import { InvalidIdError } from './primitive.error.js';
-import { newUuidV7, parseUuidV7 } from './uuid-v7.js';
-import { UuidV7Id } from './uuid-v7-id.js';
+import { parseUuidV7 } from './uuid-v7.js';
+import { type UuidV7Id, uuidV7IdFactory } from './uuid-v7-id.js';
 
-class FirstId extends UuidV7Id {
-  declare private readonly firstIdBrand: true;
+type FirstId = UuidV7Id<'FirstId'>;
+const FirstId = uuidV7IdFactory<FirstId>();
 
-  static create(): FirstId {
-    return new FirstId(newUuidV7());
-  }
+type SecondId = UuidV7Id<'SecondId'>;
+const SecondId = uuidV7IdFactory<SecondId>();
 
-  static restore(value: string): FirstId {
-    return new FirstId(parseUuidV7(value));
-  }
-}
+describe('uuidV7IdFactory', () => {
+  it('generates a valid uuid v7', () => {
+    const id = FirstId.generate();
 
-class SecondId extends UuidV7Id {
-  declare private readonly secondIdBrand: true;
-
-  static restore(value: string): SecondId {
-    return new SecondId(parseUuidV7(value));
-  }
-}
-
-describe('UuidV7Id', () => {
-  it('equals another id of the same class with the same value, even as a different instance', () => {
-    const id = FirstId.create();
-
-    expect(id.equals(FirstId.restore(id.value))).toBe(true);
-    expect(id.equals(FirstId.create())).toBe(false);
+    expect(parseUuidV7(id)).toBe(id);
+    expect(FirstId.generate()).not.toBe(id);
   });
 
-  it('never equals an id of another class with the same value', () => {
-    const id = FirstId.create();
+  it('is a plain string at runtime, so it compares and serialises as the uuid', () => {
+    const id = FirstId.generate();
 
-    expect(id.equals(SecondId.restore(id.value))).toBe(false);
+    expect(FirstId.parse(id)).toBe(id);
+    expect(JSON.stringify({ id })).toBe(`{"id":"${id}"}`);
   });
 
-  it('is not assignable to another id class', () => {
-    const id = FirstId.create();
+  it('is not assignable to another id type', () => {
+    const id = FirstId.generate();
 
     // @ts-expect-error a FirstId is not a SecondId
     const other: SecondId = id;
 
-    expect(other.value).toBe(id.value);
+    expect(other).toBe(id);
   });
 
-  it('serialises as the plain uuid', () => {
-    const id = FirstId.create();
+  it('parses a valid uuid v7 into the branded type', () => {
+    const value = FirstId.generate();
 
-    expect(JSON.stringify({ id })).toBe(`{"id":"${id.value}"}`);
-    expect(String(id)).toBe(id.value);
-    expect(id.toString()).toBe(id.value);
-    expect(id.toJSON()).toBe(id.value);
-  });
-
-  it('creates a valid uuid v7', () => {
-    const id = FirstId.create();
-
-    expect(parseUuidV7(id.value)).toBe(id.value);
+    expect(SecondId.parse(value)).toBe(value);
   });
 
   it.each(['', 'abc', '00000000-0000-0000-0000-000000000000', randomUUID()])(
-    'rejects %s on restore',
+    'rejects %s on parse',
     (value) => {
-      expect(() => FirstId.restore(value)).toThrow(InvalidIdError);
+      expect(() => FirstId.parse(value)).toThrow(InvalidIdError);
     },
   );
+
+  it('rehydrates a persisted value without validating it', () => {
+    expect(FirstId.rehydrate('not-validated')).toBe('not-validated');
+  });
 });
