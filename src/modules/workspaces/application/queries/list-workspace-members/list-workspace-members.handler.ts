@@ -24,9 +24,9 @@ export class ListWorkspaceMembersHandler implements IQueryHandler<
 
   async execute(query: ListWorkspaceMembersQuery): Promise<ListWorkspaceMembersResult> {
     const found = await this.members.list({
-      tenantId: TenantId.restore(query.tenantId),
-      workspaceId: WorkspaceId.restore(query.workspaceId),
-      actorId: UserId.restore(query.actorId),
+      tenantId: TenantId.parse(query.tenantId),
+      workspaceId: WorkspaceId.parse(query.workspaceId),
+      actorId: UserId.parse(query.actorId),
       page: query.page,
       limit: query.limit,
     });

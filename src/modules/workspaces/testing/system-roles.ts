@@ -33,7 +33,7 @@ export const SYSTEM_ROLES = [
 
 export function systemRoles(): WorkspaceRole[] {
   return SYSTEM_ROLES.map(({ id, key, name, permissions }) =>
-    WorkspaceRole.restore(
+    WorkspaceRole.rehydrate(
       {
         tenantId: null,
         workspaceId: null,
@@ -53,12 +53,12 @@ export async function restoreSystemRoles(pool: Pool): Promise<void> {
   for (const { id, key, name, permissions } of SYSTEM_ROLES) {
     await pool.query(
       'INSERT INTO workspace_roles (id, key, name) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-      [id.value, key, name],
+      [id, key, name],
     );
     for (const permission of permissions) {
       await pool.query(
         'INSERT INTO workspace_role_permissions (role_id, permission) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-        [id.value, permission],
+        [id, permission],
       );
     }
   }

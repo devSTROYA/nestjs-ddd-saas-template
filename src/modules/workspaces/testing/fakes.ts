@@ -52,8 +52,8 @@ export class FakeWorkspaces implements WorkspaceRepository {
   readonly saved = new Map<string, Workspace>();
 
   findById(tenantId: TenantId, id: WorkspaceId): Promise<Nullable<Workspace>> {
-    const found = this.saved.get(id.value);
-    return Promise.resolve(found?.tenantId.equals(tenantId) ? found : null);
+    const found = this.saved.get(id);
+    return Promise.resolve(found?.tenantId === tenantId ? found : null);
   }
 
   findByIdForUpdate(tenantId: TenantId, id: WorkspaceId): Promise<Nullable<Workspace>> {
@@ -61,7 +61,7 @@ export class FakeWorkspaces implements WorkspaceRepository {
   }
 
   save(workspace: Workspace): Promise<void> {
-    this.saved.set(workspace.id.value, workspace);
+    this.saved.set(workspace.id, workspace);
     return Promise.resolve();
   }
 }
@@ -74,8 +74,8 @@ export class FakeWorkspaceMembers implements WorkspaceMemberRepository {
     workspaceId: WorkspaceId,
     userId: UserId,
   ): Promise<Nullable<WorkspaceMember>> {
-    const found = this.inWorkspace(tenantId, workspaceId).find((member) =>
-      member.userId.equals(userId),
+    const found = this.inWorkspace(tenantId, workspaceId).find(
+      (member) => member.userId === userId,
     );
     return Promise.resolve(found ?? null);
   }
@@ -89,38 +89,36 @@ export class FakeWorkspaceMembers implements WorkspaceMemberRepository {
     workspaceId: WorkspaceId,
     roleId: WorkspaceRoleId,
   ): Promise<number> {
-    const holders = this.inWorkspace(tenantId, workspaceId).filter((member) =>
-      member.roleId.equals(roleId),
+    const holders = this.inWorkspace(tenantId, workspaceId).filter(
+      (member) => member.roleId === roleId,
     );
     return Promise.resolve(holders.length);
   }
 
   save(member: WorkspaceMember): Promise<void> {
-    this.saved.set(member.id.value, member);
+    this.saved.set(member.id, member);
     return Promise.resolve();
   }
 
   delete(member: WorkspaceMember): Promise<void> {
-    this.saved.delete(member.id.value);
+    this.saved.delete(member.id);
     return Promise.resolve();
   }
 
   inWorkspace(tenantId: TenantId, workspaceId: WorkspaceId): WorkspaceMember[] {
     return [...this.saved.values()].filter(
-      (member) => member.tenantId.equals(tenantId) && member.workspaceId.equals(workspaceId),
+      (member) => member.tenantId === tenantId && member.workspaceId === workspaceId,
     );
   }
 
   roleOf(userId: UserId): Nullable<WorkspaceRoleId> {
-    const found = [...this.saved.values()].find((member) => member.userId.equals(userId));
+    const found = [...this.saved.values()].find((member) => member.userId === userId);
     return found?.roleId ?? null;
   }
 }
 
 export class FakeWorkspaceRoles implements WorkspaceRoleRepository, WorkspaceRoleQuery {
-  readonly saved = new Map<string, WorkspaceRole>(
-    systemRoles().map((role) => [role.id.value, role]),
-  );
+  readonly saved = new Map<string, WorkspaceRole>(systemRoles().map((role) => [role.id, role]));
 
   constructor(private readonly members: FakeWorkspaceMembers) {}
 
@@ -129,26 +127,24 @@ export class FakeWorkspaceRoles implements WorkspaceRoleRepository, WorkspaceRol
     workspaceId: WorkspaceId,
     id: WorkspaceRoleId,
   ): Promise<Nullable<WorkspaceRole>> {
-    const found = this.saved.get(id.value);
+    const found = this.saved.get(id);
     return Promise.resolve(found && this.isVisible(found, tenantId, workspaceId) ? found : null);
   }
 
   save(role: WorkspaceRole): Promise<void> {
     const taken = [...this.saved.values()].some(
       (other) =>
-        !other.id.equals(role.id) &&
-        other.key === role.key &&
-        other.workspaceId?.value === role.workspaceId?.value,
+        other.id !== role.id && other.key === role.key && other.workspaceId === role.workspaceId,
     );
     if (taken) {
       return Promise.reject(new WorkspaceRoleKeyTakenError(role.key));
     }
-    this.saved.set(role.id.value, role);
+    this.saved.set(role.id, role);
     return Promise.resolve();
   }
 
   delete(role: WorkspaceRole): Promise<void> {
-    this.saved.delete(role.id.value);
+    this.saved.delete(role.id);
     return Promise.resolve();
   }
 
@@ -174,7 +170,7 @@ export class FakeWorkspaceRoles implements WorkspaceRoleRepository, WorkspaceRol
   private isVisible(role: WorkspaceRole, tenantId: TenantId, workspaceId: WorkspaceId): boolean {
     return (
       role.isSystem ||
-      (role.tenantId?.equals(tenantId) === true && role.workspaceId?.equals(workspaceId) === true)
+      ((role.tenantId === tenantId) === true && (role.workspaceId === workspaceId) === true)
     );
   }
 }
@@ -183,8 +179,8 @@ export class FakeUsers implements UserRepository {
   readonly saved = new Map<string, User>();
 
   findById(tenantId: TenantId, id: UserId): Promise<Nullable<User>> {
-    const found = this.saved.get(id.value);
-    return Promise.resolve(found?.tenantId.equals(tenantId) ? found : null);
+    const found = this.saved.get(id);
+    return Promise.resolve(found?.tenantId === tenantId ? found : null);
   }
 
   findByEmail(email: Email): Promise<Nullable<User>> {
@@ -194,18 +190,18 @@ export class FakeUsers implements UserRepository {
 
   save(user: User): Promise<void> {
     const taken = [...this.saved.values()].some(
-      (other) => !other.id.equals(user.id) && other.email.equals(user.email),
+      (other) => other.id !== user.id && other.email.equals(user.email),
     );
     if (taken) {
       return Promise.reject(new EmailAlreadyTakenError(user.email.value));
     }
-    this.saved.set(user.id.value, user);
+    this.saved.set(user.id, user);
     return Promise.resolve();
   }
 
   delete(tenantId: TenantId, id: UserId): Promise<void> {
-    if (this.saved.get(id.value)?.tenantId.equals(tenantId)) {
-      this.saved.delete(id.value);
+    if (this.saved.get(id)?.tenantId === tenantId) {
+      this.saved.delete(id);
     }
     return Promise.resolve();
   }
@@ -219,8 +215,8 @@ function newestFirst(
 ): WorkspaceMemberListItem[] {
   return members
     .flatMap((member) => {
-      const user = users.saved.get(member.userId.value);
-      const role = roles.saved.get(member.roleId.value);
+      const user = users.saved.get(member.userId);
+      const role = roles.saved.get(member.roleId);
       return user && role
         ? [
             {
@@ -251,7 +247,7 @@ export class FakeWorkspaceQuery implements WorkspaceQuery {
   ): Promise<Nullable<WorkspaceDetail>> {
     const workspace = await this.workspaces.findById(tenantId, workspaceId);
     const actor = await this.members.findByUser(tenantId, workspaceId, actorId);
-    const role = actor && this.roles.saved.get(actor.roleId.value);
+    const role = actor && this.roles.saved.get(actor.roleId);
     if (!workspace || !actor || !role) {
       return null;
     }
@@ -307,7 +303,7 @@ export function createWorkspaceKit() {
   const roles = new FakeWorkspaceRoles(members);
   const access = new WorkspaceAccess(workspaces, members, roles);
   const users = new FakeUsers();
-  const tenantId = TenantId.create();
+  const tenantId = TenantId.generate();
   const clock = new SystemClock();
   const owner = User.create({
     tenantId,

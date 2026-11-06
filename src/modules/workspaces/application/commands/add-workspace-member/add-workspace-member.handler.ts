@@ -52,27 +52,27 @@ export class AddWorkspaceMemberHandler implements ICommandHandler<
     command: AddWorkspaceMemberCommand,
     email: Email,
   ): Promise<AddWorkspaceMemberResult> {
-    const tenantId = TenantId.restore(command.tenantId);
-    const workspaceId = WorkspaceId.restore(command.workspaceId);
+    const tenantId = TenantId.parse(command.tenantId);
+    const workspaceId = WorkspaceId.parse(command.workspaceId);
     const actor = await this.access.lockAndRequire(
       tenantId,
       workspaceId,
-      UserId.restore(command.actorId),
+      UserId.parse(command.actorId),
       WorkspacePermission.MEMBER_ADD,
     );
     const role = await this.access.role(
       tenantId,
       workspaceId,
-      WorkspaceRoleId.restore(command.roleId),
+      WorkspaceRoleId.parse(command.roleId),
     );
     actor.assertCanManage(role);
 
     const existing = await this.users.findByEmail(email);
-    if (existing && !existing.tenantId.equals(tenantId)) {
+    if (existing && existing.tenantId !== tenantId) {
       throw new EmailAlreadyTakenError(email.value);
     }
     if (existing && (await this.members.findByUser(tenantId, workspaceId, existing.id))) {
-      throw new WorkspaceMemberAlreadyExistsError(existing.id.value);
+      throw new WorkspaceMemberAlreadyExistsError(existing.id);
     }
     const now = this.clock.now();
     const user =

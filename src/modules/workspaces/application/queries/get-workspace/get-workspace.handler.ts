@@ -19,9 +19,9 @@ export class GetWorkspaceHandler implements IQueryHandler<GetWorkspaceQuery, Wor
 
   async execute(query: GetWorkspaceQuery): Promise<WorkspaceDetail> {
     const view = await this.workspaces.findDetailFor(
-      TenantId.restore(query.tenantId),
-      WorkspaceId.restore(query.workspaceId),
-      UserId.restore(query.actorId),
+      TenantId.parse(query.tenantId),
+      WorkspaceId.parse(query.workspaceId),
+      UserId.parse(query.actorId),
     );
     if (!view) {
       throw new WorkspaceNotFoundError();

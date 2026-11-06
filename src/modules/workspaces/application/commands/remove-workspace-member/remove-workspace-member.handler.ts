@@ -32,13 +32,13 @@ export class RemoveWorkspaceMemberHandler implements ICommandHandler<
   // INFO: The user goes with the membership: a tenant has one workspace, so leaving it ends all access.
   execute(command: RemoveWorkspaceMemberCommand): Promise<void> {
     return this.unitOfWork.run(async () => {
-      const tenantId = TenantId.restore(command.tenantId);
-      const memberId = UserId.restore(command.memberId);
-      const workspaceId = WorkspaceId.restore(command.workspaceId);
+      const tenantId = TenantId.parse(command.tenantId);
+      const memberId = UserId.parse(command.memberId);
+      const workspaceId = WorkspaceId.parse(command.workspaceId);
       const actor = await this.access.lockAndRequire(
         tenantId,
         workspaceId,
-        UserId.restore(command.actorId),
+        UserId.parse(command.actorId),
         WorkspacePermission.MEMBER_REMOVE,
       );
       const member = await this.members.findByUser(tenantId, workspaceId, memberId);

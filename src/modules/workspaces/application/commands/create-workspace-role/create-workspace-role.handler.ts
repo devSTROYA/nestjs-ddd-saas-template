@@ -33,12 +33,12 @@ export class CreateWorkspaceRoleHandler implements ICommandHandler<
 
   execute(command: CreateWorkspaceRoleCommand): Promise<CreateWorkspaceRoleResult> {
     return this.unitOfWork.run(async () => {
-      const tenantId = TenantId.restore(command.tenantId);
-      const workspaceId = WorkspaceId.restore(command.workspaceId);
+      const tenantId = TenantId.parse(command.tenantId);
+      const workspaceId = WorkspaceId.parse(command.workspaceId);
       const actor = await this.access.lockAndRequire(
         tenantId,
         workspaceId,
-        UserId.restore(command.actorId),
+        UserId.parse(command.actorId),
         WorkspacePermission.ROLE_MANAGE,
       );
       actor.assertHolds(command.permissions);

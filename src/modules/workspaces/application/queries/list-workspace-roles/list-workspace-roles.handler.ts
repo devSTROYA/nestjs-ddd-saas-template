@@ -22,9 +22,9 @@ export class ListWorkspaceRolesHandler implements IQueryHandler<
 
   async execute(query: ListWorkspaceRolesQuery): Promise<WorkspaceRoleListItem[]> {
     const roles = await this.roles.listFor(
-      TenantId.restore(query.tenantId),
-      WorkspaceId.restore(query.workspaceId),
-      UserId.restore(query.actorId),
+      TenantId.parse(query.tenantId),
+      WorkspaceId.parse(query.workspaceId),
+      UserId.parse(query.actorId),
     );
     if (!roles) {
       throw new WorkspaceNotFoundError();

@@ -33,11 +33,11 @@ export class LeaveWorkspaceHandler implements ICommandHandler<LeaveWorkspaceComm
 
   execute(command: LeaveWorkspaceCommand): Promise<void> {
     return this.unitOfWork.run(async () => {
-      const tenantId = TenantId.restore(command.tenantId);
-      const actorId = UserId.restore(command.actorId);
+      const tenantId = TenantId.parse(command.tenantId);
+      const actorId = UserId.parse(command.actorId);
       const workspace = await this.workspaces.findByIdForUpdate(
         tenantId,
-        WorkspaceId.restore(command.workspaceId),
+        WorkspaceId.parse(command.workspaceId),
       );
       if (!workspace) {
         throw new WorkspaceNotFoundError();

@@ -41,7 +41,7 @@ export class WorkspaceAccess {
   ): Promise<WorkspaceRole> {
     const role = await this.roles.findById(tenantId, workspaceId, roleId);
     if (!role) {
-      throw new WorkspaceRoleNotFoundError(roleId.value);
+      throw new WorkspaceRoleNotFoundError(roleId);
     }
     return role;
   }

@@ -33,14 +33,7 @@ const createRole = async (
   actor = kit.owner.id,
 ): Promise<WorkspaceRoleId> => {
   const { id } = await kit.createRole.execute(
-    new CreateWorkspaceRoleCommand(
-      actor.value,
-      kit.tenantId.value,
-      kit.workspace.id.value,
-      key,
-      key,
-      permissions,
-    ),
+    new CreateWorkspaceRoleCommand(actor, kit.tenantId, kit.workspace.id, key, key, permissions),
   );
   return id;
 };
@@ -53,10 +46,10 @@ const updateRole = (
 ) =>
   kit.updateRole.execute(
     new UpdateWorkspaceRoleCommand(
-      actor.value,
-      kit.tenantId.value,
-      kit.workspace.id.value,
-      role.value,
+      actor,
+      kit.tenantId,
+      kit.workspace.id,
+      role,
       'Renamed',
       permissions,
     ),
@@ -64,12 +57,7 @@ const updateRole = (
 
 const deleteRole = (kit: WorkspaceKit, role: WorkspaceRoleId, actor = kit.owner.id) =>
   kit.deleteRole.execute(
-    new DeleteWorkspaceRoleCommand(
-      actor.value,
-      kit.tenantId.value,
-      kit.workspace.id.value,
-      role.value,
-    ),
+    new DeleteWorkspaceRoleCommand(actor, kit.tenantId, kit.workspace.id, role),
   );
 
 const addMember = async (
@@ -79,43 +67,23 @@ const addMember = async (
   actor = kit.owner.id,
 ): Promise<UserId> => {
   const { userId } = await kit.add.execute(
-    new AddWorkspaceMemberCommand(
-      actor.value,
-      kit.tenantId.value,
-      kit.workspace.id.value,
-      email,
-      'New Person',
-      role.value,
-    ),
+    new AddWorkspaceMemberCommand(actor, kit.tenantId, kit.workspace.id, email, 'New Person', role),
   );
   return userId;
 };
 
 const changeRole = (kit: WorkspaceKit, actor: UserId, target: UserId, role: WorkspaceRoleId) =>
   kit.changeRole.execute(
-    new ChangeWorkspaceMemberRoleCommand(
-      actor.value,
-      kit.tenantId.value,
-      kit.workspace.id.value,
-      target.value,
-      role.value,
-    ),
+    new ChangeWorkspaceMemberRoleCommand(actor, kit.tenantId, kit.workspace.id, target, role),
   );
 
 const removeMember = (kit: WorkspaceKit, actor: UserId, target: UserId) =>
   kit.remove.execute(
-    new RemoveWorkspaceMemberCommand(
-      actor.value,
-      kit.tenantId.value,
-      kit.workspace.id.value,
-      target.value,
-    ),
+    new RemoveWorkspaceMemberCommand(actor, kit.tenantId, kit.workspace.id, target),
   );
 
 const listRoles = (kit: WorkspaceKit, actor: UserId) =>
-  kit.listRoles.execute(
-    new ListWorkspaceRolesQuery(actor.value, kit.tenantId.value, kit.workspace.id.value),
-  );
+  kit.listRoles.execute(new ListWorkspaceRolesQuery(actor, kit.tenantId, kit.workspace.id));
 
 describe('workspace roles', () => {
   it('lists the system roles and the custom ones of the workspace only', async () => {
@@ -123,8 +91,8 @@ describe('workspace roles', () => {
     const id = await createRole(kit, 'reviewer', [MEMBER_ADD]);
     await kit.roles.save(
       WorkspaceRole.create({
-        tenantId: TenantId.create(),
-        workspaceId: WorkspaceId.create(),
+        tenantId: TenantId.generate(),
+        workspaceId: WorkspaceId.generate(),
         key: 'elsewhere',
         name: 'Elsewhere',
         permissions: [],
@@ -148,7 +116,7 @@ describe('workspace roles', () => {
     const member = await addMember(kit, 'm@acme.co', SystemRoleId.MEMBER);
 
     await expect(listRoles(kit, member)).resolves.toHaveLength(3);
-    await expect(listRoles(kit, UserId.create())).rejects.toThrow(WorkspaceNotFoundError);
+    await expect(listRoles(kit, UserId.generate())).rejects.toThrow(WorkspaceNotFoundError);
   });
 
   it('gives a member the permissions of a custom role', async () => {
@@ -184,8 +152,8 @@ describe('workspace roles', () => {
   it('refuses a custom role of another workspace', async () => {
     const kit = createWorkspaceKit();
     const elsewhere = WorkspaceRole.create({
-      tenantId: TenantId.create(),
-      workspaceId: WorkspaceId.create(),
+      tenantId: TenantId.generate(),
+      workspaceId: WorkspaceId.generate(),
       key: 'elsewhere',
       name: 'Elsewhere',
       permissions: [],

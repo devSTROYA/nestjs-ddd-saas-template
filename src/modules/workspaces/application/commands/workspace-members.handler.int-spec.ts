@@ -47,10 +47,10 @@ const leave = new LeaveWorkspaceHandler(
 );
 
 const insertUser = async (tenantId: TenantId, email: string): Promise<UserId> => {
-  const id = UserId.create();
+  const id = UserId.generate();
   await pool.query("INSERT INTO users (id, tenant_id, email, name) VALUES ($1, $2, $3, 'U')", [
-    id.value,
-    tenantId.value,
+    id,
+    tenantId,
     email,
   ]);
   return id;
@@ -67,8 +67,8 @@ afterAll(async () => {
 
 describe('workspace member handlers under concurrency', () => {
   it('keeps one owner when the only two owners leave at the same time', async () => {
-    const tenantId = TenantId.create();
-    await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'T')", [tenantId.value]);
+    const tenantId = TenantId.generate();
+    await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'T')", [tenantId]);
     const first = await insertUser(tenantId, 'a@a.co');
     const second = await insertUser(tenantId, 'b@a.co');
     const workspace = Workspace.create({
@@ -92,7 +92,7 @@ describe('workspace member handlers under concurrency', () => {
 
     const results = await Promise.allSettled(
       [first, second].map((userId) =>
-        leave.execute(new LeaveWorkspaceCommand(userId.value, tenantId.value, workspace.id.value)),
+        leave.execute(new LeaveWorkspaceCommand(userId, tenantId, workspace.id)),
       ),
     );
 

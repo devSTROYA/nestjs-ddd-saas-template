@@ -39,18 +39,18 @@ export class DeleteWorkspaceRoleHandler implements ICommandHandler<
 
   execute(command: DeleteWorkspaceRoleCommand): Promise<void> {
     return this.unitOfWork.run(async () => {
-      const tenantId = TenantId.restore(command.tenantId);
-      const workspaceId = WorkspaceId.restore(command.workspaceId);
+      const tenantId = TenantId.parse(command.tenantId);
+      const workspaceId = WorkspaceId.parse(command.workspaceId);
       const actor = await this.access.lockAndRequire(
         tenantId,
         workspaceId,
-        UserId.restore(command.actorId),
+        UserId.parse(command.actorId),
         WorkspacePermission.ROLE_MANAGE,
       );
       const role = await this.access.role(
         tenantId,
         workspaceId,
-        WorkspaceRoleId.restore(command.roleId),
+        WorkspaceRoleId.parse(command.roleId),
       );
       if (role.isSystem) {
         throw new SystemWorkspaceRoleError(role.key);
