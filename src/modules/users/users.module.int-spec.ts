@@ -31,8 +31,8 @@ describe('UsersModule', () => {
   });
 
   it('provides a repository wired to the configured database', async () => {
-    const tenantId = TenantId.create();
-    await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'Wired')", [tenantId.value]);
+    const tenantId = TenantId.generate();
+    await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'Wired')", [tenantId]);
     const repository = moduleRef.get<UserRepository>(USER_REPOSITORY);
     const user = User.create({
       tenantId,

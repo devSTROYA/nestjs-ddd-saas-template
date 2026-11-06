@@ -13,8 +13,8 @@ import { UserId } from '../../domain/value-objects/user-id.js';
 import { UserName } from '../../domain/value-objects/user-name.js';
 import { DrizzleUserRepository } from './drizzle-user.repository.js';
 
-const TENANT_A = TenantId.create();
-const TENANT_B = TenantId.create();
+const TENANT_A = TenantId.generate();
+const TENANT_B = TenantId.generate();
 
 const pool = new Pool({ connectionString: inject('databaseUrl') });
 const context = new DatabaseContext(drizzle(pool));
@@ -31,8 +31,8 @@ const newUser = (overrides: { tenantId?: typeof TENANT_A; email?: string } = {})
 beforeEach(async () => {
   await pool.query('TRUNCATE TABLE users, tenants, outbox CASCADE');
   await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'A'), ($2, 'B')", [
-    TENANT_A.value,
-    TENANT_B.value,
+    TENANT_A,
+    TENANT_B,
   ]);
 });
 
@@ -69,7 +69,7 @@ describe('DrizzleUserRepository', () => {
     const user = newUser();
     await repository.save(user);
 
-    expect(await outboxNames(user.id.value)).toEqual([UserEventNames.CREATED]);
+    expect(await outboxNames(user.id)).toEqual([UserEventNames.CREATED]);
   });
 
   it('leaves neither the user nor its events when the surrounding transaction fails', async () => {
@@ -83,11 +83,11 @@ describe('DrizzleUserRepository', () => {
     ).rejects.toThrow('boom');
 
     expect(await repository.findById(TENANT_A, user.id)).toBeNull();
-    expect(await outboxNames(user.id.value)).toEqual([]);
+    expect(await outboxNames(user.id)).toEqual([]);
   });
 
   it('returns null when nothing matches', async () => {
-    expect(await repository.findById(TENANT_A, UserId.create())).toBeNull();
+    expect(await repository.findById(TENANT_A, UserId.generate())).toBeNull();
     expect(await repository.findByEmail(Email.create('x@y.co'))).toBeNull();
   });
 
@@ -119,7 +119,7 @@ describe('DrizzleUserRepository', () => {
   it('refuses to overwrite a user that belongs to another tenant', async () => {
     const original = newUser();
     await repository.save(original);
-    const intruder = User.restore(
+    const intruder = User.rehydrate(
       {
         tenantId: TENANT_B,
         email: Email.create('evil@b.co'),
@@ -139,7 +139,7 @@ describe('DrizzleUserRepository', () => {
 
     await repository.delete(TENANT_B, user.id);
     expect(await repository.findById(TENANT_A, user.id)).not.toBeNull();
-    await repository.delete(TENANT_A, UserId.create());
+    await repository.delete(TENANT_A, UserId.generate());
     expect(await repository.findByEmail(user.email)).not.toBeNull();
 
     await repository.delete(TENANT_A, user.id);
@@ -151,7 +151,7 @@ describe('DrizzleUserRepository', () => {
   });
 
   it('rejects a user whose tenant does not exist', async () => {
-    const orphan = newUser({ tenantId: TenantId.create() });
+    const orphan = newUser({ tenantId: TenantId.generate() });
 
     await expect(repository.save(orphan)).rejects.toMatchObject({ cause: { code: '23503' } });
   });
@@ -159,9 +159,9 @@ describe('DrizzleUserRepository', () => {
   it('restricts deleting a tenant that still has users', async () => {
     await repository.save(newUser());
 
-    await expect(
-      pool.query('DELETE FROM tenants WHERE id = $1', [TENANT_A.value]),
-    ).rejects.toMatchObject({ code: '23001' });
+    await expect(pool.query('DELETE FROM tenants WHERE id = $1', [TENANT_A])).rejects.toMatchObject(
+      { code: '23001' },
+    );
   });
 
   describe('transactions', () => {

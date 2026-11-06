@@ -14,14 +14,14 @@ import { UserName } from '../../domain/value-objects/user-name.js';
 import { type UserRow, users } from './user.schema.js';
 
 function toUser(row: UserRow): User {
-  return User.restore(
+  return User.rehydrate(
     {
-      tenantId: TenantId.restore(row.tenantId),
-      email: Email.restore(row.email),
-      name: UserName.restore(row.name),
+      tenantId: TenantId.rehydrate(row.tenantId),
+      email: Email.rehydrate(row.email),
+      name: UserName.rehydrate(row.name),
       createdAt: row.createdAt,
     },
-    UserId.restore(row.id),
+    UserId.rehydrate(row.id),
   );
 }
 
@@ -32,7 +32,7 @@ export class DrizzleUserRepository implements UserRepository {
     const [row] = await this.context.client
       .select()
       .from(users)
-      .where(and(eq(users.tenantId, tenantId.value), eq(users.id, id.value)));
+      .where(and(eq(users.tenantId, tenantId), eq(users.id, id)));
     return row ? toUser(row) : null;
   }
 
@@ -47,7 +47,7 @@ export class DrizzleUserRepository implements UserRepository {
   async delete(tenantId: TenantId, id: UserId): Promise<void> {
     await this.context.client
       .delete(users)
-      .where(and(eq(users.tenantId, tenantId.value), eq(users.id, id.value)));
+      .where(and(eq(users.tenantId, tenantId), eq(users.id, id)));
   }
 
   async save(user: User): Promise<void> {
@@ -57,8 +57,8 @@ export class DrizzleUserRepository implements UserRepository {
         const written = await this.context.client
           .insert(users)
           .values({
-            id: user.id.value,
-            tenantId: user.tenantId.value,
+            id: user.id,
+            tenantId: user.tenantId,
             email: user.email.value,
             name,
             createdAt: user.createdAt,
@@ -66,11 +66,11 @@ export class DrizzleUserRepository implements UserRepository {
           .onConflictDoUpdate({
             target: users.id,
             set: { name, updatedAt: new Date() },
-            setWhere: eq(users.tenantId, user.tenantId.value),
+            setWhere: eq(users.tenantId, user.tenantId),
           })
           .returning({ id: users.id });
         if (written.length === 0) {
-          throw new UserIdConflictError(user.id.value);
+          throw new UserIdConflictError(user.id);
         }
       } catch (error) {
         if (isUniqueViolation(error)) {

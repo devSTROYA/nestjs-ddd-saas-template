@@ -16,7 +16,7 @@ export class UserName {
     return new UserName(value);
   }
 
-  static restore(value: string): UserName {
+  static rehydrate(value: string): UserName {
     return new UserName(value);
   }
 

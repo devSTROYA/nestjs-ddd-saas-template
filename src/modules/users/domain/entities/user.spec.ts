@@ -6,7 +6,7 @@ import { UserId } from '../value-objects/user-id.js';
 import { UserName } from '../value-objects/user-name.js';
 import { User } from './user.js';
 
-const TENANT_ID = TenantId.create();
+const TENANT_ID = TenantId.generate();
 
 const CREATED_AT = new Date('2026-01-01T00:00:00Z');
 const NOW = new Date('2026-02-01T00:00:00Z');
@@ -22,8 +22,8 @@ const newUser = (): User =>
 describe('User', () => {
   it('creates with a generated id and the given tenant, email, name and createdAt', () => {
     const user = newUser();
-    expect(user.id).toBeInstanceOf(UserId);
-    expect(user.tenantId.equals(TENANT_ID)).toBe(true);
+    expect(UserId.parse(user.id)).toBe(user.id);
+    expect(user.tenantId).toBe(TENANT_ID);
     expect(user.email.value).toBe('a@b.c');
     expect(user.name.value).toBe('Uz');
     expect(user.createdAt).toEqual(CREATED_AT);
@@ -44,16 +44,16 @@ describe('User', () => {
     expect(events).toMatchObject([
       {
         name: UserEventNames.CREATED,
-        aggregateId: user.id.value,
-        tenantId: TENANT_ID.value,
+        aggregateId: user.id,
+        tenantId: TENANT_ID,
         email: 'a@b.c',
         userName: 'Uz',
         occurredAt: CREATED_AT.toISOString(),
       },
       {
         name: UserEventNames.RENAMED,
-        aggregateId: user.id.value,
-        tenantId: TENANT_ID.value,
+        aggregateId: user.id,
+        tenantId: TENANT_ID,
         userName: 'Xy',
         occurredAt: NOW.toISOString(),
       },
@@ -61,29 +61,29 @@ describe('User', () => {
     expect(user.pullEvents()).toEqual([]);
   });
 
-  it('raises no event on restore', () => {
-    const user = User.restore(
+  it('raises no event on rehydrate', () => {
+    const user = User.rehydrate(
       {
         tenantId: TENANT_ID,
-        email: Email.restore('a@b.c'),
-        name: UserName.restore('Uz'),
+        email: Email.rehydrate('a@b.c'),
+        name: UserName.rehydrate('Uz'),
         createdAt: new Date(),
       },
-      UserId.create(),
+      UserId.generate(),
     );
     expect(user.pullEvents()).toEqual([]);
   });
 
-  it('restores without re-validation', () => {
+  it('rehydrates without re-validation', () => {
     const createdAt = new Date('2026-01-01T00:00:00Z');
-    const user = User.restore(
+    const user = User.rehydrate(
       {
         tenantId: TENANT_ID,
-        email: Email.restore('a@b.c'),
-        name: UserName.restore('Uz'),
+        email: Email.rehydrate('a@b.c'),
+        name: UserName.rehydrate('Uz'),
         createdAt,
       },
-      UserId.create(),
+      UserId.generate(),
     );
     expect(user.createdAt).toBe(createdAt);
   });

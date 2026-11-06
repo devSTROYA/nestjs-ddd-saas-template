@@ -21,7 +21,7 @@ type CreateProps = {
 
 export class User extends AggregateRoot<Props, UserId> {
   static create(props: CreateProps): User {
-    const id = UserId.create();
+    const id = UserId.generate();
     const user = new User(
       {
         tenantId: props.tenantId,
@@ -33,8 +33,8 @@ export class User extends AggregateRoot<Props, UserId> {
     );
     user.addEvent(
       new UserCreatedEvent({
-        aggregateId: id.value,
-        tenantId: props.tenantId.value,
+        aggregateId: id,
+        tenantId: props.tenantId,
         occurredAt: props.createdAt.toISOString(),
         email: props.email.value,
         userName: props.name.value,
@@ -43,7 +43,7 @@ export class User extends AggregateRoot<Props, UserId> {
     return user;
   }
 
-  static restore(props: Props, id: UserId): User {
+  static rehydrate(props: Props, id: UserId): User {
     return new User(props, id);
   }
 
@@ -67,8 +67,8 @@ export class User extends AggregateRoot<Props, UserId> {
     this.props.name = name;
     this.addEvent(
       new UserRenamedEvent({
-        aggregateId: this.id.value,
-        tenantId: this.tenantId.value,
+        aggregateId: this.id,
+        tenantId: this.tenantId,
         occurredAt: now.toISOString(),
         userName: name.value,
       }),
