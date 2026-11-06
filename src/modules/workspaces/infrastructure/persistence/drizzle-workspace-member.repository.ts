@@ -19,16 +19,16 @@ import { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js
 import { type WorkspaceMemberRow, workspaceMembers } from './workspace-member.schema.js';
 
 function toWorkspaceMember(row: WorkspaceMemberRow): WorkspaceMember {
-  return WorkspaceMember.restore(
+  return WorkspaceMember.rehydrate(
     {
-      tenantId: TenantId.restore(row.tenantId),
-      workspaceId: WorkspaceId.restore(row.workspaceId),
-      userId: UserId.restore(row.userId),
-      roleId: WorkspaceRoleId.restore(row.roleId),
+      tenantId: TenantId.rehydrate(row.tenantId),
+      workspaceId: WorkspaceId.rehydrate(row.workspaceId),
+      userId: UserId.rehydrate(row.userId),
+      roleId: WorkspaceRoleId.rehydrate(row.roleId),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     },
-    WorkspaceMemberId.restore(row.id),
+    WorkspaceMemberId.rehydrate(row.id),
   );
 }
 
@@ -45,9 +45,9 @@ export class DrizzleWorkspaceMemberRepository implements WorkspaceMemberReposito
       .from(workspaceMembers)
       .where(
         and(
-          eq(workspaceMembers.tenantId, tenantId.value),
-          eq(workspaceMembers.workspaceId, workspaceId.value),
-          eq(workspaceMembers.userId, userId.value),
+          eq(workspaceMembers.tenantId, tenantId),
+          eq(workspaceMembers.workspaceId, workspaceId),
+          eq(workspaceMembers.userId, userId),
         ),
       );
     return row ? toWorkspaceMember(row) : null;
@@ -67,9 +67,9 @@ export class DrizzleWorkspaceMemberRepository implements WorkspaceMemberReposito
       .from(workspaceMembers)
       .where(
         and(
-          eq(workspaceMembers.tenantId, tenantId.value),
-          eq(workspaceMembers.workspaceId, workspaceId.value),
-          eq(workspaceMembers.roleId, roleId.value),
+          eq(workspaceMembers.tenantId, tenantId),
+          eq(workspaceMembers.workspaceId, workspaceId),
+          eq(workspaceMembers.roleId, roleId),
         ),
       );
     return row?.total ?? 0;
@@ -78,15 +78,15 @@ export class DrizzleWorkspaceMemberRepository implements WorkspaceMemberReposito
   save(member: WorkspaceMember): Promise<void> {
     return saveAggregate(this.context, member, async () => {
       const { updatedAt } = member;
-      const roleId = member.roleId.value;
+      const roleId = member.roleId;
       try {
         const written = await this.context.client
           .insert(workspaceMembers)
           .values({
-            id: member.id.value,
-            tenantId: member.tenantId.value,
-            workspaceId: member.workspaceId.value,
-            userId: member.userId.value,
+            id: member.id,
+            tenantId: member.tenantId,
+            workspaceId: member.workspaceId,
+            userId: member.userId,
             roleId,
             createdAt: member.createdAt,
             updatedAt,
@@ -94,15 +94,15 @@ export class DrizzleWorkspaceMemberRepository implements WorkspaceMemberReposito
           .onConflictDoUpdate({
             target: workspaceMembers.id,
             set: { roleId, updatedAt },
-            setWhere: eq(workspaceMembers.tenantId, member.tenantId.value),
+            setWhere: eq(workspaceMembers.tenantId, member.tenantId),
           })
           .returning({ id: workspaceMembers.id });
         if (written.length === 0) {
-          throw new WorkspaceMemberIdConflictError(member.id.value);
+          throw new WorkspaceMemberIdConflictError(member.id);
         }
       } catch (error) {
         if (isUniqueViolation(error)) {
-          throw new WorkspaceMemberAlreadyExistsError(member.userId.value);
+          throw new WorkspaceMemberAlreadyExistsError(member.userId);
         }
         throw error;
       }
@@ -114,10 +114,7 @@ export class DrizzleWorkspaceMemberRepository implements WorkspaceMemberReposito
       await this.context.client
         .delete(workspaceMembers)
         .where(
-          and(
-            eq(workspaceMembers.id, member.id.value),
-            eq(workspaceMembers.tenantId, member.tenantId.value),
-          ),
+          and(eq(workspaceMembers.id, member.id), eq(workspaceMembers.tenantId, member.tenantId)),
         );
     });
   }

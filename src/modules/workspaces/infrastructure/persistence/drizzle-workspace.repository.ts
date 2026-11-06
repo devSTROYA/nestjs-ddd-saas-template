@@ -13,14 +13,14 @@ import { WorkspaceName } from '../../domain/value-objects/workspace-name.js';
 import { workspaces, type WorkspaceRow } from './workspace.schema.js';
 
 function toWorkspace(row: WorkspaceRow): Workspace {
-  return Workspace.restore(
+  return Workspace.rehydrate(
     {
-      tenantId: TenantId.restore(row.tenantId),
-      name: WorkspaceName.restore(row.name),
+      tenantId: TenantId.rehydrate(row.tenantId),
+      name: WorkspaceName.rehydrate(row.name),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     },
-    WorkspaceId.restore(row.id),
+    WorkspaceId.rehydrate(row.id),
   );
 }
 
@@ -44,8 +44,8 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     const written = await this.context.client
       .insert(workspaces)
       .values({
-        id: workspace.id.value,
-        tenantId: workspace.tenantId.value,
+        id: workspace.id,
+        tenantId: workspace.tenantId,
         name,
         createdAt: workspace.createdAt,
         updatedAt: workspace.updatedAt,
@@ -53,11 +53,11 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
       .onConflictDoUpdate({
         target: workspaces.id,
         set: { name, updatedAt: workspace.updatedAt },
-        setWhere: eq(workspaces.tenantId, workspace.tenantId.value),
+        setWhere: eq(workspaces.tenantId, workspace.tenantId),
       })
       .returning({ id: workspaces.id });
     if (written.length === 0) {
-      throw new WorkspaceIdConflictError(workspace.id.value);
+      throw new WorkspaceIdConflictError(workspace.id);
     }
   }
 
@@ -69,7 +69,7 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     const query = this.context.client
       .select()
       .from(workspaces)
-      .where(and(eq(workspaces.id, id.value), eq(workspaces.tenantId, tenantId.value)));
+      .where(and(eq(workspaces.id, id), eq(workspaces.tenantId, tenantId)));
     const [row] = await (lock ? query.for('update') : query);
     return row ? toWorkspace(row) : null;
   }

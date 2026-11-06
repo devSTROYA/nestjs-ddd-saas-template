@@ -27,16 +27,16 @@ const workspaces = new DrizzleWorkspaceRepository(context);
 const repository = new DrizzleWorkspaceMemberRepository(context);
 
 const insertTenant = async (): Promise<TenantId> => {
-  const id = TenantId.create();
-  await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'T')", [id.value]);
+  const id = TenantId.generate();
+  await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'T')", [id]);
   return id;
 };
 
 const insertUser = async (tenantId: TenantId, email: string): Promise<UserId> => {
-  const id = UserId.create();
+  const id = UserId.generate();
   await pool.query("INSERT INTO users (id, tenant_id, email, name) VALUES ($1, $2, $3, 'U')", [
-    id.value,
-    tenantId.value,
+    id,
+    tenantId,
     email,
   ]);
   return id;
@@ -47,7 +47,7 @@ const seedWorkspace = async (): Promise<{ tenantId: TenantId; workspaceId: Works
   const workspace = Workspace.create({
     tenantId,
     name: WorkspaceName.create('Acme'),
-    ownerId: UserId.create(),
+    ownerId: UserId.generate(),
     createdAt: new Date(),
   });
   await workspaces.save(workspace);
@@ -93,9 +93,9 @@ describe('DrizzleWorkspaceMemberRepository', () => {
     const userId = await insertUser(tenantId, 'a@a.co');
     await repository.save(newMember(tenantId, workspaceId, userId));
 
-    expect(await repository.findByUser(TenantId.create(), workspaceId, userId)).toBeNull();
-    expect(await repository.findByUser(tenantId, WorkspaceId.create(), userId)).toBeNull();
-    expect(await repository.findByUser(tenantId, workspaceId, UserId.create())).toBeNull();
+    expect(await repository.findByUser(TenantId.generate(), workspaceId, userId)).toBeNull();
+    expect(await repository.findByUser(tenantId, WorkspaceId.generate(), userId)).toBeNull();
+    expect(await repository.findByUser(tenantId, workspaceId, UserId.generate())).toBeNull();
   });
 
   it('persists a role change', async () => {
@@ -154,8 +154,8 @@ describe('DrizzleWorkspaceMemberRepository', () => {
     expect(rows).toEqual([
       {
         name: WorkspaceMemberEventNames.REMOVED,
-        aggregate_id: member.id.value,
-        tenant_id: tenantId.value,
+        aggregate_id: member.id,
+        tenant_id: tenantId,
       },
     ]);
   });
@@ -176,7 +176,7 @@ describe('DrizzleWorkspaceMemberRepository', () => {
     const member = newMember(tenantId, workspaceId, userId);
     await repository.save(member);
     const other = await seedWorkspace();
-    const hijack = WorkspaceMember.restore(
+    const hijack = WorkspaceMember.rehydrate(
       {
         tenantId: other.tenantId,
         workspaceId: other.workspaceId,
@@ -200,7 +200,7 @@ describe('DrizzleWorkspaceMemberRepository', () => {
     const member = newMember(tenantId, workspaceId, userId);
     await repository.save(member);
     const other = await seedWorkspace();
-    const hijack = WorkspaceMember.restore(
+    const hijack = WorkspaceMember.rehydrate(
       {
         tenantId: other.tenantId,
         workspaceId: other.workspaceId,
@@ -237,7 +237,7 @@ describe('DrizzleWorkspaceMemberRepository', () => {
       [WorkspaceMemberEventNames.ADDED],
     );
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.aggregate_id).toBe(member.id.value);
-    expect(rows[0]?.payload.workspaceId).toBe(workspaceId.value);
+    expect(rows[0]?.aggregate_id).toBe(member.id);
+    expect(rows[0]?.payload.workspaceId).toBe(workspaceId);
   });
 });

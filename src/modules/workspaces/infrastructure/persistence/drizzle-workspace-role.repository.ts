@@ -30,17 +30,17 @@ export function knownPermissions(stored: readonly string[]): WorkspacePermission
 }
 
 function toWorkspaceRole(row: WorkspaceRoleRow, permissions: readonly string[]): WorkspaceRole {
-  return WorkspaceRole.restore(
+  return WorkspaceRole.rehydrate(
     {
-      tenantId: row.tenantId ? TenantId.restore(row.tenantId) : null,
-      workspaceId: row.workspaceId ? WorkspaceId.restore(row.workspaceId) : null,
+      tenantId: row.tenantId ? TenantId.rehydrate(row.tenantId) : null,
+      workspaceId: row.workspaceId ? WorkspaceId.rehydrate(row.workspaceId) : null,
       key: row.key,
       name: row.name,
       permissions: new WorkspacePermissionList(knownPermissions(permissions)),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     },
-    WorkspaceRoleId.restore(row.id),
+    WorkspaceRoleId.rehydrate(row.id),
   );
 }
 
@@ -57,12 +57,9 @@ export class DrizzleWorkspaceRoleRepository implements WorkspaceRoleRepository {
       .from(workspaceRoles)
       .where(
         and(
-          eq(workspaceRoles.id, id.value),
+          eq(workspaceRoles.id, id),
           or(
-            and(
-              eq(workspaceRoles.workspaceId, workspaceId.value),
-              eq(workspaceRoles.tenantId, tenantId.value),
-            ),
+            and(eq(workspaceRoles.workspaceId, workspaceId), eq(workspaceRoles.tenantId, tenantId)),
             isNull(workspaceRoles.workspaceId),
           ),
         ),
@@ -95,23 +92,21 @@ export class DrizzleWorkspaceRoleRepository implements WorkspaceRoleRepository {
       }
       await this.context.client
         .delete(workspaceRoles)
-        .where(
-          and(eq(workspaceRoles.id, role.id.value), eq(workspaceRoles.tenantId, tenantId.value)),
-        );
+        .where(and(eq(workspaceRoles.id, role.id), eq(workspaceRoles.tenantId, tenantId)));
     });
   }
 
   // INFO: setWhere matches no system role, whose tenant is null, so a save can never overwrite one.
   private async writeRole(role: WorkspaceRole): Promise<void> {
     const { name, updatedAt } = role;
-    const tenantId = role.tenantId?.value ?? null;
+    const tenantId = role.tenantId ?? null;
     try {
       const written = await this.context.client
         .insert(workspaceRoles)
         .values({
-          id: role.id.value,
+          id: role.id,
           tenantId,
-          workspaceId: role.workspaceId?.value ?? null,
+          workspaceId: role.workspaceId ?? null,
           key: role.key,
           name,
           createdAt: role.createdAt,
@@ -124,7 +119,7 @@ export class DrizzleWorkspaceRoleRepository implements WorkspaceRoleRepository {
         })
         .returning({ id: workspaceRoles.id });
       if (written.length === 0) {
-        throw new WorkspaceRoleIdConflictError(role.id.value);
+        throw new WorkspaceRoleIdConflictError(role.id);
       }
     } catch (error) {
       if (isUniqueViolation(error)) {
@@ -142,7 +137,7 @@ export class DrizzleWorkspaceRoleRepository implements WorkspaceRoleRepository {
         .delete(workspaceRolePermissions)
         .where(
           and(
-            eq(workspaceRolePermissions.roleId, role.id.value),
+            eq(workspaceRolePermissions.roleId, role.id),
             inArray(workspaceRolePermissions.permission, removed),
           ),
         );
@@ -150,7 +145,7 @@ export class DrizzleWorkspaceRoleRepository implements WorkspaceRoleRepository {
     if (added.length > 0) {
       await this.context.client
         .insert(workspaceRolePermissions)
-        .values(added.map((permission) => ({ roleId: role.id.value, permission })))
+        .values(added.map((permission) => ({ roleId: role.id, permission })))
         .onConflictDoNothing();
     }
   }

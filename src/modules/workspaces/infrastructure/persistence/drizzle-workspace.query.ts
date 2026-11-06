@@ -35,13 +35,10 @@ export class DrizzleWorkspaceQuery implements WorkspaceQuery {
       .from(workspaces)
       .innerJoin(
         workspaceMembers,
-        and(
-          eq(workspaceMembers.workspaceId, workspaces.id),
-          eq(workspaceMembers.userId, actorId.value),
-        ),
+        and(eq(workspaceMembers.workspaceId, workspaces.id), eq(workspaceMembers.userId, actorId)),
       )
       .innerJoin(workspaceRoles, eq(workspaceRoles.id, workspaceMembers.roleId))
-      .where(and(eq(workspaces.id, workspaceId.value), eq(workspaces.tenantId, tenantId.value)));
+      .where(and(eq(workspaces.id, workspaceId), eq(workspaces.tenantId, tenantId)));
     if (!access) {
       return null;
     }
@@ -52,9 +49,9 @@ export class DrizzleWorkspaceQuery implements WorkspaceQuery {
       0,
     );
     return {
-      id: WorkspaceId.restore(access.id),
+      id: WorkspaceId.rehydrate(access.id),
       name: access.name,
-      roleId: WorkspaceRoleId.restore(access.roleId),
+      roleId: WorkspaceRoleId.rehydrate(access.roleId),
       role: access.role,
       memberCount: total,
       members: items,

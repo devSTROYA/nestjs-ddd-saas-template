@@ -27,7 +27,7 @@ export class DrizzleWorkspaceRoleQuery implements WorkspaceRoleQuery {
       return null;
     }
     const visible = or(
-      eq(workspaceRoles.workspaceId, workspaceId.value),
+      eq(workspaceRoles.workspaceId, workspaceId),
       isNull(workspaceRoles.workspaceId),
     );
     const [roles, granted] = await Promise.all([
@@ -46,7 +46,7 @@ export class DrizzleWorkspaceRoleQuery implements WorkspaceRoleQuery {
         .where(visible),
     ]);
     return roles.map((role) => ({
-      id: WorkspaceRoleId.restore(role.id),
+      id: WorkspaceRoleId.rehydrate(role.id),
       key: role.key,
       name: role.name,
       system: role.workspaceId === null,

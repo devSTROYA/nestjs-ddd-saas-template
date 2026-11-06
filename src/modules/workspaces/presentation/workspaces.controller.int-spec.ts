@@ -11,10 +11,10 @@ import { configureApp } from '../../../configure-app.js';
 import { SystemRoleId } from '../domain/value-objects/system-workspace-role.js';
 import { restoreSystemRoles } from '../testing/system-roles.js';
 
-const ADMIN_ID = AdminId.create();
-const OWNER_ROLE = SystemRoleId.OWNER.value;
-const ADMIN_ROLE = SystemRoleId.ADMIN.value;
-const MEMBER_ROLE = SystemRoleId.MEMBER.value;
+const ADMIN_ID = AdminId.generate();
+const OWNER_ROLE = SystemRoleId.OWNER;
+const ADMIN_ROLE = SystemRoleId.ADMIN;
+const MEMBER_ROLE = SystemRoleId.MEMBER;
 
 type TokenBody = {
   accessToken: string;
@@ -94,7 +94,7 @@ describe('WorkspacesController', () => {
     workspaceId: string,
     token: string,
     email: string,
-    roleId = ADMIN_ROLE,
+    roleId: string = ADMIN_ROLE,
   ): Promise<string> => {
     const response = await call('post', `/v1/workspaces/${workspaceId}/members`, token, {
       email,
@@ -130,7 +130,7 @@ describe('WorkspacesController', () => {
       'TRUNCATE TABLE rate_limits, refresh_tokens, login_challenges, invitations, workspace_members, workspaces, users, tenants, admins CASCADE',
     );
     await restoreSystemRoles(pool);
-    await pool.query("INSERT INTO admins (id, email) VALUES ($1, 'root@b.co')", [ADMIN_ID.value]);
+    await pool.query("INSERT INTO admins (id, email) VALUES ($1, 'root@b.co')", [ADMIN_ID]);
   });
 
   afterAll(async () => {

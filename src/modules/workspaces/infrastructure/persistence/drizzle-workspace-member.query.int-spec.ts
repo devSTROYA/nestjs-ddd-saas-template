@@ -22,16 +22,16 @@ const workspaces = new DrizzleWorkspaceRepository(context);
 const query = new DrizzleWorkspaceMemberQuery(context);
 
 const insertTenant = async (): Promise<TenantId> => {
-  const id = TenantId.create();
-  await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'T')", [id.value]);
+  const id = TenantId.generate();
+  await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'T')", [id]);
   return id;
 };
 
 const insertUser = async (tenantId: TenantId, email: string, name: string): Promise<UserId> => {
-  const id = UserId.create();
+  const id = UserId.generate();
   await pool.query('INSERT INTO users (id, tenant_id, email, name) VALUES ($1, $2, $3, $4)', [
-    id.value,
-    tenantId.value,
+    id,
+    tenantId,
     email,
     name,
   ]);
@@ -64,7 +64,7 @@ const seedWorkspace = async (
   const insertMember = (userId: UserId, roleId: WorkspaceRoleId, createdAt: Date) =>
     pool.query(
       'INSERT INTO workspace_members (id, tenant_id, workspace_id, user_id, role_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)',
-      [newUuidV7(), tenantId.value, workspace.id.value, userId.value, roleId.value, createdAt],
+      [newUuidV7(), tenantId, workspace.id, userId, roleId, createdAt],
     );
   await insertMember(owner, SystemRoleId.OWNER, new Date(start));
   const added: UserId[] = [];
@@ -110,7 +110,9 @@ describe('DrizzleWorkspaceMemberQuery', () => {
       query.list({ ...params, page: 1, limit: 20 });
 
     expect(await list({ tenantId, workspaceId, actorId: outsider })).toBeNull();
-    expect(await list({ tenantId, workspaceId: WorkspaceId.create(), actorId: owner })).toBeNull();
+    expect(
+      await list({ tenantId, workspaceId: WorkspaceId.generate(), actorId: owner }),
+    ).toBeNull();
     expect(await list({ tenantId: otherTenantId, workspaceId, actorId: owner })).toBeNull();
   });
 });

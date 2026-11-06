@@ -23,9 +23,9 @@ export async function isMember(
     .from(workspaceMembers)
     .where(
       and(
-        eq(workspaceMembers.tenantId, tenantId.value),
-        eq(workspaceMembers.workspaceId, workspaceId.value),
-        eq(workspaceMembers.userId, userId.value),
+        eq(workspaceMembers.tenantId, tenantId),
+        eq(workspaceMembers.workspaceId, workspaceId),
+        eq(workspaceMembers.userId, userId),
       ),
     );
   return row !== undefined;
@@ -50,21 +50,21 @@ export async function findMemberPage(
       .from(workspaceMembers)
       .innerJoin(users, eq(users.id, workspaceMembers.userId))
       .innerJoin(workspaceRoles, eq(workspaceRoles.id, workspaceMembers.roleId))
-      .where(eq(workspaceMembers.workspaceId, workspaceId.value))
+      .where(eq(workspaceMembers.workspaceId, workspaceId))
       .orderBy(desc(workspaceMembers.createdAt), desc(workspaceMembers.userId))
       .limit(limit)
       .offset(offset),
     context.client
       .select({ total: count() })
       .from(workspaceMembers)
-      .where(eq(workspaceMembers.workspaceId, workspaceId.value)),
+      .where(eq(workspaceMembers.workspaceId, workspaceId)),
   ]);
   return {
     items: rows.map((row) => ({
-      userId: UserId.restore(row.userId),
+      userId: UserId.rehydrate(row.userId),
       name: row.name,
       email: row.email,
-      roleId: WorkspaceRoleId.restore(row.roleId),
+      roleId: WorkspaceRoleId.rehydrate(row.roleId),
       role: row.role,
     })),
     total: counted[0]?.total ?? 0,

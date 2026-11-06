@@ -33,12 +33,12 @@ const repository = new DrizzleWorkspaceRoleRepository(context);
 const query = new DrizzleWorkspaceRoleQuery(context);
 
 const seedWorkspace = async (): Promise<{ tenantId: TenantId; workspaceId: WorkspaceId }> => {
-  const tenantId = TenantId.create();
-  await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'T')", [tenantId.value]);
+  const tenantId = TenantId.generate();
+  await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'T')", [tenantId]);
   const workspace = Workspace.create({
     tenantId,
     name: WorkspaceName.create('Acme'),
-    ownerId: UserId.create(),
+    ownerId: UserId.generate(),
     createdAt: new Date(),
   });
   await workspaces.save(workspace);
@@ -63,7 +63,7 @@ const newRole = (
 const storedPermissions = async (id: WorkspaceRoleId): Promise<string[]> => {
   const { rows } = await pool.query<{ permission: string }>(
     'SELECT permission FROM workspace_role_permissions WHERE role_id = $1 ORDER BY permission',
-    [id.value],
+    [id],
   );
   return rows.map((row) => row.permission);
 };
@@ -113,7 +113,7 @@ describe('DrizzleWorkspaceRoleRepository', () => {
 
     expect(await repository.findById(other.tenantId, workspaceId, role.id)).toBeNull();
     expect(await repository.findById(tenantId, other.workspaceId, role.id)).toBeNull();
-    expect(await repository.findById(tenantId, workspaceId, WorkspaceRoleId.create())).toBeNull();
+    expect(await repository.findById(tenantId, workspaceId, WorkspaceRoleId.generate())).toBeNull();
   });
 
   it('writes only the permission changes of a loaded role', async () => {
@@ -163,7 +163,7 @@ describe('DrizzleWorkspaceRoleRepository', () => {
     const other = await seedWorkspace();
     const permissions = new WorkspacePermissionList();
     permissions.update([ROLE_MANAGE]);
-    const hijack = WorkspaceRole.restore(
+    const hijack = WorkspaceRole.rehydrate(
       {
         tenantId: other.tenantId,
         workspaceId: other.workspaceId,
@@ -185,7 +185,7 @@ describe('DrizzleWorkspaceRoleRepository', () => {
     const { tenantId, workspaceId } = await seedWorkspace();
     const permissions = new WorkspacePermissionList();
     permissions.update([ROLE_MANAGE]);
-    const forged = WorkspaceRole.restore(
+    const forged = WorkspaceRole.rehydrate(
       {
         tenantId,
         workspaceId,
@@ -209,7 +209,7 @@ describe('DrizzleWorkspaceRoleRepository', () => {
   it('refuses a second system role with the same key', async () => {
     await expect(
       pool.query("INSERT INTO workspace_roles (id, key, name) VALUES ($1, 'admin', 'Copy')", [
-        WorkspaceRoleId.create().value,
+        WorkspaceRoleId.generate(),
       ]),
     ).rejects.toMatchObject({ code: '23505' });
   });
@@ -220,7 +220,7 @@ describe('DrizzleWorkspaceRoleRepository', () => {
     await expect(
       pool.query(
         "INSERT INTO workspace_roles (id, tenant_id, key, name) VALUES ($1, $2, 'half', 'Half')",
-        [WorkspaceRoleId.create().value, tenantId.value],
+        [WorkspaceRoleId.generate(), tenantId],
       ),
     ).rejects.toMatchObject({ code: '23514' });
   });
@@ -239,7 +239,7 @@ describe('DrizzleWorkspaceRoleRepository', () => {
       'SELECT aggregate_id FROM outbox WHERE name = $1',
       [WorkspaceRoleEventNames.DELETED],
     );
-    expect(rows).toEqual([{ aggregate_id: role.id.value }]);
+    expect(rows).toEqual([{ aggregate_id: role.id }]);
   });
 
   it('ignores a stored permission this version does not know', async () => {
@@ -248,7 +248,7 @@ describe('DrizzleWorkspaceRoleRepository', () => {
     await repository.save(role);
     await pool.query(
       "INSERT INTO workspace_role_permissions (role_id, permission) VALUES ($1, 'legacy:thing')",
-      [role.id.value],
+      [role.id],
     );
 
     const found = await repository.findById(tenantId, workspaceId, role.id);
@@ -264,21 +264,15 @@ describe('DrizzleWorkspaceRoleQuery', () => {
     actor: UserId;
   }> => {
     const { tenantId, workspaceId } = await seedWorkspace();
-    const actor = UserId.create();
+    const actor = UserId.generate();
     await pool.query("INSERT INTO users (id, tenant_id, email, name) VALUES ($1, $2, $3, 'U')", [
-      actor.value,
-      tenantId.value,
-      `${actor.value}@a.co`,
+      actor,
+      tenantId,
+      `${actor}@a.co`,
     ]);
     await pool.query(
       'INSERT INTO workspace_members (id, tenant_id, workspace_id, user_id, role_id) VALUES ($1, $2, $3, $4, $5)',
-      [
-        WorkspaceRoleId.create().value,
-        tenantId.value,
-        workspaceId.value,
-        actor.value,
-        SystemRoleId.MEMBER.value,
-      ],
+      [WorkspaceRoleId.generate(), tenantId, workspaceId, actor, SystemRoleId.MEMBER],
     );
     return { tenantId, workspaceId, actor };
   };
@@ -311,7 +305,7 @@ describe('DrizzleWorkspaceRoleQuery', () => {
     const { tenantId, workspaceId, actor } = await seedMember();
     const other = await seedWorkspace();
 
-    expect(await query.listFor(tenantId, workspaceId, UserId.create())).toBeNull();
+    expect(await query.listFor(tenantId, workspaceId, UserId.generate())).toBeNull();
     expect(await query.listFor(other.tenantId, workspaceId, actor)).toBeNull();
   });
 });

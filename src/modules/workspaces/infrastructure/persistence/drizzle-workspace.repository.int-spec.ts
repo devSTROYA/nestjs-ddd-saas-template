@@ -18,8 +18,8 @@ const context = new DatabaseContext(drizzle(pool));
 const repository = new DrizzleWorkspaceRepository(context);
 
 const insertTenant = async (): Promise<TenantId> => {
-  const id = TenantId.create();
-  await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'T')", [id.value]);
+  const id = TenantId.generate();
+  await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'T')", [id]);
   return id;
 };
 
@@ -27,7 +27,7 @@ const newWorkspace = (tenantId: TenantId) =>
   Workspace.create({
     tenantId,
     name: WorkspaceName.create('Acme'),
-    ownerId: UserId.create(),
+    ownerId: UserId.generate(),
     createdAt: new Date(),
   });
 
@@ -57,9 +57,9 @@ describe('DrizzleWorkspaceRepository', () => {
     const workspace = newWorkspace(tenantId);
     await repository.save(workspace);
 
-    expect(await repository.findById(tenantId, WorkspaceId.create())).toBeNull();
-    expect(await repository.findById(TenantId.create(), workspace.id)).toBeNull();
-    expect(await repository.findByIdForUpdate(TenantId.create(), workspace.id)).toBeNull();
+    expect(await repository.findById(tenantId, WorkspaceId.generate())).toBeNull();
+    expect(await repository.findById(TenantId.generate(), workspace.id)).toBeNull();
+    expect(await repository.findByIdForUpdate(TenantId.generate(), workspace.id)).toBeNull();
   });
 
   it('persists a rename', async () => {
@@ -87,7 +87,7 @@ describe('DrizzleWorkspaceRepository', () => {
     const tenantId = await insertTenant();
     const workspace = newWorkspace(tenantId);
     await repository.save(workspace);
-    const hijack = Workspace.restore(
+    const hijack = Workspace.rehydrate(
       {
         tenantId: await insertTenant(),
         name: WorkspaceName.create('Hijack'),
@@ -140,8 +140,8 @@ describe('DrizzleWorkspaceRepository', () => {
     expect(rows).toEqual([
       {
         name: WorkspaceEventNames.CREATED,
-        aggregate_id: workspace.id.value,
-        tenant_id: tenantId.value,
+        aggregate_id: workspace.id,
+        tenant_id: tenantId,
       },
     ]);
   });

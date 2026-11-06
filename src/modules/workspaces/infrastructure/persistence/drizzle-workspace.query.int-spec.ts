@@ -23,16 +23,16 @@ const repository = new DrizzleWorkspaceRepository(context);
 const query = new DrizzleWorkspaceQuery(context);
 
 const insertTenant = async (): Promise<TenantId> => {
-  const id = TenantId.create();
-  await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'T')", [id.value]);
+  const id = TenantId.generate();
+  await pool.query("INSERT INTO tenants (id, name) VALUES ($1, 'T')", [id]);
   return id;
 };
 
 const insertUser = async (tenantId: TenantId, email: string, name: string): Promise<UserId> => {
-  const id = UserId.create();
+  const id = UserId.generate();
   await pool.query('INSERT INTO users (id, tenant_id, email, name) VALUES ($1, $2, $3, $4)', [
-    id.value,
-    tenantId.value,
+    id,
+    tenantId,
     email,
     name,
   ]);
@@ -65,7 +65,7 @@ const seedWorkspace = async (
   const insertMember = (userId: UserId, roleId: WorkspaceRoleId, createdAt: Date) =>
     pool.query(
       'INSERT INTO workspace_members (id, tenant_id, workspace_id, user_id, role_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)',
-      [newUuidV7(), tenantId.value, workspace.id.value, userId.value, roleId.value, createdAt],
+      [newUuidV7(), tenantId, workspace.id, userId, roleId, createdAt],
     );
   await insertMember(owner, SystemRoleId.OWNER, new Date(start));
   const added: UserId[] = [];
@@ -128,7 +128,7 @@ describe('DrizzleWorkspaceQuery', () => {
 
     const view = await query.findDetailFor(tenantId, workspaceId, owner);
 
-    const ids = view?.members.map((member) => member.userId.value) ?? [];
+    const ids = view?.members.map((member) => member.userId) ?? [];
     expect(ids).toEqual([...ids].sort().reverse());
   });
 
@@ -139,7 +139,7 @@ describe('DrizzleWorkspaceQuery', () => {
     const stranger = await insertUser(otherTenantId, 's@b.co', 'Sam');
 
     expect(await query.findDetailFor(tenantId, workspaceId, outsider)).toBeNull();
-    expect(await query.findDetailFor(tenantId, WorkspaceId.create(), owner)).toBeNull();
+    expect(await query.findDetailFor(tenantId, WorkspaceId.generate(), owner)).toBeNull();
     expect(await query.findDetailFor(otherTenantId, workspaceId, owner)).toBeNull();
     expect(await query.findDetailFor(otherTenantId, workspaceId, stranger)).toBeNull();
   });
