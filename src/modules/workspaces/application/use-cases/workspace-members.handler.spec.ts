@@ -19,9 +19,9 @@ import { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js
 import { type WorkspaceKit, createWorkspaceKit } from '../../testing/fakes.js';
 import { AddWorkspaceMemberCommand } from './add-workspace-member/add-workspace-member.command.js';
 import { ChangeWorkspaceMemberRoleCommand } from './change-workspace-member-role/change-workspace-member-role.command.js';
-import { GetWorkspaceQuery } from './get-workspace/get-workspace.query.js';
+import { GetWorkspaceQuery } from '../queries/get-workspace/get-workspace.query.js';
 import { LeaveWorkspaceCommand } from './leave-workspace/leave-workspace.command.js';
-import { ListWorkspaceMembersQuery } from './list-workspace-members/list-workspace-members.query.js';
+import { ListWorkspaceMembersQuery } from '../queries/list-workspace-members/list-workspace-members.query.js';
 import { RemoveWorkspaceMemberCommand } from './remove-workspace-member/remove-workspace-member.command.js';
 
 const addMember = (

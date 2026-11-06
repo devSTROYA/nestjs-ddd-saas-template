@@ -20,7 +20,7 @@ import { AddWorkspaceMemberCommand } from './add-workspace-member/add-workspace-
 import { ChangeWorkspaceMemberRoleCommand } from './change-workspace-member-role/change-workspace-member-role.command.js';
 import { CreateWorkspaceRoleCommand } from './create-workspace-role/create-workspace-role.command.js';
 import { DeleteWorkspaceRoleCommand } from './delete-workspace-role/delete-workspace-role.command.js';
-import { ListWorkspaceRolesQuery } from './list-workspace-roles/list-workspace-roles.query.js';
+import { ListWorkspaceRolesQuery } from '../queries/list-workspace-roles/list-workspace-roles.query.js';
 import { RemoveWorkspaceMemberCommand } from './remove-workspace-member/remove-workspace-member.command.js';
 import { UpdateWorkspaceRoleCommand } from './update-workspace-role/update-workspace-role.command.js';
 

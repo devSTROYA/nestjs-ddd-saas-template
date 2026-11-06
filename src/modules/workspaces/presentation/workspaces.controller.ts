@@ -29,19 +29,19 @@ import {
   type CreateWorkspaceRoleResult,
 } from '../application/use-cases/create-workspace-role/create-workspace-role.command.js';
 import { DeleteWorkspaceRoleCommand } from '../application/use-cases/delete-workspace-role/delete-workspace-role.command.js';
-import { ListWorkspaceRolesQuery } from '../application/use-cases/list-workspace-roles/list-workspace-roles.query.js';
+import { ListWorkspaceRolesQuery } from '../application/queries/list-workspace-roles/list-workspace-roles.query.js';
 import { UpdateWorkspaceRoleCommand } from '../application/use-cases/update-workspace-role/update-workspace-role.command.js';
 import {
   AddWorkspaceMemberCommand,
   type AddWorkspaceMemberResult,
 } from '../application/use-cases/add-workspace-member/add-workspace-member.command.js';
 import { ChangeWorkspaceMemberRoleCommand } from '../application/use-cases/change-workspace-member-role/change-workspace-member-role.command.js';
-import { GetWorkspaceQuery } from '../application/use-cases/get-workspace/get-workspace.query.js';
+import { GetWorkspaceQuery } from '../application/queries/get-workspace/get-workspace.query.js';
 import { LeaveWorkspaceCommand } from '../application/use-cases/leave-workspace/leave-workspace.command.js';
 import {
   ListWorkspaceMembersQuery,
   type ListWorkspaceMembersResult,
-} from '../application/use-cases/list-workspace-members/list-workspace-members.query.js';
+} from '../application/queries/list-workspace-members/list-workspace-members.query.js';
 import { RemoveWorkspaceMemberCommand } from '../application/use-cases/remove-workspace-member/remove-workspace-member.command.js';
 import {
   type AddWorkspaceMemberBody,

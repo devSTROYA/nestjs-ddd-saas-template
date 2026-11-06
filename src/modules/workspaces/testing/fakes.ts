@@ -31,10 +31,10 @@ import { AddWorkspaceMemberHandler } from '../application/use-cases/add-workspac
 import { ChangeWorkspaceMemberRoleHandler } from '../application/use-cases/change-workspace-member-role/change-workspace-member-role.handler.js';
 import { CreateWorkspaceRoleHandler } from '../application/use-cases/create-workspace-role/create-workspace-role.handler.js';
 import { DeleteWorkspaceRoleHandler } from '../application/use-cases/delete-workspace-role/delete-workspace-role.handler.js';
-import { GetWorkspaceHandler } from '../application/use-cases/get-workspace/get-workspace.handler.js';
+import { GetWorkspaceHandler } from '../application/queries/get-workspace/get-workspace.handler.js';
 import { LeaveWorkspaceHandler } from '../application/use-cases/leave-workspace/leave-workspace.handler.js';
-import { ListWorkspaceMembersHandler } from '../application/use-cases/list-workspace-members/list-workspace-members.handler.js';
-import { ListWorkspaceRolesHandler } from '../application/use-cases/list-workspace-roles/list-workspace-roles.handler.js';
+import { ListWorkspaceMembersHandler } from '../application/queries/list-workspace-members/list-workspace-members.handler.js';
+import { ListWorkspaceRolesHandler } from '../application/queries/list-workspace-roles/list-workspace-roles.handler.js';
 import { RemoveWorkspaceMemberHandler } from '../application/use-cases/remove-workspace-member/remove-workspace-member.handler.js';
 import { UpdateWorkspaceRoleHandler } from '../application/use-cases/update-workspace-role/update-workspace-role.handler.js';
 import { WorkspaceAccess } from '../application/workspace-access.js';
