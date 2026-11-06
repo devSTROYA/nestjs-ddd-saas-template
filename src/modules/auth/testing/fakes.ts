@@ -15,12 +15,12 @@ import type { RefreshTokenRepository } from '../domain/ports/refresh-token.repos
 import type { AccessToken, TokenService } from '../application/ports/token.service.js';
 import { LoginCodes } from '../application/login-codes.service.js';
 import { SessionService } from '../application/session.service.js';
-import { RequestUserLoginHandler } from '../application/use-cases/request-user-login/request-user-login.handler.js';
-import { VerifyUserLoginHandler } from '../application/use-cases/verify-user-login/verify-user-login.handler.js';
-import { LogoutHandler } from '../application/use-cases/logout/logout.handler.js';
-import { RefreshTokensHandler } from '../application/use-cases/refresh-tokens/refresh-tokens.handler.js';
-import { RequestAdminLoginHandler } from '../application/use-cases/request-admin-login/request-admin-login.handler.js';
-import { VerifyAdminLoginHandler } from '../application/use-cases/verify-admin-login/verify-admin-login.handler.js';
+import { RequestUserLoginHandler } from '../application/commands/request-user-login/request-user-login.handler.js';
+import { VerifyUserLoginHandler } from '../application/commands/verify-user-login/verify-user-login.handler.js';
+import { LogoutHandler } from '../application/commands/logout/logout.handler.js';
+import { RefreshTokensHandler } from '../application/commands/refresh-tokens/refresh-tokens.handler.js';
+import { RequestAdminLoginHandler } from '../application/commands/request-admin-login/request-admin-login.handler.js';
+import { VerifyAdminLoginHandler } from '../application/commands/verify-admin-login/verify-admin-login.handler.js';
 import type { LoginChallenge } from '../domain/entities/login-challenge.js';
 import { RefreshToken } from '../domain/entities/refresh-token.js';
 import type { TokenFamilyId } from '../domain/value-objects/ids.js';

@@ -5,12 +5,12 @@ import { Throttle } from '@common/rate-limit';
 import { ZodValidationPipe } from '@common/validation';
 
 import type { Session } from '../application/session.service.js';
-import { LogoutCommand } from '../application/use-cases/logout/logout.command.js';
-import { RefreshTokensCommand } from '../application/use-cases/refresh-tokens/refresh-tokens.command.js';
-import { RequestAdminLoginCommand } from '../application/use-cases/request-admin-login/request-admin-login.command.js';
-import { RequestUserLoginCommand } from '../application/use-cases/request-user-login/request-user-login.command.js';
-import { VerifyAdminLoginCommand } from '../application/use-cases/verify-admin-login/verify-admin-login.command.js';
-import { VerifyUserLoginCommand } from '../application/use-cases/verify-user-login/verify-user-login.command.js';
+import { LogoutCommand } from '../application/commands/logout/logout.command.js';
+import { RefreshTokensCommand } from '../application/commands/refresh-tokens/refresh-tokens.command.js';
+import { RequestAdminLoginCommand } from '../application/commands/request-admin-login/request-admin-login.command.js';
+import { RequestUserLoginCommand } from '../application/commands/request-user-login/request-user-login.command.js';
+import { VerifyAdminLoginCommand } from '../application/commands/verify-admin-login/verify-admin-login.command.js';
+import { VerifyUserLoginCommand } from '../application/commands/verify-user-login/verify-user-login.command.js';
 import { Public } from './auth.decorators.js';
 import { LOGIN_CODE_PER_IP, LOGIN_VERIFY_PER_IP, REFRESH_PER_IP } from './auth.rate-limits.js';
 import {
