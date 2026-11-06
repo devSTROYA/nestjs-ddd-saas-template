@@ -6,7 +6,7 @@ import { inject } from 'vitest';
 import { Email } from '@common/primitives';
 import { TenantId } from '@modules/tenants';
 
-import { USER_REPOSITORY, type UserRepository } from './application/ports/user.repository.js';
+import { USER_REPOSITORY, type UserRepository } from './domain/ports/user.repository.js';
 import { User } from './domain/entities/user.js';
 import { UserName } from './domain/value-objects/user-name.js';
 import { UsersModule } from './users.module.js';

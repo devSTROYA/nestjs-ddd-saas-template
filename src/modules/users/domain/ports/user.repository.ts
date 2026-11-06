@@ -1,8 +1,8 @@
-import type { User } from '../../domain/entities/user.js';
+import type { User } from '../entities/user.js';
 import type { Email } from '@common/primitives';
 import type { Nullable } from '@common/types';
 import type { TenantId } from '@modules/tenants';
-import type { UserId } from '../../domain/value-objects/user-id.js';
+import type { UserId } from '../value-objects/user-id.js';
 
 export interface UserRepository {
   findById(tenantId: TenantId, id: UserId): Promise<Nullable<User>>;

@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 
 import { type DatabaseContext, isUniqueViolation } from '@common/database';
 
-import type { UserRepository } from '../../application/ports/user.repository.js';
+import type { UserRepository } from '../../domain/ports/user.repository.js';
 import { User } from '../../domain/entities/user.js';
 import { EmailAlreadyTakenError, UserIdConflictError } from '../../domain/errors/domain.error.js';
 import { saveAggregate } from '@common/outbox';
