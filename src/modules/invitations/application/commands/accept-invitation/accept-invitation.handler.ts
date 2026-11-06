@@ -63,17 +63,13 @@ export class AcceptInvitationHandler implements ICommandHandler<
     userName: UserName,
   ): Promise<Nullable<AcceptInvitationResult>> {
     const invitation = await this.invitations.findByIdForUpdate(
-      InvitationId.restore(command.invitationId),
+      InvitationId.parse(command.invitationId),
     );
     if (!invitation) {
       throw new InvitationNotFoundError(command.invitationId);
     }
 
-    const otpMatches = this.otpService.matches(
-      invitation.id.value,
-      command.otp,
-      invitation.otpHash,
-    );
+    const otpMatches = this.otpService.matches(invitation.id, command.otp, invitation.otpHash);
     const now = this.clock.now();
     if (!invitation.accept(otpMatches, now)) {
       await this.invitations.save(invitation);

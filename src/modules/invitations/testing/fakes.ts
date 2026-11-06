@@ -24,7 +24,7 @@ export class FakeInvitations implements InvitationRepository {
   saves = 0;
 
   findById(id: InvitationId): Promise<Nullable<Invitation>> {
-    return Promise.resolve(this.saved.get(id.value) ?? null);
+    return Promise.resolve(this.saved.get(id) ?? null);
   }
 
   findByIdForUpdate(id: InvitationId): Promise<Nullable<Invitation>> {
@@ -40,7 +40,7 @@ export class FakeInvitations implements InvitationRepository {
   }
 
   save(invitation: Invitation): Promise<void> {
-    this.saved.set(invitation.id.value, invitation);
+    this.saved.set(invitation.id, invitation);
     this.saves += 1;
     return Promise.resolve();
   }
@@ -50,11 +50,11 @@ export class FakeTenants implements TenantRepository {
   readonly saved = new Map<string, Tenant>();
 
   findById(id: TenantId): Promise<Nullable<Tenant>> {
-    return Promise.resolve(this.saved.get(id.value) ?? null);
+    return Promise.resolve(this.saved.get(id) ?? null);
   }
 
   save(tenant: Tenant): Promise<void> {
-    this.saved.set(tenant.id.value, tenant);
+    this.saved.set(tenant.id, tenant);
     return Promise.resolve();
   }
 }
@@ -76,9 +76,7 @@ export class FakeUsers implements UserRepository {
   }
 
   delete(tenantId: TenantId, id: UserId): Promise<void> {
-    const index = this.saved.findIndex(
-      (user) => user.id.equals(id) && user.tenantId.equals(tenantId),
-    );
+    const index = this.saved.findIndex((user) => user.id === id && user.tenantId === tenantId);
     if (index >= 0) {
       this.saved.splice(index, 1);
     }
@@ -90,8 +88,8 @@ export class FakeWorkspaces implements WorkspaceRepository {
   readonly saved = new Map<string, Workspace>();
 
   findById(tenantId: TenantId, id: WorkspaceId): Promise<Nullable<Workspace>> {
-    const found = this.saved.get(id.value);
-    return Promise.resolve(found?.tenantId.equals(tenantId) ? found : null);
+    const found = this.saved.get(id);
+    return Promise.resolve(found?.tenantId === tenantId ? found : null);
   }
 
   findByIdForUpdate(tenantId: TenantId, id: WorkspaceId): Promise<Nullable<Workspace>> {
@@ -99,7 +97,7 @@ export class FakeWorkspaces implements WorkspaceRepository {
   }
 
   save(workspace: Workspace): Promise<void> {
-    this.saved.set(workspace.id.value, workspace);
+    this.saved.set(workspace.id, workspace);
     return Promise.resolve();
   }
 }
@@ -120,12 +118,12 @@ export class FakeWorkspaceMembers implements WorkspaceMemberRepository {
   }
 
   save(member: WorkspaceMember): Promise<void> {
-    this.saved.set(member.id.value, member);
+    this.saved.set(member.id, member);
     return Promise.resolve();
   }
 
   delete(member: WorkspaceMember): Promise<void> {
-    this.saved.delete(member.id.value);
+    this.saved.delete(member.id);
     return Promise.resolve();
   }
 }

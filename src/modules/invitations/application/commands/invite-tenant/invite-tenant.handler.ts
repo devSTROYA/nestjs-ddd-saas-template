@@ -42,7 +42,7 @@ export class InviteTenantHandler implements ICommandHandler<InviteTenantCommand,
     const pending = await this.invitations.findPendingByEmail(email);
     const invitation = pending ?? this.newInvitation(command, email, expiresAt, now, otp);
     if (pending) {
-      pending.regenerate(this.otpService.hash(pending.id.value, otp), expiresAt, now);
+      pending.regenerate(this.otpService.hash(pending.id, otp), expiresAt, now);
     }
 
     await this.invitations.save(invitation);
@@ -62,12 +62,12 @@ export class InviteTenantHandler implements ICommandHandler<InviteTenantCommand,
     now: Date,
     otp: string,
   ): Invitation {
-    const id = InvitationId.create();
+    const id = InvitationId.generate();
     return Invitation.create(
       {
         email,
-        invitedBy: AdminId.restore(command.adminId),
-        otpHash: this.otpService.hash(id.value, otp),
+        invitedBy: AdminId.parse(command.adminId),
+        otpHash: this.otpService.hash(id, otp),
         expiresAt,
         createdAt: now,
       },

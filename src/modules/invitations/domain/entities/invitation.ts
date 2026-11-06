@@ -39,7 +39,7 @@ type CreateProps = {
 
 export class Invitation extends AggregateRoot<Props, InvitationId> {
   // INFO: the OTP hash is bound to the invitation id, so the caller creates the id first.
-  static create(props: CreateProps, id: InvitationId = InvitationId.create()): Invitation {
+  static create(props: CreateProps, id: InvitationId = InvitationId.generate()): Invitation {
     const invitation = new Invitation(
       {
         email: props.email,
@@ -54,17 +54,17 @@ export class Invitation extends AggregateRoot<Props, InvitationId> {
     );
     invitation.addEvent(
       new InvitationCreatedEvent({
-        aggregateId: id.value,
+        aggregateId: id,
         occurredAt: props.createdAt.toISOString(),
         email: props.email.value,
-        invitedBy: props.invitedBy.value,
+        invitedBy: props.invitedBy,
         expiresAt: props.expiresAt.toISOString(),
       }),
     );
     return invitation;
   }
 
-  static restore(props: Props, id: InvitationId): Invitation {
+  static rehydrate(props: Props, id: InvitationId): Invitation {
     return new Invitation(props, id);
   }
 
@@ -109,7 +109,7 @@ export class Invitation extends AggregateRoot<Props, InvitationId> {
       this.props.attempts += 1;
       this.addEvent(
         new InvitationOtpFailedEvent({
-          aggregateId: this.id.value,
+          aggregateId: this.id,
           occurredAt: now.toISOString(),
           attempts: this.props.attempts,
         }),
@@ -119,7 +119,7 @@ export class Invitation extends AggregateRoot<Props, InvitationId> {
     this.props.status = InvitationStatus.ACCEPTED;
     this.addEvent(
       new InvitationAcceptedEvent({
-        aggregateId: this.id.value,
+        aggregateId: this.id,
         occurredAt: now.toISOString(),
         email: this.props.email.value,
       }),
@@ -132,7 +132,7 @@ export class Invitation extends AggregateRoot<Props, InvitationId> {
     this.props.status = InvitationStatus.REVOKED;
     this.addEvent(
       new InvitationRevokedEvent({
-        aggregateId: this.id.value,
+        aggregateId: this.id,
         occurredAt: now.toISOString(),
         email: this.props.email.value,
       }),
@@ -146,7 +146,7 @@ export class Invitation extends AggregateRoot<Props, InvitationId> {
     this.props.attempts = 0;
     this.addEvent(
       new InvitationOtpRegeneratedEvent({
-        aggregateId: this.id.value,
+        aggregateId: this.id,
         occurredAt: now.toISOString(),
         expiresAt: expiresAt.toISOString(),
       }),

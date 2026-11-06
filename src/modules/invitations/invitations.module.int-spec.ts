@@ -19,7 +19,7 @@ import type { InvitationId } from './domain/value-objects/invitation-id.js';
 import { InvitationsModule } from './invitations.module.js';
 import { FakeMailer } from './testing/fakes.js';
 
-const ADMIN_ID = AdminId.create();
+const ADMIN_ID = AdminId.generate();
 
 describe('InvitationsModule', () => {
   const pool = new Pool({ connectionString: inject('databaseUrl') });
@@ -33,11 +33,11 @@ describe('InvitationsModule', () => {
   };
 
   const invite = (email = 'owner@acme.co'): Promise<InvitationId> =>
-    bus.execute<InviteTenantCommand, InvitationId>(new InviteTenantCommand(ADMIN_ID.value, email));
+    bus.execute<InviteTenantCommand, InvitationId>(new InviteTenantCommand(ADMIN_ID, email));
 
   const accept = (id: InvitationId, otp: string): Promise<AcceptInvitationResult> =>
     bus.execute<AcceptInvitationCommand, AcceptInvitationResult>(
-      new AcceptInvitationCommand(id.value, otp, 'Acme', 'Uz'),
+      new AcceptInvitationCommand(id, otp, 'Acme', 'Uz'),
     );
 
   beforeAll(async () => {
@@ -63,7 +63,7 @@ describe('InvitationsModule', () => {
     mailer.sent.length = 0;
     await pool.query('TRUNCATE TABLE invitations, users, tenants, admins CASCADE');
     await restoreSystemRoles(pool);
-    await pool.query("INSERT INTO admins (id, email) VALUES ($1, 'root@b.co')", [ADMIN_ID.value]);
+    await pool.query("INSERT INTO admins (id, email) VALUES ($1, 'root@b.co')", [ADMIN_ID]);
   });
 
   afterAll(async () => {
@@ -78,14 +78,12 @@ describe('InvitationsModule', () => {
 
     const result = await accept(id, otp);
 
-    const tenant = await pool.query('SELECT name FROM tenants WHERE id = $1', [
-      result.tenantId.value,
-    ]);
+    const tenant = await pool.query('SELECT name FROM tenants WHERE id = $1', [result.tenantId]);
     const user = await pool.query('SELECT email, tenant_id FROM users WHERE id = $1', [
-      result.userId.value,
+      result.userId,
     ]);
     expect(tenant.rows).toEqual([{ name: 'Acme' }]);
-    expect(user.rows).toEqual([{ email: 'owner@acme.co', tenant_id: result.tenantId.value }]);
+    expect(user.rows).toEqual([{ email: 'owner@acme.co', tenant_id: result.tenantId }]);
   });
 
   it('keeps the failed attempt, creates nothing, and still accepts the right otp afterwards', async () => {
@@ -95,7 +93,7 @@ describe('InvitationsModule', () => {
     await expect(accept(id, otp === '000000' ? '111111' : '000000')).rejects.toThrow(
       InvalidOtpError,
     );
-    const { rows } = await pool.query('SELECT attempts FROM invitations WHERE id = $1', [id.value]);
+    const { rows } = await pool.query('SELECT attempts FROM invitations WHERE id = $1', [id]);
     expect(rows).toEqual([{ attempts: 1 }]);
     expect(await count('tenants')).toBe(0);
 

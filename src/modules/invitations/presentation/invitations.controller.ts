@@ -41,7 +41,7 @@ export class InvitationsController {
     const invitationId = await this.commandBus.execute<InviteTenantCommand, InvitationId>(
       new InviteTenantCommand(principal.id, body.email),
     );
-    return { invitationId: invitationId.value };
+    return { invitationId: invitationId };
   }
 
   @Public()

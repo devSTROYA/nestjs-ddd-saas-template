@@ -13,7 +13,7 @@ describe('EmailMailer', () => {
         return Promise.resolve();
       },
     };
-    const invitationId = InvitationId.create();
+    const invitationId = InvitationId.generate();
     const expiresAt = new Date('2026-01-08T00:00:00Z');
 
     await new EmailMailer(transport).sendInvitationOtp({
@@ -26,7 +26,7 @@ describe('EmailMailer', () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]?.to).toBe('owner@acme.co');
     for (const body of [sent[0]?.text, sent[0]?.html]) {
-      expect(body).toContain(invitationId.value);
+      expect(body).toContain(invitationId);
       expect(body).toContain('123456');
       expect(body).toContain(expiresAt.toUTCString());
     }

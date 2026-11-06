@@ -35,13 +35,13 @@ const setup = async (expiresAt = IN_A_DAY) => {
   const users = new FakeUsers();
   const workspaces = new FakeWorkspaces();
   const workspaceMembers = new FakeWorkspaceMembers();
-  const id = InvitationId.create();
+  const id = InvitationId.generate();
   await invitations.save(
     Invitation.create(
       {
         email: Email.create('owner@acme.co'),
-        invitedBy: AdminId.create(),
-        otpHash: fakeOtpService.hash(id.value, OTP),
+        invitedBy: AdminId.generate(),
+        otpHash: fakeOtpService.hash(id, OTP),
         expiresAt,
         createdAt: NOW,
       },
@@ -63,7 +63,7 @@ const setup = async (expiresAt = IN_A_DAY) => {
 };
 
 const accept = (id: InvitationId, otp = OTP, tenantName = ' Acme ', userName = ' Uz ') =>
-  new AcceptInvitationCommand(id.value, otp, tenantName, userName);
+  new AcceptInvitationCommand(id, otp, tenantName, userName);
 
 describe('AcceptInvitationHandler', () => {
   it('creates the tenant, its owner and a workspace owned by them, and marks the invitation accepted', async () => {
@@ -72,7 +72,7 @@ describe('AcceptInvitationHandler', () => {
 
     const result = await handler.execute(accept(id));
 
-    const workspace = workspaces.saved.get(result.workspaceId.value);
+    const workspace = workspaces.saved.get(result.workspaceId);
     expect(workspace?.tenantId).toEqual(result.tenantId);
     expect(workspace?.name.value).toBe('Acme');
     const [owner, ...others] = workspaceMembers.saved.values();
@@ -82,13 +82,13 @@ describe('AcceptInvitationHandler', () => {
     expect(owner?.userId).toEqual(result.userId);
     expect(owner?.isOwner).toBe(true);
 
-    expect(tenants.saved.get(result.tenantId.value)?.name.value).toBe('Acme');
+    expect(tenants.saved.get(result.tenantId)?.name.value).toBe('Acme');
     expect(users.saved).toHaveLength(1);
     expect(users.saved[0]?.id).toEqual(result.userId);
     expect(users.saved[0]?.tenantId).toEqual(result.tenantId);
     expect(users.saved[0]?.email.value).toBe('owner@acme.co');
     expect(users.saved[0]?.name.value).toBe('Uz');
-    expect(invitations.saved.get(id.value)?.status).toBe(InvitationStatus.ACCEPTED);
+    expect(invitations.saved.get(id)?.status).toBe(InvitationStatus.ACCEPTED);
   });
 
   it('persists the failed attempt and creates nothing on a wrong otp', async () => {
@@ -97,8 +97,8 @@ describe('AcceptInvitationHandler', () => {
     await expect(handler.execute(accept(id, '000000'))).rejects.toThrow(InvalidOtpError);
 
     expect(invitations.saves).toBe(1);
-    expect(invitations.saved.get(id.value)?.attempts).toBe(1);
-    expect(invitations.saved.get(id.value)?.status).toBe(InvitationStatus.PENDING);
+    expect(invitations.saved.get(id)?.attempts).toBe(1);
+    expect(invitations.saved.get(id)?.status).toBe(InvitationStatus.PENDING);
     expect(tenants.saved.size).toBe(0);
     expect(users.saved).toHaveLength(0);
   });
@@ -106,7 +106,7 @@ describe('AcceptInvitationHandler', () => {
   it('rejects an unknown invitation', async () => {
     const { handler } = await setup();
 
-    await expect(handler.execute(accept(InvitationId.create()))).rejects.toThrow(
+    await expect(handler.execute(accept(InvitationId.generate()))).rejects.toThrow(
       InvitationNotFoundError,
     );
   });
@@ -133,6 +133,6 @@ describe('AcceptInvitationHandler', () => {
     await expect(handler.execute(accept(id, OTP, '  '))).rejects.toThrow(EmptyTenantNameError);
     await expect(handler.execute(accept(id, OTP, 'Acme', '  '))).rejects.toThrow(EmptyNameError);
     expect(invitations.saves).toBe(0);
-    expect(invitations.saved.get(id.value)?.attempts).toBe(0);
+    expect(invitations.saved.get(id)?.attempts).toBe(0);
   });
 });

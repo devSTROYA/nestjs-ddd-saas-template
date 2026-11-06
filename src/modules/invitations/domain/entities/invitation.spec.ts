@@ -18,7 +18,7 @@ const AFTER_EXPIRY = new Date(IN_10_MIN.getTime() + 1);
 const newInvitation = (): Invitation =>
   Invitation.create({
     email: Email.create('a@b.co'),
-    invitedBy: AdminId.create(),
+    invitedBy: AdminId.generate(),
     otpHash: 'hash',
     expiresAt: IN_10_MIN,
     createdAt: NOW,
@@ -75,7 +75,7 @@ describe('Invitation', () => {
     expect(invitation.pullEvents()).toMatchObject([
       {
         name: InvitationEventNames.CREATED,
-        aggregateId: invitation.id.value,
+        aggregateId: invitation.id,
         tenantId: null,
         email: 'a@b.co',
         expiresAt: IN_10_MIN.toISOString(),
@@ -109,24 +109,24 @@ describe('Invitation', () => {
     ]);
   });
 
-  it('raises no event when rejected or on restore', () => {
+  it('raises no event when rejected or on rehydrate', () => {
     const accepted = newInvitation();
     accepted.accept(true, NOW);
     accepted.pullEvents();
     expect(() => accepted.revoke(NOW)).toThrow(InvitationNotPendingError);
     expect(accepted.pullEvents()).toEqual([]);
 
-    const restored = Invitation.restore(
+    const restored = Invitation.rehydrate(
       {
         email: Email.create('a@b.co'),
-        invitedBy: AdminId.create(),
+        invitedBy: AdminId.generate(),
         otpHash: 'hash',
         expiresAt: IN_10_MIN,
         attempts: 0,
         status: InvitationStatus.PENDING,
         createdAt: NOW,
       },
-      InvitationId.create(),
+      InvitationId.generate(),
     );
     expect(restored.pullEvents()).toEqual([]);
   });

@@ -24,17 +24,17 @@ function toInvitation(row: InvitationRow): Invitation {
   if (!isInvitationStatus(row.status)) {
     throw new InvalidInvitationStatusError(row.status);
   }
-  return Invitation.restore(
+  return Invitation.rehydrate(
     {
-      email: Email.restore(row.email),
-      invitedBy: AdminId.restore(row.invitedBy),
+      email: Email.rehydrate(row.email),
+      invitedBy: AdminId.rehydrate(row.invitedBy),
       otpHash: row.otpHash,
       expiresAt: row.expiresAt,
       attempts: row.attempts,
       status: row.status,
       createdAt: row.createdAt,
     },
-    InvitationId.restore(row.id),
+    InvitationId.rehydrate(row.id),
   );
 }
 
@@ -45,7 +45,7 @@ export class DrizzleInvitationRepository implements InvitationRepository {
     const [row] = await this.context.client
       .select()
       .from(invitations)
-      .where(eq(invitations.id, id.value));
+      .where(eq(invitations.id, id));
     return row ? toInvitation(row) : null;
   }
 
@@ -53,7 +53,7 @@ export class DrizzleInvitationRepository implements InvitationRepository {
     const [row] = await this.context.client
       .select()
       .from(invitations)
-      .where(eq(invitations.id, id.value))
+      .where(eq(invitations.id, id))
       .for('update');
     return row ? toInvitation(row) : null;
   }
@@ -84,9 +84,9 @@ export class DrizzleInvitationRepository implements InvitationRepository {
       const written = await this.context.client
         .insert(invitations)
         .values({
-          id: invitation.id.value,
+          id: invitation.id,
           email: invitation.email.value,
-          invitedBy: invitation.invitedBy.value,
+          invitedBy: invitation.invitedBy,
           createdAt: invitation.createdAt,
           ...mutable,
         })

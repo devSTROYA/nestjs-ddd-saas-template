@@ -17,7 +17,7 @@ import { InvitationId } from '../../domain/value-objects/invitation-id.js';
 import { InvitationStatus } from '../../domain/value-objects/invitation-status.js';
 import { DrizzleInvitationRepository } from './drizzle-invitation.repository.js';
 
-const ADMIN_ID = AdminId.create();
+const ADMIN_ID = AdminId.generate();
 const NOW = new Date('2026-01-01T00:00:00Z');
 const IN_15_MIN = new Date(NOW.getTime() + 15 * 60_000);
 
@@ -36,7 +36,7 @@ const newInvitation = (email = 'a@b.co') =>
 
 beforeEach(async () => {
   await pool.query('TRUNCATE TABLE outbox, invitations, admins CASCADE');
-  await pool.query("INSERT INTO admins (id, email) VALUES ($1, 'root@b.co')", [ADMIN_ID.value]);
+  await pool.query("INSERT INTO admins (id, email) VALUES ($1, 'root@b.co')", [ADMIN_ID]);
 });
 
 afterAll(async () => {
@@ -68,7 +68,7 @@ describe('DrizzleInvitationRepository', () => {
       'SELECT name, aggregate_id, tenant_id FROM outbox',
     );
     expect(rows).toEqual([
-      { name: InvitationEventNames.CREATED, aggregate_id: invitation.id.value, tenant_id: null },
+      { name: InvitationEventNames.CREATED, aggregate_id: invitation.id, tenant_id: null },
     ]);
   });
 
@@ -88,7 +88,7 @@ describe('DrizzleInvitationRepository', () => {
   });
 
   it('returns null when nothing matches', async () => {
-    expect(await repository.findById(InvitationId.create())).toBeNull();
+    expect(await repository.findById(InvitationId.generate())).toBeNull();
     expect(await repository.findPendingByEmail(Email.create('x@y.co'))).toBeNull();
   });
 
@@ -153,7 +153,7 @@ describe('DrizzleInvitationRepository', () => {
   it('requires the inviting admin to exist', async () => {
     const orphan = Invitation.create({
       email: Email.create('a@b.co'),
-      invitedBy: AdminId.create(),
+      invitedBy: AdminId.generate(),
       otpHash: 'hash',
       expiresAt: IN_15_MIN,
       createdAt: NOW,
@@ -163,11 +163,11 @@ describe('DrizzleInvitationRepository', () => {
   });
 
   it('fails loudly when the stored status is unknown', async () => {
-    const id = InvitationId.create();
+    const id = InvitationId.generate();
     await pool.query(
       `INSERT INTO invitations (id, email, invited_by, otp_hash, expires_at, status)
        VALUES ($1, 'z@b.co', $2, 'hash', $3, 'weird')`,
-      [id.value, ADMIN_ID.value, IN_15_MIN],
+      [id, ADMIN_ID, IN_15_MIN],
     );
 
     await expect(repository.findById(id)).rejects.toThrow(InvalidInvitationStatusError);
