@@ -12,9 +12,9 @@ import { AdminId } from '../../domain/value-objects/admin-id.js';
 import { type AdminRow, admins } from './admin.schema.js';
 
 function toAdmin(row: AdminRow): Admin {
-  return Admin.restore(
-    { email: Email.restore(row.email), createdAt: row.createdAt },
-    AdminId.restore(row.id),
+  return Admin.rehydrate(
+    { email: Email.rehydrate(row.email), createdAt: row.createdAt },
+    AdminId.rehydrate(row.id),
   );
 }
 
@@ -22,7 +22,7 @@ export class DrizzleAdminRepository implements AdminRepository {
   constructor(private readonly context: DatabaseContext) {}
 
   async findById(id: AdminId): Promise<Nullable<Admin>> {
-    const [row] = await this.context.client.select().from(admins).where(eq(admins.id, id.value));
+    const [row] = await this.context.client.select().from(admins).where(eq(admins.id, id));
     return row ? toAdmin(row) : null;
   }
 
@@ -39,7 +39,7 @@ export class DrizzleAdminRepository implements AdminRepository {
       try {
         await this.context.client
           .insert(admins)
-          .values({ id: admin.id.value, email: admin.email.value, createdAt: admin.createdAt })
+          .values({ id: admin.id, email: admin.email.value, createdAt: admin.createdAt })
           .onConflictDoUpdate({
             target: admins.id,
             set: { email: admin.email.value, updatedAt: new Date() },

@@ -16,11 +16,11 @@ type CreateProps = {
 
 export class Admin extends AggregateRoot<Props, AdminId> {
   // INFO: the seeded admin has a fixed id.
-  static create(props: CreateProps, id: AdminId = AdminId.create()): Admin {
+  static create(props: CreateProps, id: AdminId = AdminId.generate()): Admin {
     const admin = new Admin({ email: props.email, createdAt: props.createdAt }, id);
     admin.addEvent(
       new AdminCreatedEvent({
-        aggregateId: id.value,
+        aggregateId: id,
         tenantId: null,
         occurredAt: props.createdAt.toISOString(),
         email: props.email.value,
@@ -29,7 +29,7 @@ export class Admin extends AggregateRoot<Props, AdminId> {
     return admin;
   }
 
-  static restore(props: Props, id: AdminId): Admin {
+  static rehydrate(props: Props, id: AdminId): Admin {
     return new Admin(props, id);
   }
 
@@ -45,7 +45,7 @@ export class Admin extends AggregateRoot<Props, AdminId> {
     this.props.email = email;
     this.addEvent(
       new AdminEmailChangedEvent({
-        aggregateId: this.id.value,
+        aggregateId: this.id,
         tenantId: null,
         occurredAt: now.toISOString(),
         email: email.value,

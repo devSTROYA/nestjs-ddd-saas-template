@@ -4,7 +4,7 @@ import { Admin } from '../domain/entities/admin.js';
 import { AdminId } from '../domain/value-objects/admin-id.js';
 import type { AdminRepository } from '../domain/ports/admin.repository.js';
 
-export const SEED_ADMIN_ID = AdminId.restore('00000000-0000-7000-8000-000000000001');
+export const SEED_ADMIN_ID = AdminId.parse('00000000-0000-7000-8000-000000000001');
 
 type SeedAdminResult = 'created' | 'updated' | 'unchanged';
 

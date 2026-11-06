@@ -56,7 +56,7 @@ describe('DrizzleAdminRepository', () => {
     const admin = newAdmin();
     await repository.save(admin);
 
-    expect(await outboxNames(admin.id.value)).toEqual([AdminEventNames.CREATED]);
+    expect(await outboxNames(admin.id)).toEqual([AdminEventNames.CREATED]);
   });
 
   it('leaves neither the admin nor its events when the surrounding transaction fails', async () => {
@@ -70,11 +70,11 @@ describe('DrizzleAdminRepository', () => {
     ).rejects.toThrow('boom');
 
     expect(await repository.findById(admin.id)).toBeNull();
-    expect(await outboxNames(admin.id.value)).toEqual([]);
+    expect(await outboxNames(admin.id)).toEqual([]);
   });
 
   it('returns null when nothing matches', async () => {
-    expect(await repository.findById(AdminId.create())).toBeNull();
+    expect(await repository.findById(AdminId.generate())).toBeNull();
     expect(await repository.findByEmail(Email.create('x@y.co'))).toBeNull();
   });
 
@@ -102,7 +102,7 @@ describe('DrizzleAdminRepository', () => {
     const { rows } = await pool.query<{ id: string; email: string }>(
       'SELECT id, email FROM admins',
     );
-    expect(rows).toEqual([{ id: SEED_ADMIN_ID.value, email: 'admin@mycompany.com' }]);
+    expect(rows).toEqual([{ id: SEED_ADMIN_ID, email: 'admin@mycompany.com' }]);
   });
 
   it('refuses to seed an email that belongs to another admin', async () => {

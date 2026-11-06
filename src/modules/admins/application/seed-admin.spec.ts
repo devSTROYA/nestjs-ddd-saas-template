@@ -12,7 +12,7 @@ class FakeAdmins implements AdminRepository {
   saves = 0;
 
   findById(id: AdminId): Promise<Nullable<Admin>> {
-    return Promise.resolve(this.byId.get(id.value) ?? null);
+    return Promise.resolve(this.byId.get(id) ?? null);
   }
 
   findByEmail(email: Email): Promise<Nullable<Admin>> {
@@ -22,12 +22,12 @@ class FakeAdmins implements AdminRepository {
 
   save(admin: Admin): Promise<void> {
     const taken = [...this.byId.values()].some(
-      (other) => !other.id.equals(admin.id) && other.email.equals(admin.email),
+      (other) => other.id !== admin.id && other.email.equals(admin.email),
     );
     if (taken) {
       return Promise.reject(new AdminEmailAlreadyTakenError(admin.email.value));
     }
-    this.byId.set(admin.id.value, admin);
+    this.byId.set(admin.id, admin);
     this.saves += 1;
     return Promise.resolve();
   }
@@ -40,8 +40,8 @@ describe('seedAdmin', () => {
     const admins = new FakeAdmins();
 
     expect(await seedAdmin(admins, ' Root@B.co ', NOW)).toBe('created');
-    expect(admins.byId.get(SEED_ADMIN_ID.value)?.email.value).toBe('root@b.co');
-    expect(admins.byId.get(SEED_ADMIN_ID.value)?.createdAt).toEqual(NOW);
+    expect(admins.byId.get(SEED_ADMIN_ID)?.email.value).toBe('root@b.co');
+    expect(admins.byId.get(SEED_ADMIN_ID)?.createdAt).toEqual(NOW);
   });
 
   it('does nothing when the email is unchanged', async () => {
@@ -58,7 +58,7 @@ describe('seedAdmin', () => {
 
     expect(await seedAdmin(admins, 'admin@mycompany.com', NOW)).toBe('updated');
     expect(admins.byId.size).toBe(1);
-    expect(admins.byId.get(SEED_ADMIN_ID.value)?.email.value).toBe('admin@mycompany.com');
+    expect(admins.byId.get(SEED_ADMIN_ID)?.email.value).toBe('admin@mycompany.com');
   });
 
   it('fails when the new email already belongs to another admin', async () => {

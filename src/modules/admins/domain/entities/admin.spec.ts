@@ -12,9 +12,9 @@ const newAdmin = (): Admin =>
 
 describe('Admin', () => {
   it('creates with the given id, email and createdAt', () => {
-    const id = AdminId.create();
+    const id = AdminId.generate();
     const admin = Admin.create({ email: Email.create('root@b.co'), createdAt: CREATED_AT }, id);
-    expect(admin.id.equals(id)).toBe(true);
+    expect(admin.id).toBe(id);
     expect(admin.email.value).toBe('root@b.co');
     expect(admin.createdAt).toEqual(CREATED_AT);
   });
@@ -34,14 +34,14 @@ describe('Admin', () => {
     expect(events).toMatchObject([
       {
         name: AdminEventNames.CREATED,
-        aggregateId: admin.id.value,
+        aggregateId: admin.id,
         tenantId: null,
         email: 'root@b.co',
         occurredAt: CREATED_AT.toISOString(),
       },
       {
         name: AdminEventNames.EMAIL_CHANGED,
-        aggregateId: admin.id.value,
+        aggregateId: admin.id,
         tenantId: null,
         email: 'new@b.co',
         occurredAt: NOW.toISOString(),
@@ -50,17 +50,20 @@ describe('Admin', () => {
     expect(admin.pullEvents()).toEqual([]);
   });
 
-  it('raises no event on restore', () => {
-    const admin = Admin.restore(
-      { email: Email.restore('root@b.co'), createdAt: new Date() },
-      AdminId.create(),
+  it('raises no event on rehydrate', () => {
+    const admin = Admin.rehydrate(
+      { email: Email.rehydrate('root@b.co'), createdAt: new Date() },
+      AdminId.generate(),
     );
     expect(admin.pullEvents()).toEqual([]);
   });
 
-  it('restores without re-validation', () => {
+  it('rehydrates without re-validation', () => {
     const createdAt = new Date('2026-01-01T00:00:00Z');
-    const admin = Admin.restore({ email: Email.restore('root@b.co'), createdAt }, AdminId.create());
+    const admin = Admin.rehydrate(
+      { email: Email.rehydrate('root@b.co'), createdAt },
+      AdminId.generate(),
+    );
     expect(admin.createdAt).toBe(createdAt);
   });
 });
