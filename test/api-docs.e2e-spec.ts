@@ -1,7 +1,7 @@
 import { RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { DiscoveryModule, DiscoveryService } from '@nestjs/core';
-import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { NodeAdapter, type NestNodeApplication } from '@nestjs/platform-node';
 import { Test } from '@nestjs/testing';
 import { ThrottlerStorage, ThrottlerStorageService } from '@nestjs/throttler';
 import request from 'supertest';
@@ -18,21 +18,20 @@ const normalizePath = (path: string): string =>
     .replace(/(.)\/$/, '$1')
     .replace(/:([A-Za-z0-9_]+)/g, '{$1}');
 
-const createApp = async (docs: boolean): Promise<NestFastifyApplication> => {
+const createApp = async (docs: boolean): Promise<NestNodeApplication> => {
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule, DiscoveryModule],
   })
     .overrideProvider(ThrottlerStorage)
     .useValue(new ThrottlerStorageService())
     .compile();
-  const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+  const app = moduleRef.createNestApplication<NestNodeApplication>(new NodeAdapter());
   await configureApp(app, { docs });
   await app.init();
-  await app.getHttpAdapter().getInstance().ready();
   return app;
 };
 
-const discoverRoutes = (app: NestFastifyApplication): string[] => {
+const discoverRoutes = (app: NestNodeApplication): string[] => {
   const routes: string[] = [];
   for (const wrapper of app.get(DiscoveryService, { strict: false }).getControllers()) {
     const controller = wrapper.metatype;
@@ -59,7 +58,7 @@ const discoverRoutes = (app: NestFastifyApplication): string[] => {
 
 describe('API documentation', () => {
   describe('when enabled', () => {
-    let app: NestFastifyApplication;
+    let app: NestNodeApplication;
 
     beforeAll(async () => {
       app = await createApp(true);

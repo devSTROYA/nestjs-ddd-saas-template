@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { NestNodeApplication } from '@nestjs/platform-node';
 import { apiReference } from '@scalar/nestjs-api-reference';
 
 import {
@@ -43,6 +43,7 @@ function injectClearStoredColorMode(response: ServerResponse): void {
 function createHandler(accent: AccentColor, mode: ColorMode): DocsHandler {
   return apiReference({
     ...(mode === ColorMode.system ? { hideDarkModeToggle: true } : {}),
+    // INFO: writes through raw node:http (writeHead/write/end), which injectClearStoredColorMode relies on.
     withFastify: true,
     theme: DOCS_THEME,
     content: apiDocument,
@@ -55,7 +56,7 @@ function createHandler(accent: AccentColor, mode: ColorMode): DocsHandler {
 }
 
 export function mountApiDocs(
-  app: NestFastifyApplication,
+  app: NestNodeApplication,
   defaultAccent: AccentColor = DEFAULT_ACCENT,
   defaultMode: ColorMode = DEFAULT_COLOR_MODE,
 ): void {

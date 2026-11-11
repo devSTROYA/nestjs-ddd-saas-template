@@ -1,16 +1,15 @@
 import { Writable } from 'node:stream';
-import { generateRequestId } from '@common/http';
 import { loggerParams } from '@common/logging';
 import { Logger, PARAMS_PROVIDER_TOKEN } from 'nestjs-pino';
 import { Test, TestingModule } from '@nestjs/testing';
-import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { NodeAdapter, type NestNodeApplication } from '@nestjs/platform-node';
 import { ThrottlerStorage, ThrottlerStorageService } from '@nestjs/throttler';
 import request from 'supertest';
 import { AppModule } from './../src/app.module.js';
 import { configureApp } from './../src/configure-app.js';
 
 describe('AppController (e2e)', () => {
-  let app: NestFastifyApplication;
+  let app: NestNodeApplication;
   let logLines: Record<string, unknown>[];
 
   beforeEach(async () => {
@@ -37,14 +36,12 @@ describe('AppController (e2e)', () => {
       )
       .compile();
 
-    app = moduleFixture.createNestApplication<NestFastifyApplication>(
-      new FastifyAdapter({ genReqId: generateRequestId }),
-      { bufferLogs: true },
-    );
+    app = moduleFixture.createNestApplication<NestNodeApplication>(new NodeAdapter(), {
+      bufferLogs: true,
+    });
     app.useLogger(app.get(Logger));
     await configureApp(app);
     await app.init();
-    await app.getHttpAdapter().getInstance().ready();
   });
 
   it('/ (GET)', () => {

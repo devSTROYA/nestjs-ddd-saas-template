@@ -1,4 +1,4 @@
-import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { NodeAdapter, type NestNodeApplication } from '@nestjs/platform-node';
 import { CommandBus } from '@nestjs/cqrs';
 import { Test } from '@nestjs/testing';
 import { Pool } from 'pg';
@@ -20,7 +20,7 @@ const VALID_BODY = { tenantName: 'Acme', userName: 'Uz' };
 describe('InvitationsController', () => {
   const pool = new Pool({ connectionString: inject('databaseUrl') });
   const mailer = new FakeMailer();
-  let app: NestFastifyApplication;
+  let app: NestNodeApplication;
   let invitationId: InvitationId;
   let otp: string;
 
@@ -38,10 +38,9 @@ describe('InvitationsController', () => {
       .overrideProvider(MAILER)
       .useValue(mailer)
       .compile();
-    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+    app = moduleRef.createNestApplication<NestNodeApplication>(new NodeAdapter());
     await configureApp(app, { docs: false });
     await app.init();
-    await app.getHttpAdapter().getInstance().ready();
   });
 
   beforeEach(async () => {

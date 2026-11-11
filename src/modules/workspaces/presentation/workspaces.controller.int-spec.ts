@@ -1,4 +1,4 @@
-import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { NodeAdapter, type NestNodeApplication } from '@nestjs/platform-node';
 import { Test } from '@nestjs/testing';
 import { Pool } from 'pg';
 import request from 'supertest';
@@ -41,7 +41,7 @@ type MembersPageBody = {
 describe('WorkspacesController', () => {
   const pool = new Pool({ connectionString: inject('databaseUrl') });
   const mails: MailMessage[] = [];
-  let app: NestFastifyApplication;
+  let app: NestNodeApplication;
 
   const lastCode = (): string => /code(?: is|:) (\d{6})/.exec(mails.at(-1)?.text ?? '')?.[1] ?? '';
 
@@ -118,10 +118,9 @@ describe('WorkspacesController', () => {
         },
       })
       .compile();
-    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+    app = moduleRef.createNestApplication<NestNodeApplication>(new NodeAdapter());
     await configureApp(app, { docs: false });
     await app.init();
-    await app.getHttpAdapter().getInstance().ready();
   });
 
   beforeEach(async () => {

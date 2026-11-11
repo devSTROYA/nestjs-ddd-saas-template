@@ -100,7 +100,7 @@ describe('ErrorFilter', () => {
     });
   });
 
-  it('keeps the status of a Fastify error and falls back to REQUEST_INVALID for unlisted 4xx', () => {
+  it('keeps the status of an HTTP error with statusCode and falls back to REQUEST_INVALID for unlisted 4xx', () => {
     expect(run(Object.assign(new Error('boom'), { statusCode: 415 })).body).toEqual({
       error: { code: 'UNSUPPORTED_MEDIA_TYPE' },
       requestId: REQUEST_ID,

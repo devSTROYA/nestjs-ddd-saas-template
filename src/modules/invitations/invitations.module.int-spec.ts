@@ -1,5 +1,6 @@
 import { ConfigModule } from '@nestjs/config';
 import { CommandBus, CqrsModule } from '@nestjs/cqrs';
+import { NodeAdapter } from '@nestjs/platform-node';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import { Pool } from 'pg';
@@ -54,7 +55,7 @@ describe('InvitationsModule', () => {
       .overrideProvider(MAILER)
       .useValue(mailer)
       .compile();
-    app = moduleRef.createNestApplication();
+    app = moduleRef.createNestApplication(new NodeAdapter());
     await app.init();
     bus = app.get(CommandBus);
   });

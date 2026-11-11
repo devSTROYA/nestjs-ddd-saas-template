@@ -1,14 +1,14 @@
 import { Controller, Get } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
-import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { NodeAdapter, type NestNodeApplication } from '@nestjs/platform-node';
 import { Test } from '@nestjs/testing';
 import { Throttle } from '@nestjs/throttler';
 import { Pool } from 'pg';
 import request from 'supertest';
 import { inject } from 'vitest';
 
-import { trustProxy } from '../http/index.js';
+import { assignRequestId, trustProxy } from '../http/index.js';
 import { ERROR_STATUS_REGISTRY, ErrorFilter } from '../errors/index.js';
 import { rateLimitErrorStatus } from './rate-limit.error.js';
 import { RateLimitGuard } from './rate-limit.guard.js';
@@ -25,7 +25,7 @@ class LimitedController {
   }
 }
 
-const buildApp = async (proxyHops: number): Promise<NestFastifyApplication> => {
+const buildApp = async (proxyHops: number): Promise<NestNodeApplication> => {
   vi.stubEnv('DATABASE_URL', inject('databaseUrl'));
   const moduleRef = await Test.createTestingModule({
     imports: [ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }), RateLimitModule],
@@ -36,17 +36,17 @@ const buildApp = async (proxyHops: number): Promise<NestFastifyApplication> => {
       { provide: APP_GUARD, useClass: RateLimitGuard },
     ],
   }).compile();
-  const app = moduleRef.createNestApplication<NestFastifyApplication>(
-    new FastifyAdapter({ trustProxy: trustProxy(proxyHops) }),
+  const app = moduleRef.createNestApplication<NestNodeApplication>(
+    new NodeAdapter({ trustProxy: trustProxy(proxyHops) }),
   );
+  app.use(assignRequestId);
   await app.init();
-  await app.getHttpAdapter().getInstance().ready();
   return app;
 };
 
 describe('rate limiting over HTTP', () => {
   const pool = new Pool({ connectionString: inject('databaseUrl') });
-  const apps: NestFastifyApplication[] = [];
+  const apps: NestNodeApplication[] = [];
 
   const open = async (proxyHops: number) => {
     const app = await buildApp(proxyHops);
@@ -54,7 +54,7 @@ describe('rate limiting over HTTP', () => {
     return app;
   };
 
-  const getAs = (app: NestFastifyApplication, forwardedFor: string) =>
+  const getAs = (app: NestNodeApplication, forwardedFor: string) =>
     request(app.getHttpServer()).get('/limited').set('x-forwarded-for', forwardedFor);
 
   beforeEach(async () => {

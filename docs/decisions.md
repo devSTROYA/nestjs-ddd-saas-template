@@ -20,11 +20,14 @@ changes, update this file in the same change.
 - **Drizzle ORM + PostgreSQL (`pg` driver).** SQL stays explicit, schema is plain TypeScript, and
   mapping rows to aggregates is natural. Prisma and TypeORM were rejected because they shape query
   results or entities in ways that fight a domain model.
-- **HTTP platform: Fastify, used natively** (`@nestjs/platform-fastify`, no Express compatibility
-  layer). Types come from `fastify` (`FastifyReply` in the error filter, `NestFastifyApplication`).
-  The server listens on `0.0.0.0` (Fastify defaults to localhost only, which breaks containers). In
-  tests, boot with `FastifyAdapter` and `await app.getHttpAdapter().getInstance().ready()` before
-  using `supertest`.
+- **HTTP platform: `node:http` directly** (`@nestjs/platform-node`, no Express or Fastify
+  underneath; the fastest Nest adapter). Types come from `@nestjs/platform-node` (`NodeRequest`,
+  `NodeResponse` in the error filter, `NestNodeApplication`). The server listens on `0.0.0.0` so
+  containers can reach it. Middleware is Express-style `(req, res, next)`. In tests, boot with
+  `new NodeAdapter()`, `configureApp` and `app.init()` before using `supertest`.
+- **Database module: `@nestjs/drizzle`.** `DrizzleModule.forRootAsync` creates the `pg` pool from
+  `databaseConfig`, logs pool errors and closes the pool on shutdown. The app keeps its own
+  `DATABASE` token as an alias of the drizzle token, so repositories do not depend on the package.
 - **Config: `@nestjs/config` + zod, one `registerAs` namespace per owner.** Each module owns the env
   vars it uses in a `<name>.config.ts` next to it (`database`, `outbox`, `otp`, `mail`, `auth`,
   `admins`; the app-level `app`, `logging`, `docs` live in `src/common/config`). The file holds a
@@ -233,11 +236,11 @@ changes, update this file in the same change.
 - **Validation errors:** `422` with `{ "error": { "code": "INPUT_INVALID", "fields": [{ "path",
   "code" }] } }`. `code` is the zod issue code, never prose, so clients can translate per field.
   `DomainError` carries optional `details`, which the filter spreads into the `error` object.
-- **Request id and one error envelope:** the server generates the request id (UUID v7 via Fastify
-  `genReqId`; an incoming `x-request-id` is never trusted). It is sent as the `x-request-id`
+- **Request id and one error envelope:** the server generates the request id (UUID v7 via the
+  `assignRequestId` middleware; an incoming `x-request-id` is never trusted). It is sent as the `x-request-id`
   response header on every response and as a top-level `requestId` beside `error` in every error
   body: `{ "error": { "code", ...details }, "requestId" }`. One catch-all `ErrorFilter` handles
-  `DomainError` (status from the registry), HTTP/Fastify 4xx errors (status kept, code from a
+  `DomainError` (status from the registry), HTTP 4xx errors (status kept, code from a
   status map, message never echoed; unknown 404 is `NOT_FOUND`) and everything else (500
   `INTERNAL_ERROR`, logged with its stack; the request id is added to the log line as `reqId`).
 - **Logging:** pino through `nestjs-pino`, JSON lines on stdout (Cloud Run / Cloud Logging
@@ -245,8 +248,8 @@ changes, update this file in the same change.
   `message`. `LOG_LEVEL` (pino levels, default `info`, `silent` in tests) sets the threshold.
   `req.headers.authorization`, `req.headers.cookie` and the `set-cookie` headers are redacted;
   bodies are never logged. One access-log line per request (5xx `error`, 4xx `warn`, else `info`),
-  health probes excluded. There is one request id: `generateRequestId` creates it once in
-  Fastify's `genReqId` and stores it on the raw request, where pino-http reuses it, so the header,
+  health probes excluded. There is one request id: `assignRequestId` creates it once in
+  the first middleware and stores it as `request.id`, where pino-http reuses it, so the header,
   the error body `requestId` and every log line's `reqId` (including Nest `Logger` calls during
   the request) are identical. `main.ts` uses it for the app; the outbox worker, seed and migrate
   scripts stay on Nest's default logger. Only `NODE_ENV=development` switches to human-readable
@@ -430,7 +433,7 @@ changes, update this file in the same change.
 
 - **`GET /v1/health/live`** (process is up) and **`GET /v1/health/ready`** (database answers a
   `select 1`, else `503 HEALTH_NOT_READY`). Public, not rate limited, documented in the OpenAPI.
-- **`@fastify/helmet`** sets the standard security headers. Its CSP is turned off only while the
+- **`helmet`** sets the standard security headers. Its CSP is turned off only while the
   Scalar docs are enabled (non-production), because the docs page needs inline scripts.
 - **`DATABASE_POOL_MAX`** (default 5) caps connections per instance. With autoscaling the total is
   `instances x pool`, which must stay well below the database's `max_connections`.

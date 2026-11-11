@@ -7,7 +7,7 @@ import {
   Inject,
   Logger,
 } from '@nestjs/common';
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { NodeRequest, NodeResponse } from '@nestjs/platform-node';
 
 import { DomainError } from './domain-error.js';
 import {
@@ -52,8 +52,8 @@ export class ErrorFilter implements ExceptionFilter {
 
   catch(error: unknown, host: ArgumentsHost): void {
     const http = host.switchToHttp();
-    const reply = http.getResponse<FastifyReply>();
-    const requestId = http.getRequest<FastifyRequest>().id;
+    const reply = http.getResponse<NodeResponse>();
+    const requestId = http.getRequest<NodeRequest>().id;
 
     if (error instanceof DomainError) {
       this.replyDomainError(error, reply, requestId);
@@ -61,7 +61,7 @@ export class ErrorFilter implements ExceptionFilter {
     }
     const status = clientErrorStatus(error);
     if (status !== undefined) {
-      void reply.status(status).send({
+      reply.status(status).send({
         error: { code: CLIENT_ERROR_CODES[status] ?? REQUEST_INVALID_CODE },
         requestId,
       });
@@ -70,7 +70,7 @@ export class ErrorFilter implements ExceptionFilter {
     this.replyInternal(error instanceof Error ? error.stack : undefined, reply, requestId);
   }
 
-  private replyDomainError(error: DomainError, reply: FastifyReply, requestId: string): void {
+  private replyDomainError(error: DomainError, reply: NodeResponse, requestId: string): void {
     const status = this.registry[error.code];
     if (status === undefined) {
       this.replyInternal(error.stack, reply, requestId, `Unmapped error code ${error.code}`);
@@ -78,19 +78,19 @@ export class ErrorFilter implements ExceptionFilter {
     }
     const retryAfter = error.details?.[RETRY_AFTER_DETAIL];
     if (typeof retryAfter === 'number') {
-      void reply.header('retry-after', retryAfter);
+      reply.header('retry-after', retryAfter);
     }
-    void reply.status(status).send({ error: { code: error.code, ...error.details }, requestId });
+    reply.status(status).send({ error: { code: error.code, ...error.details }, requestId });
   }
 
   private replyInternal(
     stack: string | undefined,
-    reply: FastifyReply,
+    reply: NodeResponse,
     requestId: string,
     message = 'Unhandled error',
   ): void {
     this.logger.error(message, stack);
-    void reply
+    reply
       .status(HttpStatus.INTERNAL_SERVER_ERROR)
       .send({ error: { code: INTERNAL_ERROR_CODE }, requestId });
   }

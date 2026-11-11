@@ -1,5 +1,5 @@
 import { type ExecutionContext, SetMetadata, createParamDecorator } from '@nestjs/common';
-import type { FastifyRequest } from 'fastify';
+import type { NodeRequest } from '@nestjs/platform-node';
 
 import { UnauthenticatedError } from '../domain/errors/domain.error.js';
 import type { Principal, PrincipalType } from '../domain/value-objects/principal.js';
@@ -13,7 +13,7 @@ export const RequirePrincipal = (type: PrincipalType) => SetMetadata(REQUIRED_PR
 
 export const CurrentPrincipal = createParamDecorator(
   (_data: unknown, context: ExecutionContext): Principal => {
-    const principal = context.switchToHttp().getRequest<FastifyRequest>().principal;
+    const principal = context.switchToHttp().getRequest<NodeRequest>().principal;
     if (!principal) {
       throw new UnauthenticatedError();
     }

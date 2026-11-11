@@ -1,6 +1,6 @@
 import { type CanActivate, type ExecutionContext, Inject, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { FastifyRequest } from 'fastify';
+import type { NodeRequest } from '@nestjs/platform-node';
 
 import { CLOCK, type Clock } from '@common/clock';
 import type { Nullable } from '@common/types';
@@ -10,8 +10,8 @@ import { ForbiddenError, UnauthenticatedError } from '../domain/errors/domain.er
 import type { Principal, PrincipalType } from '../domain/value-objects/principal.js';
 import { IS_PUBLIC_KEY, REQUIRED_PRINCIPAL_KEY } from './auth.decorators.js';
 
-declare module 'fastify' {
-  interface FastifyRequest {
+declare module '@nestjs/platform-node' {
+  interface NodeRequest {
     principal?: Principal;
   }
 }
@@ -37,7 +37,7 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest<FastifyRequest>();
+    const request = context.switchToHttp().getRequest<NodeRequest>();
     const token = bearerToken(request.headers.authorization);
     const principal = token ? await this.tokens.verifyAccessToken(token, this.clock.now()) : null;
     if (!principal) {

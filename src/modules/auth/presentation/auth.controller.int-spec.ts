@@ -1,4 +1,4 @@
-import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { NodeAdapter, type NestNodeApplication } from '@nestjs/platform-node';
 import { Test } from '@nestjs/testing';
 import { Pool } from 'pg';
 import request from 'supertest';
@@ -26,7 +26,7 @@ type TokenBody = {
 describe('AuthController', () => {
   const pool = new Pool({ connectionString: inject('databaseUrl') });
   const mailer = new FakeLoginMailer();
-  let app: NestFastifyApplication;
+  let app: NestNodeApplication;
 
   const post = (path: string, body: object, bearer?: string) => {
     const call = request(app.getHttpServer()).post(path).send(body);
@@ -49,10 +49,9 @@ describe('AuthController', () => {
       .overrideProvider(LOGIN_MAILER)
       .useValue(mailer)
       .compile();
-    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+    app = moduleRef.createNestApplication<NestNodeApplication>(new NodeAdapter());
     await configureApp(app, { docs: false });
     await app.init();
-    await app.getHttpAdapter().getInstance().ready();
   });
 
   beforeEach(async () => {
