@@ -676,9 +676,6 @@ Starting points, to be tuned with Cloud Run metrics (CPU, memory, latency, insta
   a welcome email when someone is added to a workspace, purging expired `login_challenges`,
   `refresh_tokens` and `rate_limits` rows, structured logging, CORS (needs the frontend origin),
   and a frontend link in the invitation email (it carries the invitation id and the code only).
-- `WorkspaceRole.key` and `WorkspaceRole.name` are plain strings validated by the helper functions
-  `assertUsableKey` and `normalizedName` in `workspace-role.ts`. By the value object rule they should be
-  `WorkspaceRoleKey` and `WorkspaceRoleName`.
 - Anyone can burn a user's 5 login code requests per hour (the per-email limit is not per IP), and
   each request replaces the code already sent to them. Fix with an email+IP key and a cooldown.
 - A guesser using many IPs can still exhaust the per-email ceiling of 30 wrong codes a day, which
