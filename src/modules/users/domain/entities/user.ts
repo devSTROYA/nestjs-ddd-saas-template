@@ -63,7 +63,11 @@ export class User extends AggregateRoot<Props, UserId> {
     return this.props.createdAt;
   }
 
-  rename(name: UserName, now: Date): void {
+  // INFO: Returns false, raising nothing, when the user already has this name.
+  rename(name: UserName, now: Date): boolean {
+    if (this.props.name.equals(name)) {
+      return false;
+    }
     this.props.name = name;
     this.addEvent(
       new UserRenamedEvent({
@@ -73,5 +77,6 @@ export class User extends AggregateRoot<Props, UserId> {
         userName: name.value,
       }),
     );
+    return true;
   }
 }

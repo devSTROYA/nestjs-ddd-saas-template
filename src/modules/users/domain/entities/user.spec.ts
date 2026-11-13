@@ -74,6 +74,26 @@ describe('User', () => {
     expect(user.pullEvents()).toEqual([]);
   });
 
+  it('is dirty after create, clean after rehydrate, and ignores a rename to the same name', () => {
+    expect(newUser().isDirty).toBe(true);
+    const user = User.rehydrate(
+      {
+        tenantId: TENANT_ID,
+        email: Email.rehydrate('a@b.c'),
+        name: UserName.rehydrate('Uz'),
+        createdAt: CREATED_AT,
+      },
+      UserId.generate(),
+    );
+
+    expect(user.isDirty).toBe(false);
+    expect(user.rename(UserName.create('Uz'), NOW)).toBe(false);
+    expect(user.isDirty).toBe(false);
+    expect(user.pullEvents()).toEqual([]);
+    expect(user.rename(UserName.create('Xy'), NOW)).toBe(true);
+    expect(user.isDirty).toBe(true);
+  });
+
   it('rehydrates without re-validation', () => {
     const createdAt = new Date('2026-01-01T00:00:00Z');
     const user = User.rehydrate(

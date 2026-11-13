@@ -128,9 +128,34 @@ describe('DrizzleUserRepository', () => {
       },
       original.id,
     );
+    // A rehydrated aggregate is clean and never written, so give it a real change.
+    intruder.rename(UserName.create('Evil 2'), new Date());
 
     await expect(repository.save(intruder)).rejects.toThrow(UserIdConflictError);
     expect((await repository.findById(TENANT_A, original.id))?.name.value).toBe('Uz');
+  });
+
+  it('does not touch the database for a user that did not change, and writes once it does', async () => {
+    const original = newUser();
+    await repository.save(original);
+    const loaded = await repository.findById(TENANT_A, original.id);
+    if (!loaded) {
+      throw new Error('user not found');
+    }
+    const run = vi.spyOn(context, 'run');
+
+    await repository.save(loaded);
+    loaded.rename(UserName.create('Uz'), new Date());
+    await repository.save(loaded);
+
+    expect(run).not.toHaveBeenCalled();
+
+    loaded.rename(UserName.create('Renamed'), new Date());
+    await repository.save(loaded);
+
+    expect(run).toHaveBeenCalledTimes(1);
+    expect((await repository.findById(TENANT_A, original.id))?.name.value).toBe('Renamed');
+    run.mockRestore();
   });
 
   it('deletes a user of the tenant, frees the email, and ignores another tenant or an unknown id', async () => {
