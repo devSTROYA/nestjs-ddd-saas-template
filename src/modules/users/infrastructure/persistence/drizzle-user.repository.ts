@@ -6,24 +6,12 @@ import type { UserRepository } from '../../domain/ports/user.repository.js';
 import { User } from '../../domain/entities/user.js';
 import { EmailAlreadyTakenError, UserIdConflictError } from '../../domain/errors/domain.error.js';
 import { saveAggregate } from '@common/outbox';
-import { Email } from '@common/primitives';
+import type { Email } from '@common/primitives';
 import type { Nullable } from '@common/types';
-import { TenantId } from '@modules/tenants';
-import { UserId } from '../../domain/value-objects/user-id.js';
-import { UserName } from '../../domain/value-objects/user-name.js';
-import { type UserRow, users } from './user.schema.js';
-
-function toUser(row: UserRow): User {
-  return User.rehydrate(
-    {
-      tenantId: TenantId.rehydrate(row.tenantId),
-      email: Email.rehydrate(row.email),
-      name: UserName.rehydrate(row.name),
-      createdAt: row.createdAt,
-    },
-    UserId.rehydrate(row.id),
-  );
-}
+import type { TenantId } from '@modules/tenants';
+import type { UserId } from '../../domain/value-objects/user-id.js';
+import { toDomain, toMutableColumns, toPersistence } from './user.mapper.js';
+import { users } from './user.schema.js';
 
 export class DrizzleUserRepository implements UserRepository {
   constructor(private readonly context: DatabaseContext) {}
@@ -33,7 +21,7 @@ export class DrizzleUserRepository implements UserRepository {
       .select()
       .from(users)
       .where(and(eq(users.tenantId, tenantId), eq(users.id, id)));
-    return row ? toUser(row) : null;
+    return row ? toDomain(row) : null;
   }
 
   async findByEmail(email: Email): Promise<Nullable<User>> {
@@ -41,7 +29,7 @@ export class DrizzleUserRepository implements UserRepository {
       .select()
       .from(users)
       .where(eq(users.email, email.value));
-    return row ? toUser(row) : null;
+    return row ? toDomain(row) : null;
   }
 
   async delete(tenantId: TenantId, id: UserId): Promise<void> {
@@ -52,20 +40,13 @@ export class DrizzleUserRepository implements UserRepository {
 
   async save(user: User): Promise<void> {
     return saveAggregate(this.context, user, async () => {
-      const name = user.name.value;
       try {
         const written = await this.context.client
           .insert(users)
-          .values({
-            id: user.id,
-            tenantId: user.tenantId,
-            email: user.email.value,
-            name,
-            createdAt: user.createdAt,
-          })
+          .values(toPersistence(user))
           .onConflictDoUpdate({
             target: users.id,
-            set: { name, updatedAt: new Date() },
+            set: { ...toMutableColumns(user), updatedAt: new Date() },
             setWhere: eq(users.tenantId, user.tenantId),
           })
           .returning({ id: users.id });
