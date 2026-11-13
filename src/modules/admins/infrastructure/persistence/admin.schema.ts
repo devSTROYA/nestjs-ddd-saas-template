@@ -15,3 +15,4 @@ export const admins = pgTable(
 );
 
 export type AdminRow = typeof admins.$inferSelect;
+export type AdminNewRow = typeof admins.$inferInsert;

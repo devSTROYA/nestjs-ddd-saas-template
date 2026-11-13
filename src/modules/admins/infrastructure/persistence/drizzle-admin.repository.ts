@@ -9,21 +9,15 @@ import type { AdminRepository } from '../../domain/ports/admin.repository.js';
 import { Admin } from '../../domain/entities/admin.js';
 import { AdminEmailAlreadyTakenError } from '../../domain/errors/domain.error.js';
 import { AdminId } from '../../domain/value-objects/admin-id.js';
-import { type AdminRow, admins } from './admin.schema.js';
-
-function toAdmin(row: AdminRow): Admin {
-  return Admin.rehydrate(
-    { email: Email.rehydrate(row.email), createdAt: row.createdAt },
-    AdminId.rehydrate(row.id),
-  );
-}
+import { toDomain, toMutableColumns, toPersistence } from './admin.mapper.js';
+import { admins } from './admin.schema.js';
 
 export class DrizzleAdminRepository implements AdminRepository {
   constructor(private readonly context: DatabaseContext) {}
 
   async findById(id: AdminId): Promise<Nullable<Admin>> {
     const [row] = await this.context.client.select().from(admins).where(eq(admins.id, id));
-    return row ? toAdmin(row) : null;
+    return row ? toDomain(row) : null;
   }
 
   async findByEmail(email: Email): Promise<Nullable<Admin>> {
@@ -31,7 +25,7 @@ export class DrizzleAdminRepository implements AdminRepository {
       .select()
       .from(admins)
       .where(eq(admins.email, email.value));
-    return row ? toAdmin(row) : null;
+    return row ? toDomain(row) : null;
   }
 
   async save(admin: Admin): Promise<void> {
@@ -39,10 +33,10 @@ export class DrizzleAdminRepository implements AdminRepository {
       try {
         await this.context.client
           .insert(admins)
-          .values({ id: admin.id, email: admin.email.value, createdAt: admin.createdAt })
+          .values(toPersistence(admin))
           .onConflictDoUpdate({
             target: admins.id,
-            set: { email: admin.email.value, updatedAt: new Date() },
+            set: { ...toMutableColumns(admin), updatedAt: new Date() },
           });
       } catch (error) {
         if (isUniqueViolation(error)) {
