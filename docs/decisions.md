@@ -73,10 +73,13 @@ changes, update this file in the same change.
 - **Shared code in `src/common`** (config, database, errors, primitives), imported through the
   aliases `@common/*` and `@modules/*` (see `tsconfig.json`). Each folder has an `index.ts` barrel.
 - **Cross-module imports go through the other module's barrel** (`@modules/tenants`), never through
-  deep paths. Exceptions: Drizzle schema files import each other by relative path, because
-  `drizzle-kit` does not resolve `tsconfig` aliases (used for foreign keys); and a `*.module.ts`
-  imports another module's Nest module by relative path (`../users/users.module.js`), because the
-  barrels export no Nest modules (that would pull each module's controllers into every importer).
+  deep paths, and `src/common` never imports a module. `npm run lint` enforces this
+  (`scripts/check-boundaries.mjs`; `tsc` alone rejects only deep alias paths). Exceptions, all by
+  relative path: a file under `infrastructure/persistence` may import another module's `*.schema.ts`
+  (foreign keys and read-side joins; `drizzle-kit` does not resolve `tsconfig` aliases); a `*.module.ts`
+  may import another module's `*.module.ts` (`../users/users.module.js`), because the barrels export
+  no Nest modules (that would pull each module's controllers into every importer); and an
+  `*.int-spec.ts` or `*.e2e-spec.ts` may import anything, because it wires real adapters.
 - **Composition root:** `src/app.module.ts` wires modules, and `src/error-status.ts` merges every
   module's error-status map.
 - **`common/primitives`** holds small shared value objects (`Email`, UUID v7 helpers) and their
