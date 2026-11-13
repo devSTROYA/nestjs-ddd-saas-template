@@ -3,34 +3,20 @@ import { and, count, eq } from 'drizzle-orm';
 import { type DatabaseContext, isUniqueViolation } from '@common/database';
 import { saveAggregate } from '@common/outbox';
 import type { Nullable } from '@common/types';
-import { TenantId } from '@modules/tenants';
-import { UserId } from '@modules/users';
+import type { TenantId } from '@modules/tenants';
+import type { UserId } from '@modules/users';
 
 import type { WorkspaceMemberRepository } from '../../domain/ports/workspace-member.repository.js';
-import { WorkspaceMember } from '../../domain/entities/workspace-member.js';
+import type { WorkspaceMember } from '../../domain/entities/workspace-member.js';
 import {
   WorkspaceMemberAlreadyExistsError,
   WorkspaceMemberIdConflictError,
 } from '../../domain/errors/domain.error.js';
 import { SystemRoleId } from '../../domain/value-objects/system-workspace-role.js';
-import { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
-import { WorkspaceMemberId } from '../../domain/value-objects/workspace-member-id.js';
-import { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
-import { type WorkspaceMemberRow, workspaceMembers } from './workspace-member.schema.js';
-
-function toWorkspaceMember(row: WorkspaceMemberRow): WorkspaceMember {
-  return WorkspaceMember.rehydrate(
-    {
-      tenantId: TenantId.rehydrate(row.tenantId),
-      workspaceId: WorkspaceId.rehydrate(row.workspaceId),
-      userId: UserId.rehydrate(row.userId),
-      roleId: WorkspaceRoleId.rehydrate(row.roleId),
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-    },
-    WorkspaceMemberId.rehydrate(row.id),
-  );
-}
+import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
+import type { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
+import { toDomain, toMutableColumns, toPersistence } from './workspace-member.mapper.js';
+import { workspaceMembers } from './workspace-member.schema.js';
 
 export class DrizzleWorkspaceMemberRepository implements WorkspaceMemberRepository {
   constructor(private readonly context: DatabaseContext) {}
@@ -50,7 +36,7 @@ export class DrizzleWorkspaceMemberRepository implements WorkspaceMemberReposito
           eq(workspaceMembers.userId, userId),
         ),
       );
-    return row ? toWorkspaceMember(row) : null;
+    return row ? toDomain(row) : null;
   }
 
   countOwners(tenantId: TenantId, workspaceId: WorkspaceId): Promise<number> {
@@ -77,23 +63,13 @@ export class DrizzleWorkspaceMemberRepository implements WorkspaceMemberReposito
 
   save(member: WorkspaceMember): Promise<void> {
     return saveAggregate(this.context, member, async () => {
-      const { updatedAt } = member;
-      const roleId = member.roleId;
       try {
         const written = await this.context.client
           .insert(workspaceMembers)
-          .values({
-            id: member.id,
-            tenantId: member.tenantId,
-            workspaceId: member.workspaceId,
-            userId: member.userId,
-            roleId,
-            createdAt: member.createdAt,
-            updatedAt,
-          })
+          .values(toPersistence(member))
           .onConflictDoUpdate({
             target: workspaceMembers.id,
-            set: { roleId, updatedAt },
+            set: toMutableColumns(member),
             setWhere: eq(workspaceMembers.tenantId, member.tenantId),
           })
           .returning({ id: workspaceMembers.id });
