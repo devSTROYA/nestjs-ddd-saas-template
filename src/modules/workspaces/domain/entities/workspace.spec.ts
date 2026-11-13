@@ -65,4 +65,25 @@ describe('Workspace', () => {
 
     expect(restored.pullEvents()).toEqual([]);
   });
+
+  it('is new and dirty after create, clean after rehydrate, and ignores a rename to the same name', () => {
+    expect(newWorkspace().isDirty).toBe(true);
+    const restored = Workspace.rehydrate(
+      {
+        tenantId: TenantId.generate(),
+        name: WorkspaceName.rehydrate('Acme'),
+        createdAt: CREATED_AT,
+        updatedAt: CREATED_AT,
+      },
+      WorkspaceId.generate(),
+    );
+
+    expect(restored.isDirty).toBe(false);
+    expect(restored.rename(WorkspaceName.create('Acme'), NOW)).toBe(false);
+    expect(restored.isDirty).toBe(false);
+    expect(restored.updatedAt).toEqual(CREATED_AT);
+    expect(restored.pullEvents()).toEqual([]);
+    expect(restored.rename(WorkspaceName.create('Beta'), NOW)).toBe(true);
+    expect(restored.isDirty).toBe(true);
+  });
 });

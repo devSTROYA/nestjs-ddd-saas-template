@@ -149,10 +149,15 @@ export class WorkspaceRole extends AggregateRoot<Props, WorkspaceRoleId> {
     this.assertHolds(target.permissions);
   }
 
-  update(name: string, permissions: readonly WorkspacePermission[], now: Date): void {
+  // INFO: Returns false, raising nothing, when the name and the permissions are already as given.
+  update(name: string, permissions: readonly WorkspacePermission[], now: Date): boolean {
     const { tenantId, workspaceId } = this.editableScope();
-    this.props.name = normalizedName(name);
-    this.props.permissions.update(permissions);
+    const normalized = normalizedName(name);
+    const permissionsChanged = this.props.permissions.update(permissions);
+    if (normalized === this.props.name && !permissionsChanged) {
+      return false;
+    }
+    this.props.name = normalized;
     this.props.updatedAt = now;
     this.addEvent(
       new WorkspaceRoleUpdatedEvent({
@@ -164,6 +169,7 @@ export class WorkspaceRole extends AggregateRoot<Props, WorkspaceRoleId> {
         permissions: this.props.permissions.getItems(),
       }),
     );
+    return true;
   }
 
   remove(now: Date): void {

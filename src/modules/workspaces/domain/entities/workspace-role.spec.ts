@@ -113,6 +113,29 @@ describe('WorkspaceRole', () => {
     expect(role.pullEvents()).toEqual([]);
   });
 
+  it('stays clean when an update changes nothing, whatever the permission order', () => {
+    const role = restoredRole();
+
+    expect(role.isDirty).toBe(false);
+    expect(role.update(' Reviewer ', [MEMBER_REMOVE, MEMBER_ADD], NOW)).toBe(false);
+
+    expect(role.isDirty).toBe(false);
+    expect(role.updatedAt).toEqual(CREATED_AT);
+    expect(role.permissionChanges).toEqual({ added: [], removed: [] });
+    expect(role.pullEvents()).toEqual([]);
+  });
+
+  it('becomes dirty when only the name, or only the permissions, change', () => {
+    const renamed = restoredRole();
+    const repermissioned = restoredRole();
+
+    expect(renamed.update('Lead', [MEMBER_ADD, MEMBER_REMOVE], NOW)).toBe(true);
+    expect(repermissioned.update('Reviewer', [MEMBER_ADD], NOW)).toBe(true);
+
+    expect(renamed.isDirty).toBe(true);
+    expect(repermissioned.isDirty).toBe(true);
+  });
+
   it('raises an event on remove and none on rehydrate', () => {
     const role = restoredRole();
     expect(role.pullEvents()).toEqual([]);

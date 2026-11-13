@@ -64,7 +64,11 @@ export class Workspace extends AggregateRoot<Props, WorkspaceId> {
     return this.props.updatedAt;
   }
 
-  rename(name: WorkspaceName, now: Date): void {
+  // INFO: Returns false, raising nothing, when the workspace already has this name.
+  rename(name: WorkspaceName, now: Date): boolean {
+    if (this.props.name.equals(name)) {
+      return false;
+    }
     this.props.name = name;
     this.props.updatedAt = now;
     this.addEvent(
@@ -75,5 +79,6 @@ export class Workspace extends AggregateRoot<Props, WorkspaceId> {
         workspaceName: name.value,
       }),
     );
+    return true;
   }
 }

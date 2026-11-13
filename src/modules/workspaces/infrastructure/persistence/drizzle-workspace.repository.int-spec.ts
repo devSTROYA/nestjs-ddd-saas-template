@@ -96,6 +96,8 @@ describe('DrizzleWorkspaceRepository', () => {
       },
       workspace.id,
     );
+    // A rehydrated aggregate is clean and never written, so give it a real change.
+    hijack.rename(WorkspaceName.create('Hijack 2'), new Date());
 
     await expect(repository.save(hijack)).rejects.toThrow(WorkspaceIdConflictError);
 

@@ -187,6 +187,8 @@ describe('DrizzleWorkspaceMemberRepository', () => {
       },
       member.id,
     );
+    // A rehydrated aggregate is clean and never written, so give it a real change.
+    hijack.changeRole(SystemRoleId.MEMBER, 2, new Date());
 
     await expect(repository.save(hijack)).rejects.toThrow(WorkspaceMemberIdConflictError);
 

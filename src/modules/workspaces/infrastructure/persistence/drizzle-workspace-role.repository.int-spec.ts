@@ -175,6 +175,8 @@ describe('DrizzleWorkspaceRoleRepository', () => {
       },
       role.id,
     );
+    // A rehydrated aggregate is clean and never written, so give it a real change.
+    hijack.update('Hijack 2', [ROLE_MANAGE], new Date());
 
     await expect(repository.save(hijack)).rejects.toThrow(WorkspaceRoleIdConflictError);
 
@@ -197,6 +199,8 @@ describe('DrizzleWorkspaceRoleRepository', () => {
       },
       SystemRoleId.ADMIN,
     );
+    // A rehydrated aggregate is clean and never written, so give it a real change.
+    forged.update('Forged 2', [ROLE_MANAGE], new Date());
 
     await expect(repository.save(forged)).rejects.toThrow(WorkspaceRoleIdConflictError);
     await repository.delete(forged);
