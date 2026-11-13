@@ -117,6 +117,10 @@ changes, update this file in the same change.
   first.
 - **Value objects only where there is a real rule:** `Email`, `UserName`, `TenantName`. They follow
   the same `create` / `rehydrate` / `equals` shape. Names have a max length that matches the column.
+  **A domain property that needs validation becomes a value object** (`create` validates, `rehydrate`
+  trusts storage). The domain has no `assert`, `validate` or `normalize` helper functions for a
+  property: if you reach for one, the property should be a value object instead. A property with no
+  rule stays a primitive; do not add a value object "just in case".
 - **Ids are branded strings holding a UUID v7.** Each id is `type XId = UuidV7Id<'XId'>` plus
   `const XId = uuidV7IdFactory<XId>()`, so the type and its factory share a name. The brand keeps ids
   nominal at compile time (a `UserId` is not a `TenantId`) while the runtime value is the plain uuid:
@@ -672,6 +676,9 @@ Starting points, to be tuned with Cloud Run metrics (CPU, memory, latency, insta
   a welcome email when someone is added to a workspace, purging expired `login_challenges`,
   `refresh_tokens` and `rate_limits` rows, structured logging, CORS (needs the frontend origin),
   and a frontend link in the invitation email (it carries the invitation id and the code only).
+- `WorkspaceRole.key` and `WorkspaceRole.name` are plain strings validated by the helper functions
+  `assertUsableKey` and `normalizedName` in `workspace-role.ts`. By the value object rule they should be
+  `WorkspaceRoleKey` and `WorkspaceRoleName`.
 - Anyone can burn a user's 5 login code requests per hour (the per-email limit is not per IP), and
   each request replaces the code already sent to them. Fix with an email+IP key and a cooldown.
 - A guesser using many IPs can still exhaust the per-email ceiling of 30 wrong codes a day, which
