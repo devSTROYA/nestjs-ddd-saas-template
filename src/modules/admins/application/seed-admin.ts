@@ -20,10 +20,9 @@ export async function seedAdmin(
     await repository.save(Admin.create({ email, createdAt: now }, SEED_ADMIN_ID));
     return 'created';
   }
-  if (existing.email.equals(email)) {
+  if (!existing.changeEmail(email, now)) {
     return 'unchanged';
   }
-  existing.changeEmail(email, now);
   await repository.save(existing);
   return 'updated';
 }

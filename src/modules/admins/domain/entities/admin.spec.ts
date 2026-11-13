@@ -58,6 +58,21 @@ describe('Admin', () => {
     expect(admin.pullEvents()).toEqual([]);
   });
 
+  it('is dirty after create, clean after rehydrate, and ignores a change to the same email', () => {
+    expect(newAdmin().isDirty).toBe(true);
+    const admin = Admin.rehydrate(
+      { email: Email.rehydrate('root@b.co'), createdAt: CREATED_AT },
+      AdminId.generate(),
+    );
+
+    expect(admin.isDirty).toBe(false);
+    expect(admin.changeEmail(Email.create('root@b.co'), NOW)).toBe(false);
+    expect(admin.isDirty).toBe(false);
+    expect(admin.pullEvents()).toEqual([]);
+    expect(admin.changeEmail(Email.create('new@b.co'), NOW)).toBe(true);
+    expect(admin.isDirty).toBe(true);
+  });
+
   it('rehydrates without re-validation', () => {
     const createdAt = new Date('2026-01-01T00:00:00Z');
     const admin = Admin.rehydrate(

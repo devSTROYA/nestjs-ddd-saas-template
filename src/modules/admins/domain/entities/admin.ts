@@ -41,7 +41,11 @@ export class Admin extends AggregateRoot<Props, AdminId> {
     return this.props.createdAt;
   }
 
-  changeEmail(email: Email, now: Date): void {
+  // INFO: Returns false, raising nothing, when the admin already has this email.
+  changeEmail(email: Email, now: Date): boolean {
+    if (this.props.email.equals(email)) {
+      return false;
+    }
     this.props.email = email;
     this.addEvent(
       new AdminEmailChangedEvent({
@@ -51,5 +55,6 @@ export class Admin extends AggregateRoot<Props, AdminId> {
         email: email.value,
       }),
     );
+    return true;
   }
 }
