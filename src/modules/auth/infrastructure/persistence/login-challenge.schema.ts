@@ -48,3 +48,4 @@ export const loginChallenges = pgTable(
 );
 
 export type LoginChallengeRow = typeof loginChallenges.$inferSelect;
+export type LoginChallengeNewRow = typeof loginChallenges.$inferInsert;

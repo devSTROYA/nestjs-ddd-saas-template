@@ -5,34 +5,11 @@ import { appendEvents, saveAggregate } from '@common/outbox';
 import type { Nullable } from '@common/types';
 
 import type { RefreshTokenRepository } from '../../domain/ports/refresh-token.repository.js';
-import { RefreshToken } from '../../domain/entities/refresh-token.js';
-import { InvalidPrincipalTypeError } from '../../domain/errors/domain.error.js';
+import type { RefreshToken } from '../../domain/entities/refresh-token.js';
 import { RefreshTokenFamilyRevokedEvent } from '../../domain/events/refresh-token.events.js';
-import { RefreshTokenId, TokenFamilyId } from '../../domain/value-objects/ids.js';
-import { isPrincipalType } from '../../domain/value-objects/principal.js';
-import { type RefreshTokenRow, refreshTokens } from './refresh-token.schema.js';
-
-function toToken(row: RefreshTokenRow): RefreshToken {
-  if (!isPrincipalType(row.principalType)) {
-    throw new InvalidPrincipalTypeError(row.principalType);
-  }
-  return RefreshToken.rehydrate(
-    {
-      familyId: TokenFamilyId.rehydrate(row.familyId),
-      principal: {
-        type: row.principalType,
-        id: row.principalId,
-        ...(row.tenantId ? { tenantId: row.tenantId } : {}),
-      },
-      tokenHash: row.tokenHash,
-      expiresAt: row.expiresAt,
-      usedAt: row.usedAt,
-      revokedAt: row.revokedAt,
-      createdAt: row.createdAt,
-    },
-    RefreshTokenId.rehydrate(row.id),
-  );
-}
+import type { TokenFamilyId } from '../../domain/value-objects/ids.js';
+import { toDomain, toMutableColumns, toPersistence } from './refresh-token.mapper.js';
+import { refreshTokens } from './refresh-token.schema.js';
 
 export class DrizzleRefreshTokenRepository implements RefreshTokenRepository {
   constructor(private readonly context: DatabaseContext) {}
@@ -43,26 +20,15 @@ export class DrizzleRefreshTokenRepository implements RefreshTokenRepository {
       .from(refreshTokens)
       .where(eq(refreshTokens.tokenHash, tokenHash))
       .for('update');
-    return row ? toToken(row) : null;
+    return row ? toDomain(row) : null;
   }
 
   save(token: RefreshToken): Promise<void> {
     return saveAggregate(this.context, token, async () => {
-      const mutable = { usedAt: token.usedAt, revokedAt: token.revokedAt };
       await this.context.client
         .insert(refreshTokens)
-        .values({
-          id: token.id,
-          familyId: token.familyId,
-          principalType: token.principal.type,
-          principalId: token.principal.id,
-          tenantId: token.principal.tenantId ?? null,
-          tokenHash: token.tokenHash,
-          expiresAt: token.expiresAt,
-          createdAt: token.createdAt,
-          ...mutable,
-        })
-        .onConflictDoUpdate({ target: refreshTokens.id, set: mutable });
+        .values(toPersistence(token))
+        .onConflictDoUpdate({ target: refreshTokens.id, set: toMutableColumns(token) });
     });
   }
 
