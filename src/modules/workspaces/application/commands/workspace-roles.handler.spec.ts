@@ -15,6 +15,8 @@ import { SystemRoleId } from '../../domain/value-objects/system-workspace-role.j
 import { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspacePermission } from '../../domain/value-objects/workspace-permission.js';
 import type { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
+import { WorkspaceRoleKey } from '../../domain/value-objects/workspace-role-key.js';
+import { WorkspaceRoleName } from '../../domain/value-objects/workspace-role-name.js';
 import { type WorkspaceKit, createWorkspaceKit } from '../../testing/fakes.js';
 import { AddWorkspaceMemberCommand } from './add-workspace-member/add-workspace-member.command.js';
 import { ChangeWorkspaceMemberRoleCommand } from './change-workspace-member-role/change-workspace-member-role.command.js';
@@ -93,8 +95,8 @@ describe('workspace roles', () => {
       WorkspaceRole.create({
         tenantId: TenantId.generate(),
         workspaceId: WorkspaceId.generate(),
-        key: 'elsewhere',
-        name: 'Elsewhere',
+        key: WorkspaceRoleKey.create('elsewhere'),
+        name: WorkspaceRoleName.create('Elsewhere'),
         permissions: [],
         createdAt: new Date(),
       }),
@@ -154,8 +156,8 @@ describe('workspace roles', () => {
     const elsewhere = WorkspaceRole.create({
       tenantId: TenantId.generate(),
       workspaceId: WorkspaceId.generate(),
-      key: 'elsewhere',
-      name: 'Elsewhere',
+      key: WorkspaceRoleKey.create('elsewhere'),
+      name: WorkspaceRoleName.create('Elsewhere'),
       permissions: [],
       createdAt: new Date(),
     });

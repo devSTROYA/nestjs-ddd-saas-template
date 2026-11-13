@@ -7,6 +7,8 @@ import {
   ALL_WORKSPACE_PERMISSIONS,
   WorkspacePermission,
 } from '../domain/value-objects/workspace-permission.js';
+import { WorkspaceRoleKey } from '../domain/value-objects/workspace-role-key.js';
+import { WorkspaceRoleName } from '../domain/value-objects/workspace-role-name.js';
 
 const SEEDED_AT = new Date('2026-01-01T00:00:00Z');
 
@@ -37,8 +39,8 @@ export function systemRoles(): WorkspaceRole[] {
       {
         tenantId: null,
         workspaceId: null,
-        key,
-        name,
+        key: WorkspaceRoleKey.rehydrate(key),
+        name: WorkspaceRoleName.rehydrate(name),
         permissions: new WorkspacePermissionList(permissions),
         createdAt: SEEDED_AT,
         updatedAt: SEEDED_AT,

@@ -53,11 +53,11 @@ export class DeleteWorkspaceRoleHandler implements ICommandHandler<
         WorkspaceRoleId.parse(command.roleId),
       );
       if (role.isSystem) {
-        throw new SystemWorkspaceRoleError(role.key);
+        throw new SystemWorkspaceRoleError(role.key.value);
       }
       actor.assertCanManage(role);
       if ((await this.members.countWithRole(tenantId, workspaceId, role.id)) > 0) {
-        throw new WorkspaceRoleInUseError(role.key);
+        throw new WorkspaceRoleInUseError(role.key.value);
       }
       role.remove(this.clock.now());
       await this.roles.delete(role);

@@ -10,6 +10,7 @@ import { SystemWorkspaceRoleError } from '../../../domain/errors/domain.error.js
 import { WorkspaceId } from '../../../domain/value-objects/workspace-id.js';
 import { WorkspacePermission } from '../../../domain/value-objects/workspace-permission.js';
 import { WorkspaceRoleId } from '../../../domain/value-objects/workspace-role-id.js';
+import { WorkspaceRoleName } from '../../../domain/value-objects/workspace-role-name.js';
 import {
   WORKSPACE_ROLE_REPOSITORY,
   type WorkspaceRoleRepository,
@@ -45,11 +46,11 @@ export class UpdateWorkspaceRoleHandler implements ICommandHandler<
         WorkspaceRoleId.parse(command.roleId),
       );
       if (role.isSystem) {
-        throw new SystemWorkspaceRoleError(role.key);
+        throw new SystemWorkspaceRoleError(role.key.value);
       }
       actor.assertCanManage(role);
       actor.assertHolds(command.permissions);
-      role.update(command.name, command.permissions, this.clock.now());
+      role.update(WorkspaceRoleName.create(command.name), command.permissions, this.clock.now());
       await this.roles.save(role);
     });
   }

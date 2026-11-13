@@ -134,10 +134,12 @@ export class FakeWorkspaceRoles implements WorkspaceRoleRepository, WorkspaceRol
   save(role: WorkspaceRole): Promise<void> {
     const taken = [...this.saved.values()].some(
       (other) =>
-        other.id !== role.id && other.key === role.key && other.workspaceId === role.workspaceId,
+        other.id !== role.id &&
+        other.key.equals(role.key) &&
+        other.workspaceId === role.workspaceId,
     );
     if (taken) {
-      return Promise.reject(new WorkspaceRoleKeyTakenError(role.key));
+      return Promise.reject(new WorkspaceRoleKeyTakenError(role.key.value));
     }
     this.saved.set(role.id, role);
     return Promise.resolve();
@@ -160,8 +162,8 @@ export class FakeWorkspaceRoles implements WorkspaceRoleRepository, WorkspaceRol
       .filter((role) => this.isVisible(role, tenantId, workspaceId))
       .map((role) => ({
         id: role.id,
-        key: role.key,
-        name: role.name,
+        key: role.key.value,
+        name: role.name.value,
         system: role.isSystem,
         permissions: role.permissions,
       }));
@@ -224,7 +226,7 @@ function newestFirst(
               name: user.name.value,
               email: user.email.value,
               roleId: member.roleId,
-              role: role.key,
+              role: role.key.value,
             },
           ]
         : [];
@@ -260,7 +262,7 @@ export class FakeWorkspaceQuery implements WorkspaceQuery {
       id: workspace.id,
       name: workspace.name.value,
       roleId: actor.roleId,
-      role: role.key,
+      role: role.key.value,
       memberCount: members.length,
       members: members.slice(0, WORKSPACE_VIEW_MEMBER_LIMIT),
     };

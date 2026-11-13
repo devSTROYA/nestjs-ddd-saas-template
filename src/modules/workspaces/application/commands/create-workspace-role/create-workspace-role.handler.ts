@@ -9,6 +9,8 @@ import { UserId } from '@modules/users';
 import { WorkspaceRole } from '../../../domain/entities/workspace-role.js';
 import { WorkspaceId } from '../../../domain/value-objects/workspace-id.js';
 import { WorkspacePermission } from '../../../domain/value-objects/workspace-permission.js';
+import { WorkspaceRoleKey } from '../../../domain/value-objects/workspace-role-key.js';
+import { WorkspaceRoleName } from '../../../domain/value-objects/workspace-role-name.js';
 import {
   WORKSPACE_ROLE_REPOSITORY,
   type WorkspaceRoleRepository,
@@ -45,8 +47,8 @@ export class CreateWorkspaceRoleHandler implements ICommandHandler<
       const role = WorkspaceRole.create({
         tenantId,
         workspaceId,
-        key: command.key,
-        name: command.name,
+        key: WorkspaceRoleKey.create(command.key),
+        name: WorkspaceRoleName.create(command.name),
         permissions: command.permissions,
         createdAt: this.clock.now(),
       });

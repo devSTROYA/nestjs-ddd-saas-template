@@ -16,6 +16,8 @@ import {
   WorkspacePermission,
 } from '../value-objects/workspace-permission.js';
 import { WorkspaceRoleId } from '../value-objects/workspace-role-id.js';
+import { WorkspaceRoleKey } from '../value-objects/workspace-role-key.js';
+import { WorkspaceRoleName } from '../value-objects/workspace-role-name.js';
 import { WorkspacePermissionList } from './workspace-permission-list.js';
 import { WorkspaceRole } from './workspace-role.js';
 
@@ -31,8 +33,8 @@ const newRole = (
   WorkspaceRole.create({
     tenantId: TenantId.generate(),
     workspaceId: WorkspaceId.generate(),
-    key,
-    name,
+    key: WorkspaceRoleKey.create(key),
+    name: WorkspaceRoleName.create(name),
     permissions,
     createdAt: CREATED_AT,
   });
@@ -42,8 +44,8 @@ const restoredRole = () =>
     {
       tenantId: TenantId.generate(),
       workspaceId: WorkspaceId.generate(),
-      key: 'reviewer',
-      name: 'Reviewer',
+      key: WorkspaceRoleKey.rehydrate('reviewer'),
+      name: WorkspaceRoleName.rehydrate('Reviewer'),
       permissions: new WorkspacePermissionList([MEMBER_ADD, MEMBER_REMOVE]),
       createdAt: CREATED_AT,
       updatedAt: CREATED_AT,
@@ -52,7 +54,7 @@ const restoredRole = () =>
   );
 
 const systemRole = (key: string): WorkspaceRole => {
-  const role = systemRoles().find((candidate) => candidate.key === key);
+  const role = systemRoles().find((candidate) => candidate.key.value === key);
   if (!role) {
     throw new Error(`no system role ${key}`);
   }
@@ -63,7 +65,7 @@ describe('WorkspaceRole', () => {
   it('trims the name, drops duplicate permissions and raises one event', () => {
     const role = newRole('reviewer', ' Reviewer ', [MEMBER_ADD, MEMBER_ADD]);
 
-    expect(role.name).toBe('Reviewer');
+    expect(role.name.value).toBe('Reviewer');
     expect(role.isSystem).toBe(false);
     expect(role.permissions).toEqual([MEMBER_ADD]);
     expect(role.pullEvents()).toMatchObject([
@@ -93,9 +95,9 @@ describe('WorkspaceRole', () => {
   it('tracks only what an update changes', () => {
     const role = restoredRole();
 
-    role.update('Lead', [MEMBER_ADD, ROLE_MANAGE], NOW);
+    role.update(WorkspaceRoleName.create('Lead'), [MEMBER_ADD, ROLE_MANAGE], NOW);
 
-    expect(role.name).toBe('Lead');
+    expect(role.name.value).toBe('Lead');
     expect(role.updatedAt).toEqual(NOW);
     expect(role.permissions).toEqual([MEMBER_ADD, ROLE_MANAGE]);
     expect(role.permissionChanges).toEqual({ added: [ROLE_MANAGE], removed: [MEMBER_REMOVE] });
@@ -107,7 +109,9 @@ describe('WorkspaceRole', () => {
   it('changes nothing when an update has a bad name', () => {
     const role = restoredRole();
 
-    expect(() => role.update(' ', [], NOW)).toThrow(WorkspaceRoleNameInvalidError);
+    expect(() => role.update(WorkspaceRoleName.create(' '), [], NOW)).toThrow(
+      WorkspaceRoleNameInvalidError,
+    );
 
     expect(role.permissions).toEqual([MEMBER_ADD, MEMBER_REMOVE]);
     expect(role.pullEvents()).toEqual([]);
@@ -117,7 +121,9 @@ describe('WorkspaceRole', () => {
     const role = restoredRole();
 
     expect(role.isDirty).toBe(false);
-    expect(role.update(' Reviewer ', [MEMBER_REMOVE, MEMBER_ADD], NOW)).toBe(false);
+    expect(
+      role.update(WorkspaceRoleName.create(' Reviewer '), [MEMBER_REMOVE, MEMBER_ADD], NOW),
+    ).toBe(false);
 
     expect(role.isDirty).toBe(false);
     expect(role.updatedAt).toEqual(CREATED_AT);
@@ -129,8 +135,12 @@ describe('WorkspaceRole', () => {
     const renamed = restoredRole();
     const repermissioned = restoredRole();
 
-    expect(renamed.update('Lead', [MEMBER_ADD, MEMBER_REMOVE], NOW)).toBe(true);
-    expect(repermissioned.update('Reviewer', [MEMBER_ADD], NOW)).toBe(true);
+    expect(renamed.update(WorkspaceRoleName.create('Lead'), [MEMBER_ADD, MEMBER_REMOVE], NOW)).toBe(
+      true,
+    );
+    expect(repermissioned.update(WorkspaceRoleName.create('Reviewer'), [MEMBER_ADD], NOW)).toBe(
+      true,
+    );
 
     expect(renamed.isDirty).toBe(true);
     expect(repermissioned.isDirty).toBe(true);
@@ -151,9 +161,11 @@ describe('WorkspaceRole', () => {
     const role = systemRole('admin');
 
     expect(role.isSystem).toBe(true);
-    expect(() => role.update('Boss', [ROLE_MANAGE], NOW)).toThrow(SystemWorkspaceRoleError);
+    expect(() => role.update(WorkspaceRoleName.create('Boss'), [ROLE_MANAGE], NOW)).toThrow(
+      SystemWorkspaceRoleError,
+    );
     expect(() => role.remove(NOW)).toThrow(SystemWorkspaceRoleError);
-    expect(role.name).toBe('Admin');
+    expect(role.name.value).toBe('Admin');
     expect(role.permissions).not.toContain(ROLE_MANAGE);
     expect(role.pullEvents()).toEqual([]);
   });

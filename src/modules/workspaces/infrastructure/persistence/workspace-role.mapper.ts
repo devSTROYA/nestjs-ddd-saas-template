@@ -8,6 +8,8 @@ import {
   type WorkspacePermission,
 } from '../../domain/value-objects/workspace-permission.js';
 import { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
+import { WorkspaceRoleKey } from '../../domain/value-objects/workspace-role-key.js';
+import { WorkspaceRoleName } from '../../domain/value-objects/workspace-role-name.js';
 import type { WorkspaceRoleNewRow, WorkspaceRoleRow } from './workspace-role.schema.js';
 
 // INFO: A stored permission this version does not know grants nothing.
@@ -20,8 +22,8 @@ export function toDomain(row: WorkspaceRoleRow, permissions: readonly string[]):
     {
       tenantId: row.tenantId ? TenantId.rehydrate(row.tenantId) : null,
       workspaceId: row.workspaceId ? WorkspaceId.rehydrate(row.workspaceId) : null,
-      key: row.key,
-      name: row.name,
+      key: WorkspaceRoleKey.rehydrate(row.key),
+      name: WorkspaceRoleName.rehydrate(row.name),
       permissions: new WorkspacePermissionList(knownPermissions(permissions)),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -36,7 +38,7 @@ export function toPersistence(role: WorkspaceRole): WorkspaceRoleNewRow {
     id: role.id,
     tenantId: role.tenantId ?? null,
     workspaceId: role.workspaceId ?? null,
-    key: role.key,
+    key: role.key.value,
     createdAt: role.createdAt,
     ...toMutableColumns(role),
   };
@@ -46,5 +48,5 @@ export function toPersistence(role: WorkspaceRole): WorkspaceRoleNewRow {
 export function toMutableColumns(
   role: WorkspaceRole,
 ): Pick<WorkspaceRoleNewRow, 'name' | 'updatedAt'> {
-  return { name: role.name, updatedAt: role.updatedAt };
+  return { name: role.name.value, updatedAt: role.updatedAt };
 }

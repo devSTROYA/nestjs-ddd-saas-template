@@ -86,7 +86,7 @@ export class DrizzleWorkspaceRoleRepository implements WorkspaceRoleRepository {
       }
     } catch (error) {
       if (isUniqueViolation(error)) {
-        throw new WorkspaceRoleKeyTakenError(role.key);
+        throw new WorkspaceRoleKeyTakenError(role.key.value);
       }
       throw error;
     }

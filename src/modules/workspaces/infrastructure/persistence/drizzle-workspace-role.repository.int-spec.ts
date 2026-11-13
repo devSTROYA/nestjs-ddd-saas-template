@@ -19,6 +19,8 @@ import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspaceName } from '../../domain/value-objects/workspace-name.js';
 import { WorkspacePermission } from '../../domain/value-objects/workspace-permission.js';
 import { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
+import { WorkspaceRoleKey } from '../../domain/value-objects/workspace-role-key.js';
+import { WorkspaceRoleName } from '../../domain/value-objects/workspace-role-name.js';
 import { restoreSystemRoles } from '../../testing/system-roles.js';
 import { DrizzleWorkspaceRoleQuery } from './drizzle-workspace-role.query.js';
 import { DrizzleWorkspaceRoleRepository } from './drizzle-workspace-role.repository.js';
@@ -54,8 +56,8 @@ const newRole = (
   WorkspaceRole.create({
     tenantId,
     workspaceId,
-    key,
-    name: 'Reviewer',
+    key: WorkspaceRoleKey.create(key),
+    name: WorkspaceRoleName.create('Reviewer'),
     permissions,
     createdAt: new Date(),
   });
@@ -86,7 +88,7 @@ describe('DrizzleWorkspaceRoleRepository', () => {
     const found = await repository.findById(tenantId, workspaceId, role.id);
 
     expect(found?.id).toEqual(role.id);
-    expect(found?.name).toBe('Reviewer');
+    expect(found?.name.value).toBe('Reviewer');
     expect(found?.isSystem).toBe(false);
     expect([...(found?.permissions ?? [])].sort()).toEqual([MEMBER_ADD, MEMBER_REMOVE].sort());
     expect(found?.permissionChanges).toEqual({ added: [], removed: [] });
@@ -101,7 +103,7 @@ describe('DrizzleWorkspaceRoleRepository', () => {
 
     expect(first?.isSystem).toBe(true);
     expect(first?.tenantId).toBeNull();
-    expect(first?.key).toBe('admin');
+    expect(first?.key.value).toBe('admin');
     expect(second?.id).toEqual(SystemRoleId.ADMIN);
   });
 
@@ -125,12 +127,12 @@ describe('DrizzleWorkspaceRoleRepository', () => {
       throw new Error('role not saved');
     }
 
-    found.update('Lead', [MEMBER_ADD, ROLE_MANAGE], new Date());
+    found.update(WorkspaceRoleName.create('Lead'), [MEMBER_ADD, ROLE_MANAGE], new Date());
     await repository.save(found);
 
     expect(await storedPermissions(role.id)).toEqual([MEMBER_ADD, ROLE_MANAGE].sort());
     const reloaded = await repository.findById(tenantId, workspaceId, role.id);
-    expect(reloaded?.name).toBe('Lead');
+    expect(reloaded?.name.value).toBe('Lead');
   });
 
   it('can save the same instance twice', async () => {
@@ -167,8 +169,8 @@ describe('DrizzleWorkspaceRoleRepository', () => {
       {
         tenantId: other.tenantId,
         workspaceId: other.workspaceId,
-        key: 'hijack',
-        name: 'Hijack',
+        key: WorkspaceRoleKey.rehydrate('hijack'),
+        name: WorkspaceRoleName.rehydrate('Hijack'),
         permissions,
         createdAt: role.createdAt,
         updatedAt: role.updatedAt,
@@ -176,7 +178,7 @@ describe('DrizzleWorkspaceRoleRepository', () => {
       role.id,
     );
     // A rehydrated aggregate is clean and never written, so give it a real change.
-    hijack.update('Hijack 2', [ROLE_MANAGE], new Date());
+    hijack.update(WorkspaceRoleName.create('Hijack 2'), [ROLE_MANAGE], new Date());
 
     await expect(repository.save(hijack)).rejects.toThrow(WorkspaceRoleIdConflictError);
 
@@ -191,8 +193,8 @@ describe('DrizzleWorkspaceRoleRepository', () => {
       {
         tenantId,
         workspaceId,
-        key: 'forged',
-        name: 'Forged',
+        key: WorkspaceRoleKey.rehydrate('forged'),
+        name: WorkspaceRoleName.rehydrate('Forged'),
         permissions,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -200,13 +202,13 @@ describe('DrizzleWorkspaceRoleRepository', () => {
       SystemRoleId.ADMIN,
     );
     // A rehydrated aggregate is clean and never written, so give it a real change.
-    forged.update('Forged 2', [ROLE_MANAGE], new Date());
+    forged.update(WorkspaceRoleName.create('Forged 2'), [ROLE_MANAGE], new Date());
 
     await expect(repository.save(forged)).rejects.toThrow(WorkspaceRoleIdConflictError);
     await repository.delete(forged);
 
     const admin = await repository.findById(tenantId, workspaceId, SystemRoleId.ADMIN);
-    expect(admin?.name).toBe('Admin');
+    expect(admin?.name.value).toBe('Admin');
     expect(admin?.permissions).not.toContain(ROLE_MANAGE);
   });
 
