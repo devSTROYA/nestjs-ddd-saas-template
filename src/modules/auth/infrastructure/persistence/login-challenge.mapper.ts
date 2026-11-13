@@ -2,15 +2,11 @@ import { Email } from '@common/primitives';
 import { TenantId } from '@modules/tenants';
 
 import { LoginChallenge } from '../../domain/entities/login-challenge.js';
-import { InvalidLoginChallengeStatusError } from '../../domain/errors/domain.error.js';
 import { LoginChallengeId } from '../../domain/value-objects/ids.js';
-import { isLoginChallengeStatus } from '../../domain/value-objects/login-challenge-status.js';
+import { parseLoginChallengeStatus } from '../../domain/value-objects/login-challenge-status.js';
 import type { LoginChallengeNewRow, LoginChallengeRow } from './login-challenge.schema.js';
 
 export function toDomain(row: LoginChallengeRow): LoginChallenge {
-  if (!isLoginChallengeStatus(row.status)) {
-    throw new InvalidLoginChallengeStatusError(row.status);
-  }
   return LoginChallenge.rehydrate(
     {
       tenantId: row.tenantId ? TenantId.rehydrate(row.tenantId) : null,
@@ -18,7 +14,7 @@ export function toDomain(row: LoginChallengeRow): LoginChallenge {
       otpHash: row.otpHash,
       expiresAt: row.expiresAt,
       attempts: row.attempts,
-      status: row.status,
+      status: parseLoginChallengeStatus(row.status),
       createdAt: row.createdAt,
     },
     LoginChallengeId.rehydrate(row.id),

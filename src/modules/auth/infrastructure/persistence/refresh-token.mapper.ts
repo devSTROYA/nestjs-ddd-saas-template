@@ -1,18 +1,14 @@
 import { RefreshToken } from '../../domain/entities/refresh-token.js';
-import { InvalidPrincipalTypeError } from '../../domain/errors/domain.error.js';
 import { RefreshTokenId, TokenFamilyId } from '../../domain/value-objects/ids.js';
-import { isPrincipalType } from '../../domain/value-objects/principal.js';
+import { parsePrincipalType } from '../../domain/value-objects/principal.js';
 import type { RefreshTokenNewRow, RefreshTokenRow } from './refresh-token.schema.js';
 
 export function toDomain(row: RefreshTokenRow): RefreshToken {
-  if (!isPrincipalType(row.principalType)) {
-    throw new InvalidPrincipalTypeError(row.principalType);
-  }
   return RefreshToken.rehydrate(
     {
       familyId: TokenFamilyId.rehydrate(row.familyId),
       principal: {
-        type: row.principalType,
+        type: parsePrincipalType(row.principalType),
         id: row.principalId,
         ...(row.tenantId ? { tenantId: row.tenantId } : {}),
       },

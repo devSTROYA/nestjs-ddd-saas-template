@@ -1,3 +1,5 @@
+import { InvalidInvitationStatusError } from '../errors/domain.error.js';
+
 export const InvitationStatus = {
   PENDING: 'pending',
   ACCEPTED: 'accepted',
@@ -6,6 +8,11 @@ export const InvitationStatus = {
 
 export type InvitationStatus = (typeof InvitationStatus)[keyof typeof InvitationStatus];
 
-export function isInvitationStatus(value: string): value is InvitationStatus {
-  return Object.values<string>(InvitationStatus).includes(value);
+// Fails fast: an unknown stored value throws instead of becoming a status.
+export function parseInvitationStatus(value: string): InvitationStatus {
+  const status = Object.values(InvitationStatus).find((candidate) => candidate === value);
+  if (!status) {
+    throw new InvalidInvitationStatusError(value);
+  }
+  return status;
 }
