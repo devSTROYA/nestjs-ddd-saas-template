@@ -65,10 +65,14 @@ changes, update this file in the same change.
 ## Project layout
 
 - **Layered per module:** `src/modules/<module>/{domain,application,infrastructure,presentation}`.
-  `application/` always has `ports/`, `commands/` and `queries/`; a folder with nothing in it yet keeps
-  a `.gitkeep`. Each use-case has its own folder under `commands/` or `queries/` holding
-  `<name>.command.ts` (or `<name>.query.ts`), `<name>.handler.ts` and its spec. `domain/` holds
-  `entities/`, `value-objects/`, `events/`, `errors/` and `ports/`.
+  Every module has the same folders, whether or not they have anything in them yet:
+  `domain/{entities,value-objects,events,errors,ports}`, `application/{ports,commands,queries}`,
+  `infrastructure/persistence` and `presentation/`. Git does not track an empty folder, so an empty one
+  keeps a `.gitkeep`; delete the `.gitkeep` once a real file lands there, and never delete the folder
+  (when the last file of a folder goes, put the `.gitkeep` back). A new module is scaffolded with the full
+  set. `infrastructure/mail`, `infrastructure/security` and `testing/` exist only where the module needs
+  them. Each use-case has its own folder under `commands/` or `queries/` holding
+  `<name>.command.ts` (or `<name>.query.ts`), `<name>.handler.ts` and its spec.
 - **Commands mutate, queries read.** A command handler loads aggregates through repository ports,
   changes them and saves them. A query handler only reads, through a query port, and never touches an
   aggregate. A use-case that does both is a command.
