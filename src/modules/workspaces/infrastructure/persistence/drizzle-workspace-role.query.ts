@@ -11,7 +11,7 @@ import type {
 } from '../../application/ports/workspace-role.query.js';
 import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
 import { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
-import { knownPermissions } from './drizzle-workspace-role.repository.js';
+import { knownPermissions } from './workspace-role.mapper.js';
 import { isMember } from './workspace-member-page.js';
 import { workspaceRolePermissions, workspaceRoles } from './workspace-role.schema.js';
 

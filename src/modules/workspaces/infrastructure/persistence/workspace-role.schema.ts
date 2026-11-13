@@ -71,3 +71,4 @@ export const workspaceRolePermissions = pgTable(
 );
 
 export type WorkspaceRoleRow = typeof workspaceRoles.$inferSelect;
+export type WorkspaceRoleNewRow = typeof workspaceRoles.$inferInsert;

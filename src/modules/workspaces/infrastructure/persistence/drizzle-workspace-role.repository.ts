@@ -3,46 +3,18 @@ import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import { type DatabaseContext, isUniqueViolation } from '@common/database';
 import { saveAggregate } from '@common/outbox';
 import type { Nullable } from '@common/types';
-import { TenantId } from '@modules/tenants';
+import type { TenantId } from '@modules/tenants';
 
 import type { WorkspaceRoleRepository } from '../../domain/ports/workspace-role.repository.js';
-import { WorkspacePermissionList } from '../../domain/entities/workspace-permission-list.js';
-import { WorkspaceRole } from '../../domain/entities/workspace-role.js';
+import type { WorkspaceRole } from '../../domain/entities/workspace-role.js';
 import {
   WorkspaceRoleIdConflictError,
   WorkspaceRoleKeyTakenError,
 } from '../../domain/errors/domain.error.js';
-import { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
-import {
-  ALL_WORKSPACE_PERMISSIONS,
-  type WorkspacePermission,
-} from '../../domain/value-objects/workspace-permission.js';
-import { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
-import {
-  type WorkspaceRoleRow,
-  workspaceRolePermissions,
-  workspaceRoles,
-} from './workspace-role.schema.js';
-
-// INFO: A stored permission this version does not know grants nothing.
-export function knownPermissions(stored: readonly string[]): WorkspacePermission[] {
-  return ALL_WORKSPACE_PERMISSIONS.filter((permission) => stored.includes(permission));
-}
-
-function toWorkspaceRole(row: WorkspaceRoleRow, permissions: readonly string[]): WorkspaceRole {
-  return WorkspaceRole.rehydrate(
-    {
-      tenantId: row.tenantId ? TenantId.rehydrate(row.tenantId) : null,
-      workspaceId: row.workspaceId ? WorkspaceId.rehydrate(row.workspaceId) : null,
-      key: row.key,
-      name: row.name,
-      permissions: new WorkspacePermissionList(knownPermissions(permissions)),
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-    },
-    WorkspaceRoleId.rehydrate(row.id),
-  );
-}
+import type { WorkspaceId } from '../../domain/value-objects/workspace-id.js';
+import type { WorkspaceRoleId } from '../../domain/value-objects/workspace-role-id.js';
+import { toDomain, toMutableColumns, toPersistence } from './workspace-role.mapper.js';
+import { workspaceRolePermissions, workspaceRoles } from './workspace-role.schema.js';
 
 export class DrizzleWorkspaceRoleRepository implements WorkspaceRoleRepository {
   constructor(private readonly context: DatabaseContext) {}
@@ -71,7 +43,7 @@ export class DrizzleWorkspaceRoleRepository implements WorkspaceRoleRepository {
       .select({ permission: workspaceRolePermissions.permission })
       .from(workspaceRolePermissions)
       .where(eq(workspaceRolePermissions.roleId, row.id));
-    return toWorkspaceRole(
+    return toDomain(
       row,
       permissions.map(({ permission }) => permission),
     );
@@ -98,23 +70,14 @@ export class DrizzleWorkspaceRoleRepository implements WorkspaceRoleRepository {
 
   // INFO: setWhere matches no system role, whose tenant is null, so a save can never overwrite one.
   private async writeRole(role: WorkspaceRole): Promise<void> {
-    const { name, updatedAt } = role;
     const tenantId = role.tenantId ?? null;
     try {
       const written = await this.context.client
         .insert(workspaceRoles)
-        .values({
-          id: role.id,
-          tenantId,
-          workspaceId: role.workspaceId ?? null,
-          key: role.key,
-          name,
-          createdAt: role.createdAt,
-          updatedAt,
-        })
+        .values(toPersistence(role))
         .onConflictDoUpdate({
           target: workspaceRoles.id,
-          set: { name, updatedAt },
+          set: toMutableColumns(role),
           setWhere: tenantId ? eq(workspaceRoles.tenantId, tenantId) : isNull(workspaceRoles.id),
         })
         .returning({ id: workspaceRoles.id });
