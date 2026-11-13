@@ -87,6 +87,15 @@ changes, update this file in the same change.
 - **Aggregates have a private constructor** with two factories: `create` validates and builds a new
   instance, `rehydrate` rebuilds from storage without re-validating (so old rows that violate new rules
   can still be loaded).
+- **Aggregates know whether they changed.** `AggregateRoot.isDirty` is `false` after `rehydrate` and
+  turns `true` on the first event (`create` and every real change raise one), and `saveAggregate` does
+  nothing for a clean aggregate: no transaction, no query, no outbox row. A behaviour method that can
+  be a no-op (`rename` to the same name, `changeEmail` to the same email, `WorkspaceRole.update` with
+  the same name and permissions, `changeRole` to the same role) returns `false` and raises nothing, so
+  an unchanged update never reaches the database. `isDirty` is never cleared, because a retried unit of
+  work may save the same instance again. Rule for new aggregates: **every state change must raise an
+  event**, or `save` will skip it. A test that saves a hand-built `rehydrate` aggregate must change it
+  first.
 - **Value objects only where there is a real rule:** `Email`, `UserName`, `TenantName`. They follow
   the same `create` / `rehydrate` / `equals` shape. Names have a max length that matches the column.
 - **Ids are branded strings holding a UUID v7.** Each id is `type XId = UuidV7Id<'XId'>` plus
