@@ -12,3 +12,4 @@ export const tenants = pgTable(
 );
 
 export type TenantRow = typeof tenants.$inferSelect;
+export type TenantNewRow = typeof tenants.$inferInsert;
