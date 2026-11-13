@@ -56,6 +56,21 @@ describe('Tenant', () => {
     expect(tenant.pullEvents()).toEqual([]);
   });
 
+  it('is dirty after create, clean after rehydrate, and ignores a rename to the same name', () => {
+    expect(newTenant().isDirty).toBe(true);
+    const tenant = Tenant.rehydrate(
+      { name: TenantName.rehydrate('Acme'), createdAt: CREATED_AT },
+      TenantId.generate(),
+    );
+
+    expect(tenant.isDirty).toBe(false);
+    expect(tenant.rename(TenantName.create('Acme'), NOW)).toBe(false);
+    expect(tenant.isDirty).toBe(false);
+    expect(tenant.pullEvents()).toEqual([]);
+    expect(tenant.rename(TenantName.create('Beta'), NOW)).toBe(true);
+    expect(tenant.isDirty).toBe(true);
+  });
+
   it('rehydrates without re-validation', () => {
     const createdAt = new Date('2026-01-01T00:00:00Z');
     const tenant = Tenant.rehydrate(

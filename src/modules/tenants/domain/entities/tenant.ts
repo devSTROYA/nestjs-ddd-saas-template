@@ -41,7 +41,11 @@ export class Tenant extends AggregateRoot<Props, TenantId> {
     return this.props.createdAt;
   }
 
-  rename(name: TenantName, now: Date): void {
+  // INFO: Returns false, raising nothing, when the tenant already has this name.
+  rename(name: TenantName, now: Date): boolean {
+    if (this.props.name.equals(name)) {
+      return false;
+    }
     this.props.name = name;
     this.addEvent(
       new TenantRenamedEvent({
@@ -51,5 +55,6 @@ export class Tenant extends AggregateRoot<Props, TenantId> {
         tenantName: name.value,
       }),
     );
+    return true;
   }
 }
