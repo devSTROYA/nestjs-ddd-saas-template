@@ -77,6 +77,16 @@ describe('WatchedList', () => {
     expect(list.getDeltas()).toEqual({ added: [4], removed: [1] });
   });
 
+  it('reports whether replacing the content changed anything', () => {
+    const list = new NumberList([1, 2]);
+
+    expect(list.update([2, 1])).toBe(false);
+    expect(list.update([1, 2, 3])).toBe(true);
+    expect(list.update([1, 2, 3])).toBe(false);
+    expect(list.update([1])).toBe(true);
+    expect(list.update([])).toBe(true);
+  });
+
   it('does not let callers change it through the returned arrays', () => {
     const list = new NumberList([1]);
 

@@ -53,13 +53,20 @@ export abstract class WatchedList<T> {
     }
   }
 
-  update(items: readonly T[]): void {
+  // Returns whether the list changed.
+  update(items: readonly T[]): boolean {
+    let changed = false;
     for (const item of this.current.filter((existing) => !this.isIn(items, existing))) {
       this.remove(item);
+      changed = true;
     }
     for (const item of items) {
-      this.add(item);
+      if (!this.exists(item)) {
+        this.add(item);
+        changed = true;
+      }
     }
+    return changed;
   }
 
   private isIn(items: readonly T[], item: T): boolean {

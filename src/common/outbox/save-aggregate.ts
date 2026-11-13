@@ -23,11 +23,15 @@ export async function appendEvents(
   );
 }
 
+// INFO: A clean aggregate has no change and no event, so it costs no transaction and no query.
 export function saveAggregate(
   context: DatabaseContext,
-  aggregate: { pullEvents(): DomainEvent[] },
+  aggregate: { readonly isDirty: boolean; pullEvents(): DomainEvent[] },
   write: () => Promise<void>,
 ): Promise<void> {
+  if (!aggregate.isDirty) {
+    return Promise.resolve();
+  }
   return context.run(async () => {
     await write();
     await appendEvents(context, aggregate.pullEvents());
