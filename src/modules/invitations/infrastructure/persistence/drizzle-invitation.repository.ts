@@ -2,41 +2,19 @@ import { and, eq } from 'drizzle-orm';
 
 import { type DatabaseContext, isUniqueViolation } from '@common/database';
 import { saveAggregate } from '@common/outbox';
-import { Email } from '@common/primitives';
+import type { Email } from '@common/primitives';
 import type { Nullable } from '@common/types';
-import { AdminId } from '@modules/admins';
 
 import type { InvitationRepository } from '../../domain/ports/invitation.repository.js';
-import { Invitation } from '../../domain/entities/invitation.js';
+import type { Invitation } from '../../domain/entities/invitation.js';
 import {
-  InvalidInvitationStatusError,
   InvitationAlreadyPendingError,
   InvitationNotPendingError,
 } from '../../domain/errors/domain.error.js';
-import { InvitationId } from '../../domain/value-objects/invitation-id.js';
-import {
-  InvitationStatus,
-  isInvitationStatus,
-} from '../../domain/value-objects/invitation-status.js';
-import { type InvitationRow, invitations } from './invitation.schema.js';
-
-function toInvitation(row: InvitationRow): Invitation {
-  if (!isInvitationStatus(row.status)) {
-    throw new InvalidInvitationStatusError(row.status);
-  }
-  return Invitation.rehydrate(
-    {
-      email: Email.rehydrate(row.email),
-      invitedBy: AdminId.rehydrate(row.invitedBy),
-      otpHash: row.otpHash,
-      expiresAt: row.expiresAt,
-      attempts: row.attempts,
-      status: row.status,
-      createdAt: row.createdAt,
-    },
-    InvitationId.rehydrate(row.id),
-  );
-}
+import type { InvitationId } from '../../domain/value-objects/invitation-id.js';
+import { InvitationStatus } from '../../domain/value-objects/invitation-status.js';
+import { toDomain, toMutableColumns, toPersistence } from './invitation.mapper.js';
+import { invitations } from './invitation.schema.js';
 
 export class DrizzleInvitationRepository implements InvitationRepository {
   constructor(private readonly context: DatabaseContext) {}
@@ -46,7 +24,7 @@ export class DrizzleInvitationRepository implements InvitationRepository {
       .select()
       .from(invitations)
       .where(eq(invitations.id, id));
-    return row ? toInvitation(row) : null;
+    return row ? toDomain(row) : null;
   }
 
   async findByIdForUpdate(id: InvitationId): Promise<Nullable<Invitation>> {
@@ -55,7 +33,7 @@ export class DrizzleInvitationRepository implements InvitationRepository {
       .from(invitations)
       .where(eq(invitations.id, id))
       .for('update');
-    return row ? toInvitation(row) : null;
+    return row ? toDomain(row) : null;
   }
 
   async findPendingByEmail(email: Email): Promise<Nullable<Invitation>> {
@@ -65,7 +43,7 @@ export class DrizzleInvitationRepository implements InvitationRepository {
       .where(
         and(eq(invitations.email, email.value), eq(invitations.status, InvitationStatus.PENDING)),
       );
-    return row ? toInvitation(row) : null;
+    return row ? toDomain(row) : null;
   }
 
   save(invitation: Invitation): Promise<void> {
@@ -73,26 +51,14 @@ export class DrizzleInvitationRepository implements InvitationRepository {
   }
 
   private async write(invitation: Invitation): Promise<void> {
-    const mutable = {
-      otpHash: invitation.otpHash,
-      expiresAt: invitation.expiresAt,
-      attempts: invitation.attempts,
-      status: invitation.status,
-    };
     try {
       // INFO: Only a pending row may change, so a resend cannot revive an accepted invitation.
       const written = await this.context.client
         .insert(invitations)
-        .values({
-          id: invitation.id,
-          email: invitation.email.value,
-          invitedBy: invitation.invitedBy,
-          createdAt: invitation.createdAt,
-          ...mutable,
-        })
+        .values(toPersistence(invitation))
         .onConflictDoUpdate({
           target: invitations.id,
-          set: { ...mutable, updatedAt: new Date() },
+          set: { ...toMutableColumns(invitation), updatedAt: new Date() },
           setWhere: eq(invitations.status, InvitationStatus.PENDING),
         })
         .returning({ id: invitations.id });

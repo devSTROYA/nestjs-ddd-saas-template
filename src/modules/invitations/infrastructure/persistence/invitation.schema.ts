@@ -42,3 +42,4 @@ export const invitations = pgTable(
 );
 
 export type InvitationRow = typeof invitations.$inferSelect;
+export type InvitationNewRow = typeof invitations.$inferInsert;
