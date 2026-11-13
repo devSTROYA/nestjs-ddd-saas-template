@@ -64,8 +64,24 @@ changes, update this file in the same change.
 
 ## Project layout
 
-- **Layered per module:** `src/modules/<module>/{domain,application,infrastructure,presentation}`,
-  one folder per use-case under `application/`.
+- **Layered per module:** `src/modules/<module>/{domain,application,infrastructure,presentation}`.
+  `application/` always has `ports/`, `commands/` and `queries/`; a folder with nothing in it yet keeps
+  a `.gitkeep`. Each use-case has its own folder under `commands/` or `queries/` holding
+  `<name>.command.ts` (or `<name>.query.ts`), `<name>.handler.ts` and its spec. `domain/` holds
+  `entities/`, `value-objects/`, `events/`, `errors/` and `ports/`.
+- **Commands mutate, queries read.** A command handler loads aggregates through repository ports,
+  changes them and saves them. A query handler only reads, through a query port, and never touches an
+  aggregate. A use-case that does both is a command.
+- **Where a port lives depends on what it touches.** A port that loads or saves an aggregate (a
+  repository such as `TenantRepository`) is part of the domain contract and lives in `domain/ports`.
+  A port to the outside world (mail, token signing, the refresh token codec) or a read-side query
+  port (`WorkspaceQuery`) lives in `application/ports`, because a query reads a read model and never an
+  aggregate. The Drizzle adapters sit in `infrastructure/persistence` in both cases.
+- **Query ports return read models named by their shape:** `<Entity>ListItem` for one row of a list
+  (small and flat), `<Entity>Detail` for one item with its full detail, and `<Entity>Stats` for
+  aggregations such as totals or counts per status. They are plain types declared next to the query
+  port, never an aggregate. A paginated list returns `{ items, page, limit, total }`. No `Stats` read
+  model exists yet.
 - **File names are flat, with no role suffix for domain objects:** an entity is `invitation.ts` (not
   `invitation.entity.ts`), exactly like its value objects `invitation-id.ts` and
   `invitation-status.ts`. Class names do not change (`Invitation`). Suffixes are kept for technical
@@ -621,8 +637,9 @@ Starting points, to be tuned with Cloud Run metrics (CPU, memory, latency, insta
 
 ## Ports and DI
 
-- **Ports are interfaces plus a `Symbol` token** injected with `@Inject(TOKEN)`. Pure types in the
-  application layer and no reliance on decorator metadata, which Vitest does not emit by default.
+- **Ports are interfaces plus a `Symbol` token** injected with `@Inject(TOKEN)`. Pure types in
+  `domain/ports` or `application/ports` (see Project layout) and no reliance on decorator metadata,
+  which Vitest does not emit by default.
   Switching to abstract classes later is cheap.
 - **Modules bind ports with factory providers** (`useFactory` building the Drizzle implementation
   from `DATABASE_CONTEXT`) and export only the token.
