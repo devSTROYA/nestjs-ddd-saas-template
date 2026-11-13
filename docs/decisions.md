@@ -507,7 +507,11 @@ Starting points, to be tuned with Cloud Run metrics (CPU, memory, latency, insta
 
 ## Persistence
 
-- **Repositories map rows to aggregates** with a `toX(row)` function using `rehydrate`. Enum-like
+- **Each aggregate has a mapper** (`<aggregate>.mapper.ts` next to its schema) with three functions:
+  `toDomain(row)` rebuilds the aggregate with `rehydrate`, `toPersistence(aggregate)` returns the full
+  insert row (typed `XNewRow` from the schema) and `toMutableColumns(aggregate)` returns only the
+  columns an upsert may overwrite. The repository does the queries and the `onConflictDoUpdate`, and
+  never builds a row itself. Enum-like
   columns are plain `varchar` (no `pgEnum`) validated in the mapper, so adding a value never needs an
   `ALTER TYPE`; an unknown stored value fails loudly (`INVITATION_STATUS_INVALID`).
 - **`save` is an upsert** (`onConflictDoUpdate` on the id). For tenant-owned rows the update has
