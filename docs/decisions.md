@@ -121,6 +121,12 @@ changes, update this file in the same change.
   trusts storage). The domain has no `assert`, `validate` or `normalize` helper functions for a
   property: if you reach for one, the property should be a value object instead. A property with no
   rule stays a primitive; do not add a value object "just in case".
+- **Status and enum-like strings are not value objects.** They stay a `const` object plus a type
+  (`InvitationStatus`, `LoginChallengeStatus`, `PrincipalType`), never a TS `enum` or `pgEnum`, and the
+  file also holds a `parseX(value: string)` function that throws the domain error for an unknown value
+  (fail fast), so a mapper writes `status: parseInvitationStatus(row.status)` with no `if`. A boolean
+  `isX` guard exists only where a bad value is not an error, such as `isPrincipalType` for an untrusted
+  token claim.
 - **Ids are branded strings holding a UUID v7.** Each id is `type XId = UuidV7Id<'XId'>` plus
   `const XId = uuidV7IdFactory<XId>()`, so the type and its factory share a name. The brand keeps ids
   nominal at compile time (a `UserId` is not a `TenantId`) while the runtime value is the plain uuid:
